@@ -1,7 +1,7 @@
 # Events API
 class CorePushAPI extends CoreAPI
 
-    constructor: (apptools) ->
+    constructor: (apptools, window) ->
 
         ## Register events
         apptools.events.register('PUSH_INIT')

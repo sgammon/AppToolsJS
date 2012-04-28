@@ -1,8 +1,9 @@
 # User API
 class CoreUserAPI extends CoreAPI
 
-    constructor: (apptools) ->
+    constructor: (apptools, window) ->
 
+		## Set user info. Usually run by the server during JS injection.
         @setUserInfo = (userinfo) =>
 
             $.apptools.dev.log('UserAPI', 'Setting server-injected userinfo: ', userinfo)

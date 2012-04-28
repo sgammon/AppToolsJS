@@ -1,49 +1,79 @@
 # Events API
 class CoreEventsAPI extends CoreAPI
 
-    constructor: (apptools) ->
+    constructor: (apptools, window) ->
 
-        @registry = []
-        @callchain = {}
-        @history = []
+        ## Expose eventlists
+        @registry = [] # Global registry of all named events
+        @callchain = {} # Event callbacks attached to named events
+        @history = [] # Runtime event history
 
+        ## Trigger a named event, optionally with context
         @trigger = (event, args...) =>
 
-            $.apptools.dev.verbose 'Events', 'Triggered event.', event, args, @callchain[event]
+            apptools.dev.verbose 'Events', 'Triggered event.', event, args, @callchain[event]
 
+            # Have we seen this event before?
             if event in @registry
 
+                # Keep track of hooks executed/erred
                 hook_exec_count = 0
                 hook_error_count = 0
+                event_bridges = []
+                touched_events = []
 
+                touched_events.push(event)
+
+                # Consider all callchain directives
                 for callback_directive in @callchain[event].hooks
                     try
-                        if callback_directive.bridge == true
-                            @trigger(callback_directive.event, args...)
+                        # If it's a run-once and it's already run, continue as fast as possible...
                         if callback_directive.once == true and callback_directive.has_run == true
                             continue
-                        else
+
+                        # If it's not an event bridge, execute the hook
+                        else if callback_directive.bridge? == false
+
+                            # Execute callback with context, add to history/exec count
                             result = callback_directive.fn(args...)
                             hook_exec_count++
                             @history.push event: event, callback: callback_directive, args: args, result: result
+
+                            # Mark as run
                             callback_directive.has_run = true
+
+                        # If we encounter a bridge, defer it (after all hooks are executed for this event)...
+                        else if callback_directive.bridge == true
+                            event_bridges.push(event: callback_directive.event, args: args)
+
                     catch error
+                        ## Increment error count and add to runtime history
                         hook_error_count++
                         @history.push event: event, callback: callback_directive, args: args, error: error
 
-                return executed: hook_exec_count, errors: hook_error_count
+                # Execute deferred event bridges
+                for bridge in event_bridge
+                    touched_events.push(bridge.event)
+                    @trigger(bridge.event, bridge.args...)
+
+                return events: touched_events, executed: hook_exec_count, errors: hook_error_count
             else
+                # Silent failure if we don't recognize the event...
                 return false
 
+        ## Register a named, global event so it can be triggered later.
         @register = (name) =>
 
+            # Add to event registry, create a slot in the callchain...
             @registry.push(name)
             @callchain[name] =
                 hooks: []
+
             apptools.dev.verbose 'Events', 'Registered event.', name
             return true
 
-        @on = @when = @hook = (event, callback, once=false) =>
+        ## Register a callback to be executed when an event is triggered
+        @on = @upon = @when = @hook = (event, callback, once=false) =>
 
             if event not in @registry
                 @register(event)
@@ -51,6 +81,7 @@ class CoreEventsAPI extends CoreAPI
             apptools.dev.verbose 'Events', 'Hook registered on event.', event
             return true
 
+        ## Delegate one event to another, to be triggered after all hooks on the original event
         @bridge = (from_events, to_events) =>
 
             if typeof(to_events) == 'string'

@@ -1,4 +1,4 @@
 # Events API
 class CoreModelAPI extends CoreAPI
 
-    constructor: (apptools) ->
+    constructor: (apptools, window) ->

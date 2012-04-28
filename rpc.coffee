@@ -3,13 +3,16 @@
 # Represents a server-side API, so requests can be sent from JavaScript
 class RPCAPI
 
+    # RPCAPI Constructor
     constructor: (@name, @base_uri, @methods, @config) ->
 
+        ## Build little shims for each method...
         if @methods.length > 0
             for method in @methods
                 @[method] = @_buildRPCMethod(method, base_uri, config)
 
 
+    # Build a remote method shim
     _buildRPCMethod: (method, base_uri, config) ->
         api = @name
         rpcMethod = (params={}, callbacks=null, async=false, push=false, opts={}) =>
@@ -30,6 +33,7 @@ class RPCAPI
                 else
                     return request
 
+        # Register API method capability
         $.apptools.api.registerAPIMethod(api, method, base_uri, config)
         return rpcMethod
 
@@ -37,19 +41,23 @@ class RPCAPI
 # Represents a single RPC request, complete with config, params, callbacks, etc
 class RPCRequest
 
+    # RPCRequest Constructor
     constructor: (id, opts, agent) ->
 
+        ## Expose params
         @params = {}
         @action = null
         @method = null
         @api = null
         @base_uri = null
 
+        ## RPC Envelope
         @envelope =
             id: null
             opts: {}
             agent: {}
 
+        ## AJAX Settings
         @ajax =
             accepts: 'application/json'
             async: true
@@ -70,24 +78,30 @@ class RPCRequest
         if agent?
             @envelope.agent = agent
 
+    # Fulfill an RPC method server-side
     fulfill: (callbacks={}, config) ->
 
+        ## Put in a default success callback if we're not passed one (useful for development/debug)...
         if not callbacks?.success?
             defaultSuccessCallback = (context, type, data) =>
                 $.apptools.dev.log('RPC', 'RPC succeeded but had no success callback.', @, context, type, data)
             callbacks.success = defaultSuccessCallback
 
+        ## Put in a default failure callback if we're not passed one (useful for development/debug)...
         if not callbacks?.failure?
             defaultFailureCallback = (context) =>
                 $.apptools.dev.error('RPC', 'RPC failed but had no failure callback.', @, context)
             callbacks.failure = defaultFailureCallback
 
+        ## Pass it off to CoreRPCAPI to fulfill
         return $.apptools.api.rpc.fulfillRPCRequest(config, @, callbacks)
 
+    # Set async true/false for this request
     setAsync: (async) ->
         @ajax?.async ?= async
         return @
 
+    # Set whether push headers should be applied
     setPush: (push) ->
         if push == true
             @ajax.push = true
@@ -96,29 +110,37 @@ class RPCRequest
 
         return @
 
+    # Set arbitrary RPC envelope options
     setOpts: (opts) ->
         @envelope?.opts = _.defaults(opts, @envelope?.opts)
         return @
 
+    # Set the RPC envelope agent clause
     setAgent: (agent) ->
         @envelope?.agent ?= agent
         return @
 
+    # Set the RPC action
     setAction: (@action) ->
         return @
 
+    # Set the RPC method
     setMethod: (@method) ->
         return @
 
+    # Set the RPC API
     setAPI: (@api) ->
         return @
 
+    # Set the Base URI
     setBaseURI: (@base_uri) ->
         return @
 
+    # Set the RPC params
     setParams: (@params={}) ->
         return @
 
+    # Format the RPC for communication and return the encoded payload
     payload: ->
         _payload =
             id: @envelope.id
@@ -135,9 +157,10 @@ class RPCRequest
 ## CoreRPCAPI - kicks off RPC's and mediates with dispatch
 class CoreRPCAPI extends CoreAPI
 
-    constructor: (apptools) ->
+    # CoreRPCAPI Constructor
+    constructor: (apptools, window) ->
 
-        ## Register FCM events
+        ## Register RPC events
         apptools.events.register('RPC_CREATE')
         apptools.events.register('RPC_FULFILL')
         apptools.events.register('RPC_SUCCESS')
@@ -145,24 +168,36 @@ class CoreRPCAPI extends CoreAPI
         apptools.events.register('RPC_COMPLETE')
         apptools.events.register('RPC_PROGRESS')
 
-        ## Use amplify, if we can
+        ## Init state and config
+        @state =
+            sockets:
+                enabled: false
+                status: 'DISCONNECTED'
+                default: null
+                open: []
+                closed: []
+                default_host: apptools.config?.rpc?.socket_host? || null
+
+        ## Use amplify, if it's there
         if window.amplify?
             apptools.dev.verbose('RPC', 'AmplifyJS detected. Registering.')
             if apptools?.sys?.drivers
                 apptools.sys.drivers.register('transport', 'amplify', window.amplify, true, true)
 
-        @base_rpc_uri = '/_api/rpc'
-
+        ## Set default base URI
+        @base_rpc_uri = apptools.config.rpc.base_uri || '/_api/rpc'
+        @socket_host = apptools.config.rpc.socket_host || null
 
         ## Set up request internals
         original_xhr = $.ajaxSettings.xhr
-
         @internals =
 
+            # RPC Transports
             transports:
 
                 xhr:
                     factory: () =>
+                        ## Create event listener
                         req = original_xhr()
                         if req
                             if typeof req.addEventListener == 'function'
@@ -170,7 +205,30 @@ class CoreRPCAPI extends CoreAPI
                                         apptools.events.trigger('RPC_PROGRESS', {event: ev})
                                 , false)
                         return req
+                websocket:
+                    factory: () =>
+                        if apptools.agent.capabilities.websockets?
+                            if @state.sockets?.enabled? == true
+                                if @state.sockets?.default? == null && @state.sockets?.open?.length == 0
+                                    ## Lazy-load first socket
+                                    socket = new window.WebSocket(@state.sockets.default_host)
 
+                                    ## Bind events
+                                    socket.onopen = apptools.push.events.on_open
+                                    socket.onmessage = apptools.push.events.on_message
+                                    socket.onclose = apptools.push.events.on_close
+
+                                    ## Register with state
+                                    @state.sockets.open.push socket
+                                    @state.sockets.default = socket
+                                    @state.sockets.status = 'CONNECTED'
+                                req = {}
+                                return req
+                        else
+                            apptools.dev.error 'RPC', 'Socket factory can\'t produce a socket because the client platform does not support WebSockets.'
+                            throw SocketsNotSupported
+
+            # Default HTTP headers
             config:
                 headers:
                     "X-ServiceClient": ["AppToolsJS/", [
@@ -178,10 +236,11 @@ class CoreRPCAPI extends CoreAPI
                                                 apptools.sys.version.minor.toString(),
                                                 apptools.sys.version.micro.toString(),
                                                 apptools.sys.version.build.toString()].join('.'),
-                                        "-", apptools.sys.version.release.toString()].join('')
+                                         "-", apptools.sys.version.release.toString()].join('')
 
                     "X-ServiceTransport": "AppTools/JSONRPC"
 
+        # Splice in our custom factory
         $.ajaxSetup(
 
             global: true
@@ -191,19 +250,25 @@ class CoreRPCAPI extends CoreAPI
 
         )
 
+        # Build internal API
         @rpc =
 
+            # Runtime RPC History
             lastRequest: null
             lastFailure: null
             lastResponse: null
+            history: {}
+
+            # Config
             action_prefix: null
             alt_push_response: false
-            history: {}
             used_ids: []
 
+            # Creates RPCAPIs
             factory: (name, base_uri, methods, config) ->
                 $.apptools.api[name] = new RPCAPI(name, base_uri, methods, config)
 
+            # Assembles an RPC endpoint URL
             _assembleRPCURL: (method, api=null, prefix=null, base_uri=null) ->
                 if api is null and base_uri is null
                     throw "[RPC] Error: Must specify either an API or base URI to generate an RPC endpoint."
@@ -216,6 +281,7 @@ class CoreRPCAPI extends CoreAPI
                     else
                         return [base_uri, method].join('.')
 
+            # Provisions a locally-scoped RPC ID
             provisionRequestID: ->
                 if @used_ids.length > 0
                     id = Math.max.apply(@, @used_ids)+1
@@ -225,9 +291,11 @@ class CoreRPCAPI extends CoreAPI
                     @used_ids.push(1)
                     return 1
 
+            # Decode an RPC response
             decodeRPCResponse: (data, status, xhr, success, error) ->
                 success(data, status)
 
+            # Create an RPC request
             createRPCRequest: (config) ->
 
                 request = new RPCRequest(@provisionRequestID())
@@ -263,6 +331,7 @@ class CoreRPCAPI extends CoreAPI
 
                 return request
 
+            # Fulfill a request server-side
             fulfillRPCRequest: (config, request, callbacks) ->
 
                 $.apptools.dev.verbose('RPC', 'Fulfill', config, request, callbacks)

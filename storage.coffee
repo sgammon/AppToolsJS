@@ -1,7 +1,7 @@
 # Storage API
 class CoreStorageAPI extends CoreAPI
 
-    constructor: (apptools) ->
+    constructor: (apptools, window) ->
 
         ## 1: Register storage events
         apptools.events.register('STORAGE_INIT')
