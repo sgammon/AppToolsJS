@@ -1,6 +1,9 @@
 # Dispatch API
 class CoreDispatchAPI extends CoreAPI
 
+    @mount = 'dispatch'
+    @events = []
+
     constructor: (apptools, window) ->
 
         ## Setup State
@@ -92,3 +95,6 @@ class CoreDispatchAPI extends CoreAPI
             @state.opened = false
             @state.receiving = false
             apptools.dev.verbose('Dispatch', 'Dispatch shutdown signal received.')
+
+
+@__apptools_preinit.abstract_base_classes.push CoreDispatchAPI

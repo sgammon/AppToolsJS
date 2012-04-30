@@ -1,6 +1,9 @@
 # Agent/Capabilities API
 class CoreAgentAPI extends CoreAPI
 
+    @mount = 'agent'
+    @events = ['UA_DISCOVER']
+
     constructor: (apptools, window) ->
 
         # Setup state
@@ -175,3 +178,6 @@ class CoreAgentAPI extends CoreAPI
         @capabilities.simple.cookies = navigator.cookieEnabled
         if window.jQuery?
             @capabilities.simple.ajax = $.support.ajax
+
+
+@__apptools_preinit.abstract_base_classes.push CoreAgentAPI

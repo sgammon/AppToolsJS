@@ -1,23 +1,44 @@
 ## Setup preinit container (picked up in _init.coffee on AppTools init)
-if @.__apptools_preinit?
-  @.__apptools_preinit.lib = {}
-  @.__apptools_preinit.abstract_base_classes = []
+if @__apptools_preinit?
+  @__apptools_preinit.lib = {}
+  @__apptools_preinit.abstract_base_classes = []
+  @__apptools_preinit.deferred_core_modules = []
 else
-  @.__apptools_preinit =
-    lib: {} # Holds shortcuts libraries that are detected
+  @__apptools_preinit =
     abstract_base_classes: [] # Holds base classes that are setup before init
+    deferred_core_modules: [] # Holds core modules that are setup during init
 
 ## CoreAPI: Holds a piece of AppTools core functionality.
 class CoreAPI
-@.__apptools_preinit.abstract_base_classes.push CoreAPI
+@__apptools_preinit.abstract_base_classes.push CoreAPI
+
+## CoreObject: Holds an interactive object that is usually attached to a CoreAPI in some way.
+class CoreObject
+@__apptools_preinit.abstract_base_classes.push CoreObject
+
+## CoreException: Abstract exception class
+class CoreException extends Error
+
+  constructor: (@module, @message, @context) ->
+  toString: () ->
+    return '[' + @module + '] CoreException: ' + @message
+
+@__apptools_preinit.abstract_base_classes.push CoreException
+
+# AppTools/App errors
+class AppException extends CoreException
+  toString: () ->
+    return '[' + @module + '] AppException: ' + @message
+
+class AppToolsException extends CoreException
+  toString: () ->
+    return '[' + @module + '] AppToolsException: ' + @message
+
+@__apptools_preinit.abstract_base_classes.push AppException
+@__apptools_preinit.abstract_base_classes.push AppToolsException
 
 ## Check for Backbone.JS
-if @.Backbone?
-  # Mark it as found
-  @.__apptools_preinit.lib.backbone =
-    enabled: true
-    reference: @.Backbone
-
+if @Backbone?
   # Create Backbone.JS base classes
   class AppToolsView extends Backbone.View
   class AppToolsModel extends Backbone.Model
@@ -25,11 +46,6 @@ if @.Backbone?
   class AppToolsCollection extends Backbone.Collection
 
 else
-  # No backbone :(
-  @.__apptools_preinit.lib.backbone =
-    enabled: false
-    reference: null
-
   # Still export the classes...
   class AppToolsView
   class AppToolsModel
@@ -37,37 +53,7 @@ else
   class AppToolsCollection
 
 # Export to base classes
-@.__apptools_preinit.abstract_base_classes.push AppToolsView
-@.__apptools_preinit.abstract_base_classes.push AppToolsModel
-@.__apptools_preinit.abstract_base_classes.push AppToolsRouter
-@.__apptools_preinit.abstract_base_classes.push AppToolsCollection
-
-## We might be running server side...
-if exports?
-  exports[key] = Milk[key] for key of Milk
-  exports['CoreAPI'] = CoreAPI
-  exports['AppToolsView'] = AppToolsView
-  exports['AppToolsModel'] = AppToolsModel
-  exports['AppToolsRouter'] = AppToolsRouter
-  exports['AppToolsCollection'] = AppToolsCollection
-
-else
-  # We're not running sever side... export to the window...
-  @.Milk = Milk
-  @.CoreAPI = CoreAPI
-
-  # Milk is embedded
-  @.__apptools_preinit.lib.milk =
-    enabled: true
-    reference: @.Milk
-
-  @.AppToolsView = AppToolsView
-  @.AppToolsModel = AppToolsModel
-  @.AppToolsRouter = AppToolsRouter
-  @.AppToolsCollection = AppToolsCollection
-
-  @.__AppToolsBaseClasses =
-    AppToolsView: AppToolsView,
-    AppToolsModel: AppToolsModel,
-    AppToolsRouter: AppToolsRouter,
-    AppToolsCollection: AppToolsCollection
+@__apptools_preinit.abstract_base_classes.push AppToolsView
+@__apptools_preinit.abstract_base_classes.push AppToolsModel
+@__apptools_preinit.abstract_base_classes.push AppToolsRouter
+@__apptools_preinit.abstract_base_classes.push AppToolsCollection

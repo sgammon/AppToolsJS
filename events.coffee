@@ -1,6 +1,9 @@
 # Events API
 class CoreEventsAPI extends CoreAPI
 
+    @mount = 'events'
+    @events = []
+
     constructor: (apptools, window) ->
 
         ## Expose eventlists
@@ -11,7 +14,7 @@ class CoreEventsAPI extends CoreAPI
         ## Trigger a named event, optionally with context
         @trigger = (event, args...) =>
 
-            apptools.dev.verbose 'Events', 'Triggered event.', event, args, @callchain[event]
+            apptools.dev.verbose 'Events', 'Triggered event:', event, args, @callchain[event]
 
             # Have we seen this event before?
             if event in @registry
@@ -52,7 +55,7 @@ class CoreEventsAPI extends CoreAPI
                         @history.push event: event, callback: callback_directive, args: args, error: error
 
                 # Execute deferred event bridges
-                for bridge in event_bridge
+                for bridge in event_bridges
                     touched_events.push(bridge.event)
                     @trigger(bridge.event, bridge.args...)
 
@@ -62,14 +65,19 @@ class CoreEventsAPI extends CoreAPI
                 return false
 
         ## Register a named, global event so it can be triggered later.
-        @register = (name) =>
+        @register = (names) =>
 
-            # Add to event registry, create a slot in the callchain...
-            @registry.push(name)
-            @callchain[name] =
-                hooks: []
+            if names not instanceof Array
+                names = [names]
 
-            apptools.dev.verbose 'Events', 'Registered event.', name
+            for name in names
+                # Add to event registry, create a slot in the callchain...
+                @registry.push(name)
+                @callchain[name] =
+                    hooks: []
+
+            apptools.dev.verbose 'Events', 'Registered events:', names
+
             return true
 
         ## Register a callback to be executed when an event is triggered
@@ -91,8 +99,13 @@ class CoreEventsAPI extends CoreAPI
 
             for source_ev in from_events
                 for target_ev in to_events
-                    apptools.dev.verbose('Events', 'Bridging events.', source_ev, '->', target_ev)
+                    apptools.dev.verbose('Events', 'Bridging events:', source_ev, '->', target_ev)
+                    if not @callchain[source_ev]?
+                        apptools.dev.warn('Events', 'Bridging from undefined source event:', source_ev)
+                        @register(source_ev)
                     @callchain[source_ev].hooks.push(
                         event: target_ev,
                         bridge: true
                     )
+
+@.__apptools_preinit.abstract_base_classes.push CoreEventsAPI
