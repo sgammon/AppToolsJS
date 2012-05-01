@@ -1,12 +1,15 @@
 ## Setup preinit container (picked up in _init.coffee on AppTools init)
 if @__apptools_preinit?
-  @__apptools_preinit.lib = {}
   @__apptools_preinit.abstract_base_classes = []
   @__apptools_preinit.deferred_core_modules = []
+  @__apptools_preinit.abstract_feature_interfaces = []
+  @__apptools_preinit.deferred_library_integrations = []
 else
   @__apptools_preinit =
     abstract_base_classes: [] # Holds base classes that are setup before init
     deferred_core_modules: [] # Holds core modules that are setup during init
+    abstract_feature_interfaces: [] # Holds interfaces that wrap drivers and libraries
+    deferred_library_integrations: [] # Holds libraries detected before init.
 
 ## CoreAPI: Holds a piece of AppTools core functionality.
 class CoreAPI
@@ -15,6 +18,10 @@ class CoreAPI
 ## CoreObject: Holds an interactive object that is usually attached to a CoreAPI in some way.
 class CoreObject
 @__apptools_preinit.abstract_base_classes.push CoreObject
+
+## CoreInterface: Specifies an interface, usually used to adapt multiple libraries/modules to one task.
+class CoreInterface
+@__apptools_preinit.abstract_base_classes.push CoreInterface
 
 ## CoreException: Abstract exception class
 class CoreException extends Error

@@ -27,11 +27,6 @@ class AppTools
         ## Library shortcuts
         @lib = {}
 
-        ## Preinit: Export preinit classes to window
-        if window.__apptools_preinit?.abstract_base_classes?
-            for cls in window.__apptools_preinit.abstract_base_classes
-                window[cls.name] = cls
-
         ## System API
         @sys =
 
@@ -46,9 +41,37 @@ class AppTools
                 status: 'NOT_READY' # System status
                 flags: ['base']     # System flags
                 modules: {}         # Installed system modules
+                classes: {}         # Installed AppTools-related classes
+                interfaces: {}      # Installed feature interfaces
                 integrations: []    # Installed library integrations
+
                 add_flag: (flagname) ->
                     @sys.flags.push flagname
+
+                consider_preinit: (preinit) =>
+
+                    ## Preinit: Consider classes
+                    if preinit.abstract_base_classes?
+                        for cls in preinit.abstract_base_classes
+                            @sys.state.classes[cls.name] = cls
+                            if cls.package? and @sys.state.modules[cls.package]?
+                                @sys.state.modules[cls.package].classes[cls.name] = cls
+                            if cls.export? and cls.export == 'private'
+                                continue
+                            else
+                                window[cls.name] = cls
+
+                    ## Preinit: consider library integrations
+                    if preinit.deferred_library_integrations?
+                        for lib in preinit.deferred_library_integrations
+                            @sys.libraries.install(lib.name, lib.library)
+
+                    ## Preinit: consider feature interfaces
+                    if preinit.abstract_feature_interfaces?
+                        for interface in preinit.abstract_feature_interfaces
+                            @sys.interfaces.install(interface.name, interface.adapter)
+
+                    return preinit
 
             ## Module management
             modules:
@@ -86,10 +109,10 @@ class AppTools
                     if not mountpoint[module_name]?
                         if pass_parent
                             target_mod = mountpoint[module_name] = new module(@, mountpoint, window)
-                            @sys.state.modules[module_name] = target_mod
+                            @sys.state.modules[module_name] = {module: target_mod, classes: {}}
                         else
                             target_mod = mountpoint[module_name] = new module(@, window)
-                            @sys.state.modules[module_name] = target_mod
+                            @sys.state.modules[module_name] = {module: target_mod, classes: {}}
 
                     ## Call module init callback, if there is one
                     if module._init?
@@ -137,6 +160,27 @@ class AppTools
                         else
                             return @lib[name.toLowerCase()]
 
+            ## Interface management
+            interfaces:
+                install: (name, adapter) =>
+
+                    ## Log + trigger event
+                    @dev.verbose('InterfaceLoader', 'Installed "' + name + '" interface.', adapter)
+                    @events.trigger('SYS_INTERFACE_LOADED', name: name, adapter: adapter)
+
+                    ## Install into state
+                    @sys.state.interfaces[name] = {adapter: adapter, methods: adapter.methods}
+                    return @sys.state.interfaces[name]
+
+                resolve: (name) =>
+
+                    ## Look for it
+                    if @sys.state.interfaces[name]?
+                        return @sys.state.interfaces[name]
+                    else
+                        return false
+
+
             ## Driver management
             drivers:
                 query: {}     ## drivers that can query the dom
@@ -146,10 +190,10 @@ class AppTools
                 render: {}    ## drivers that can render data into the DOM
 
                 ## Register a driver with AppToolsJS
-                install: (type, name, mountpoint, enabled, priority, callback=null) =>
+                install: (type, name, adapter, mountpoint, enabled, priority, callback=null) =>
 
                     # Add the driver to its type namespace
-                    @sys.drivers[type][name] = {name: name, driver: mountpoint, enabled: enabled, priority: priority}
+                    @sys.drivers[type][name] = {name: name, driver: mountpoint, enabled: enabled, priority: priority, interface: adapter}
 
                     # Trigger install callback + loaded event
                     if callback?
@@ -189,11 +233,13 @@ class AppTools
                 @sys.state.status = 'READY'
                 return @
 
-
         ## Dev/Events API (for logging/debugging - only two modules instantiated manually, so we can log stuff + trigger events during init)
         @sys.modules.install(CoreDevAPI, (dev) -> dev.verbose('CORE', 'CoreDevAPI is up and running.'))
         @sys.modules.install(CoreEventsAPI, (events) => events.register(@sys.core_events))
 
+        ## Consider preinit: export/catalog preinit classes & libraries
+        if window.__apptools_preinit?
+            @sys.state.consider_preinit(window.__apptools_preinit)
 
 
         ##### ===== 2: Library Detection ===== #####
@@ -206,20 +252,20 @@ class AppTools
         # jQuery
         if window?.jQuery?
             @sys.libraries.install 'jQuery', window.jQuery, (lib, name) =>
-                @sys.drivers.install 'query', 'jquery', @lib.jquery, true, 100, null
-                @sys.drivers.install 'transport', 'jquery', @lib.jquery, true, 100, null
+                @sys.drivers.install 'query', 'jquery', QueryAdapter, @lib.jquery, true, 100, null
+                @sys.drivers.install 'transport', 'jquery', RPCAdapter, @lib.jquery, true, 100, null
 
         # Zepto
         if window?.Zepto?
             @sys.libraries.install 'Zepto', window.Zepto, (lib, name) =>
-                @sys.drivers.install 'query', 'zepto', @lib.zepto, true, 500, null
-                @sys.drivers.install 'transport', 'zepto', @lib.zepto, true, 500, null
+                @sys.drivers.install 'query', 'zepto', QueryAdapter, @lib.zepto, true, 500, null
+                @sys.drivers.install 'transport', 'zepto', RPCAdapter, @lib.zepto, true, 500, null
 
         # UnderscoreJS
         if window?._?
             @sys.libraries.install 'Underscore', window._, (lib, name) =>
-                @sys.drivers.install 'query', 'underscore', @lib.underscore, true, 50, null
-                @sys.drivers.install 'render', 'underscore', @lib.underscore, true, 50, null
+                @sys.drivers.install 'query', 'underscore', QueryAdapter, @lib.underscore, true, 50, null
+                @sys.drivers.install 'render', 'underscore', QueryAdapter, @lib.underscore, true, 50, null
 
         # BackboneJS
         if window?.Backbone?
@@ -232,25 +278,25 @@ class AppTools
         # Lawnchair
         if window?.Lawnchair?
             @sys.libraries.install 'Lawnchair', window.Lawnchair, (library) =>
-                @sys.drivers.install 'storage', 'lawnchair', @lib.lawnchair, true, 500, (lawnchair) =>
+                @sys.drivers.install 'storage', 'lawnchair', StorageAdapter, @lib.lawnchair, true, 500, (lawnchair) =>
                     @dev.verbose 'Lawnchair', 'Storage is currently stubbed. Come back later.'
 
         # AmplifyJS
         if window?.amplify?
             @sys.libraries.install 'Amplify', window.amplify, (library) =>
-                @sys.drivers.register 'transport', 'amplify', @lib.amplify, true, 500, null
-                @sys.drivers.register 'storage', 'amplify', @lib.amplify, true, 100, null
+                @sys.drivers.register 'transport', 'amplify', RPCAdapter, @lib.amplify, true, 500, null
+                @sys.drivers.register 'storage', 'amplify', StorageAdapter, @lib.amplify, true, 100, null
 
         # Milk (mustache for coffeescript)
         if window?.Milk?
             @sys.libraries.install 'Milk', window.Milk, (library) =>
-                @sys.drivers.install 'render', 'milk', @lib.milk, true, 100, (milk) =>
+                @sys.drivers.install 'render', 'milk', RenderAdapter, @lib.milk, true, 100, (milk) =>
                     @dev.verbose 'Milk', 'Render support is currently stubbed. Come back later.'
 
         # Mustache
         if window?.Mustache?
             @sys.libraries.install 'Mustache', window.Mustache, (library) =>
-                @sys.drivers.register 'render', 'mustache', @lib.mustache, true, 500, (mustache) =>
+                @sys.drivers.register 'render', 'mustache', RenderAdapter, @lib.mustache, true, 500, (mustache) =>
                     @dev.verbose 'Mustache', 'Render support is currently stubbed. Come back later.'
 
 
@@ -262,6 +308,7 @@ class AppTools
         @sys.modules.install(CorePushAPI)      # Push API
         @sys.modules.install(CoreUserAPI)      # User API
         @sys.modules.install(CoreStorageAPI)   # Storage API
+        @sys.modules.install(CoreRenderAPI)    # Render API
 
 
         ##### ===== 4: Install Deferred Modules ===== #####

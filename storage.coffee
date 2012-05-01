@@ -98,4 +98,16 @@ class CoreStorageAPI extends CoreAPI
         apptools.events.bridge ['STORAGE_READ', 'STORAGE_WRITE', 'STORAGE_DELETE'], 'STORAGE_ACTIVITY'
         apptools.events.bridge ['COLLECTION_CREATE', 'COLLECTION_UPDATE', 'COLLECTION_DESTROY', 'COLLECTION_SYNC', 'COLLECTION_SCAN'], 'STORAGE_ACTIVITY'
 
+
+class StorageDriver extends CoreInterface
+
+    @methods = []
+    @export = "private"
+
+    constructor: () ->
+        return
+
+
+@__apptools_preinit.abstract_base_classes.push StorageDriver
 @__apptools_preinit.abstract_base_classes.push CoreStorageAPI
+@__apptools_preinit.abstract_feature_interfaces.push {adapter: StorageAdapter, name: "storage"}

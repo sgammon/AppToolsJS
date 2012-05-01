@@ -12,7 +12,7 @@ class CoreEventsAPI extends CoreAPI
         @history = [] # Runtime event history
 
         ## Trigger a named event, optionally with context
-        @trigger = (event, args...) =>
+        @fire = @trigger = (event, args...) =>
 
             apptools.dev.verbose 'Events', 'Triggered event:', event, args, @callchain[event]
 
@@ -65,18 +65,18 @@ class CoreEventsAPI extends CoreAPI
                 return false
 
         ## Register a named, global event so it can be triggered later.
-        @register = (names) =>
+        @create = @register = (names) =>
 
             if names not instanceof Array
                 names = [names]
 
             for name in names
                 # Add to event registry, create a slot in the callchain...
-                @registry.push(name)
+                @registry.push.apply(@registry, names)
                 @callchain[name] =
                     hooks: []
 
-            apptools.dev.verbose 'Events', 'Registered events:', names
+            apptools.dev.verbose 'Events', 'Registered events:', {count: names.length, events: names}
 
             return true
 
@@ -84,13 +84,14 @@ class CoreEventsAPI extends CoreAPI
         @on = @upon = @when = @hook = (event, callback, once=false) =>
 
             if event not in @registry
+                apptools.dev.warning 'Events', ''
                 @register(event)
             @callchain[event].hooks.push(fn: callback, once: once, has_run: false, bridge: false)
             apptools.dev.verbose 'Events', 'Hook registered on event.', event
             return true
 
         ## Delegate one event to another, to be triggered after all hooks on the original event
-        @bridge = (from_events, to_events) =>
+        @delegate = @bridge = (from_events, to_events) =>
 
             if typeof(to_events) == 'string'
                 to_events = [to_events]
@@ -107,5 +108,6 @@ class CoreEventsAPI extends CoreAPI
                         event: target_ev,
                         bridge: true
                     )
+
 
 @.__apptools_preinit.abstract_base_classes.push CoreEventsAPI

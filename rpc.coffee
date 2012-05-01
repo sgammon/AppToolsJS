@@ -515,7 +515,19 @@ class CoreRPCAPI extends CoreAPI
                         amplify.request.define(resourceId, "ajax", base_settings)
 
 
+class RPCDriver extends CoreInterface
+
+    @methods = []
+    @export = "private"
+
+    constructor: () ->
+        return
+
+
 # Export classes
 @__apptools_preinit.abstract_base_classes.push RPCAPI
-@__apptools_preinit.abstract_base_classes.push RPCRequest
+@__apptools_preinit.abstract_base_classes.push RPCDriver
 @__apptools_preinit.abstract_base_classes.push CoreRPCAPI
+@__apptools_preinit.abstract_base_classes.push RPCRequest
+@__apptools_preinit.abstract_base_classes.push RPCResponse
+@__apptools_preinit.abstract_feature_interfaces.push {adapter: RPCDriver, name: "transport"}

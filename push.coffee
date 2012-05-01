@@ -130,14 +130,14 @@ class CorePushAPI extends CoreAPI
                 socket.onerror = (args...) => @events.on_error(socket, args...)
                 socket.onclose = (args...) => @events.on_close(socket, args...)
 
-                return socket
+                return @internal
 
             ## Expect a push response
             expect: (id, request, xhr) =>
 
                 # Pass off to expect callback
                 @state?.callbacks?.expect?(id, request, xhr)
-                return @.internal
+                return @internal
 
         ## GAE Channel Stuff
         @channel =
@@ -157,4 +157,16 @@ class CorePushAPI extends CoreAPI
             @state.ready = true
             return @.internal
 
+
+class PushDriver extends CoreInterface
+
+    @methods = []
+    @export = "private"
+
+    constructor: () ->
+        return
+
+
+@__apptools_preinit.abstract_base_classes.push PushDriver
 @__apptools_preinit.abstract_base_classes.push CorePushAPI
+@__apptools_preinit.abstract_feature_interfaces.push {adapter: PushDriver, name: "transport"}
