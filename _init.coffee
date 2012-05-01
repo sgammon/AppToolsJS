@@ -252,20 +252,20 @@ class AppTools
         # jQuery
         if window?.jQuery?
             @sys.libraries.install 'jQuery', window.jQuery, (lib, name) =>
-                @sys.drivers.install 'query', 'jquery', QueryAdapter, @lib.jquery, true, 100, null
-                @sys.drivers.install 'transport', 'jquery', RPCAdapter, @lib.jquery, true, 100, null
+                @sys.drivers.install 'query', 'jquery', @sys.state.classes.QueryDriver, @lib.jquery, true, 100, null
+                @sys.drivers.install 'transport', 'jquery', @sys.state.classes.RPCDriver, @lib.jquery, true, 100, null
 
         # Zepto
         if window?.Zepto?
             @sys.libraries.install 'Zepto', window.Zepto, (lib, name) =>
-                @sys.drivers.install 'query', 'zepto', QueryAdapter, @lib.zepto, true, 500, null
-                @sys.drivers.install 'transport', 'zepto', RPCAdapter, @lib.zepto, true, 500, null
+                @sys.drivers.install 'query', 'zepto', @sys.state.classes.QueryDriver, @lib.zepto, true, 500, null
+                @sys.drivers.install 'transport', 'zepto', @sys.state.classes.RPCDriver, @lib.zepto, true, 500, null
 
         # UnderscoreJS
         if window?._?
             @sys.libraries.install 'Underscore', window._, (lib, name) =>
-                @sys.drivers.install 'query', 'underscore', QueryAdapter, @lib.underscore, true, 50, null
-                @sys.drivers.install 'render', 'underscore', QueryAdapter, @lib.underscore, true, 50, null
+                @sys.drivers.install 'query', 'underscore', @sys.state.classes.QueryDriver, @lib.underscore, true, 50, null
+                @sys.drivers.install 'render', 'underscore', @sys.state.classes.RenderDriver, @lib.underscore, true, 50, null
 
         # BackboneJS
         if window?.Backbone?
@@ -278,25 +278,25 @@ class AppTools
         # Lawnchair
         if window?.Lawnchair?
             @sys.libraries.install 'Lawnchair', window.Lawnchair, (library) =>
-                @sys.drivers.install 'storage', 'lawnchair', StorageAdapter, @lib.lawnchair, true, 500, (lawnchair) =>
+                @sys.drivers.install 'storage', 'lawnchair', @sys.state.classes.StorageDriver, @lib.lawnchair, true, 500, (lawnchair) =>
                     @dev.verbose 'Lawnchair', 'Storage is currently stubbed. Come back later.'
 
         # AmplifyJS
         if window?.amplify?
             @sys.libraries.install 'Amplify', window.amplify, (library) =>
-                @sys.drivers.register 'transport', 'amplify', RPCAdapter, @lib.amplify, true, 500, null
-                @sys.drivers.register 'storage', 'amplify', StorageAdapter, @lib.amplify, true, 100, null
+                @sys.drivers.register 'transport', 'amplify', @sys.state.classes.RPCDriver, @lib.amplify, true, 500, null
+                @sys.drivers.register 'storage', 'amplify', @sys.state.classes.StorageDriver, @lib.amplify, true, 100, null
 
         # Milk (mustache for coffeescript)
         if window?.Milk?
             @sys.libraries.install 'Milk', window.Milk, (library) =>
-                @sys.drivers.install 'render', 'milk', RenderAdapter, @lib.milk, true, 100, (milk) =>
+                @sys.drivers.install 'render', 'milk', @sys.state.classes.RenderDriver, @lib.milk, true, 100, (milk) =>
                     @dev.verbose 'Milk', 'Render support is currently stubbed. Come back later.'
 
         # Mustache
         if window?.Mustache?
             @sys.libraries.install 'Mustache', window.Mustache, (library) =>
-                @sys.drivers.register 'render', 'mustache', RenderAdapter, @lib.mustache, true, 500, (mustache) =>
+                @sys.drivers.register 'render', 'mustache', @sys.state.classes.RenderDriver, @lib.mustache, true, 500, (mustache) =>
                     @dev.verbose 'Mustache', 'Render support is currently stubbed. Come back later.'
 
 

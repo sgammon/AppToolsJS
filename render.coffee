@@ -1,34 +1,31 @@
-# Dispatch API
+# Render API API
 class CoreRenderAPI extends CoreAPI
 
     @mount = 'render'
-    @events = []
-    @export = "private"
+    @events = ['ADD_TEMPLATE', 'RENDER_TEMPLATE']
+    @export = 'private'
 
     constructor: (apptools, window) ->
-		return
+        return
 
-	_init: () ->
-		return
-
-
+    _init: () ->
+        return
 
 class RenderDriver extends CoreInterface
 
-	@export = "private"
-	@methods = []
+    @export = 'private'
+    @methods = ['render', 'register_template']
 
-	constructor: () ->
-		return
-
+    constructor: () ->
+        return
 
 class QueryDriver extends CoreInterface
 
-	@export = "private"
-	@methods = []
+    @export = 'private'
+    @methods = ['element_by_id', 'elements_by_class']
 
-	constructor: () ->
-		return
+    constructor: () ->
+        return
 
 
 @__apptools_preinit.abstract_base_classes.push QueryDriver

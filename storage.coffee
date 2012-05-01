@@ -110,4 +110,4 @@ class StorageDriver extends CoreInterface
 
 @__apptools_preinit.abstract_base_classes.push StorageDriver
 @__apptools_preinit.abstract_base_classes.push CoreStorageAPI
-@__apptools_preinit.abstract_feature_interfaces.push {adapter: StorageAdapter, name: "storage"}
+@__apptools_preinit.abstract_feature_interfaces.push {adapter: StorageDriver, name: "storage"}

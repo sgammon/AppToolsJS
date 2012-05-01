@@ -154,6 +154,14 @@ class RPCRequest extends CoreObject
         return _payload
 
 
+# Represents a single RPC response
+class RPCResponse extends CoreObject
+
+    constructor: (args...) ->
+        $.apptools.dev.verbose('RPC', 'RPCResponse is not yet implemented and is currently stubbed.')
+        return
+
+
 ## CoreRPCAPI - kicks off RPC's and mediates with dispatch
 class CoreRPCAPI extends CoreAPI
 

@@ -110,4 +110,4 @@ class CoreEventsAPI extends CoreAPI
                     )
 
 
-@.__apptools_preinit.abstract_base_classes.push CoreEventsAPI
+@__apptools_preinit.abstract_base_classes.push CoreEventsAPI
