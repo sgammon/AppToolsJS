@@ -269,11 +269,7 @@ class AppTools
 
         # BackboneJS
         if window?.Backbone?
-            @sys.libraries.install 'Backbone', window.Backbone, (library) =>
-                window.AppToolsView::apptools = @
-                window.AppToolsModel::apptools = @
-                window.AppToolsRouter::apptools = @
-                window.AppToolsCollection::apptools = @
+            @sys.libraries.install 'Backbone', window.Backbone
 
         # Lawnchair
         if window?.Lawnchair?
