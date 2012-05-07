@@ -1,3 +1,4 @@
+# AppTools Modal Widget
 class Modal extends CoreWidget
 
     constructor: (target, trigger, options) ->
@@ -164,7 +165,6 @@ class Modal extends CoreWidget
         return $.apptools.events.trigger 'MODAL_READY', @
 
 
-
 class ModalAPI extends CoreWidgetAPI
 
     @mount = 'modal'
@@ -207,15 +207,15 @@ class ModalAPI extends CoreWidgetAPI
             @unprime [modal.state.trigger]
             return modal
 
-_init: (apptools) ->
+    _init: (apptools) ->
 
-    modals = @util.get 'modal'
-    for modal in modals
-        do (modal) =>
-            modal = @create modal, @util.get 'a-'+modal.getAttribute 'id'
-            modal = @enable modal
+        modals = @util.get 'modal'
+        for modal in modals
+            do (modal) =>
+                modal = @create modal, @util.get 'a-'+modal.getAttribute 'id'
+                modal = @enable modal
 
-    return apptools.events.trigger 'MODAL_API_READY', @
+        return apptools.events.trigger 'MODAL_API_READY', @
 
 
 

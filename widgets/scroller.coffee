@@ -1,3 +1,4 @@
+# AppTools Scroller Widget
 class Scroller extends CoreWidget
 
     constructor: (target, options) ->
@@ -7,6 +8,7 @@ class Scroller extends CoreWidget
             panes: {}
             current_pane: null
             active: false
+            infinite: false # not yet supported
             init: false
 
         @defaults =
@@ -120,6 +122,7 @@ class ScrollerAPI extends CoreWidgetAPI
                 scroller = @enable scroller
 
         return apptools.events.trigger 'SCROLLER_API_READY', @
+
 
 
 @__apptools_preinit.abstract_base_classes.push ColorPicker

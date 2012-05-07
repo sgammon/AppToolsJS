@@ -1,3 +1,4 @@
+# AppTools ColorPicker Widget
 class ColorPicker extends CoreWidget
 
     constructor: (target, numID, options) ->
