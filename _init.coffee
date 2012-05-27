@@ -40,6 +40,7 @@ class AppTools
             state:
                 status: 'NOT_READY' # System status
                 flags: ['base']     # System flags
+                preinit: {}         # System preinit
                 modules: {}         # Installed system modules
                 classes: {}         # Installed AppTools-related classes
                 interfaces: {}      # Installed feature interfaces
@@ -239,6 +240,7 @@ class AppTools
 
         ## Consider preinit: export/catalog preinit classes & libraries
         if window.__apptools_preinit?
+            @sys.state.preinit = window.__apptools_preinit
             @sys.state.consider_preinit(window.__apptools_preinit)
 
 
