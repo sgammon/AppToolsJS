@@ -5,6 +5,7 @@ class CoreStorageAPI extends CoreAPI
     @events = [
                 # Storage events
                 'STORAGE_INIT',
+                'ENGINE_LOADED',
                 'STORAGE_READY',
                 'STORAGE_ERROR',
                 'STORAGE_ACTIVITY',
@@ -53,7 +54,11 @@ class CoreStorageAPI extends CoreAPI
                     enabled: false  # enable/disable flag (bool)
                     interval: 120   # sync interval, in seconds (int)
 
-                adapters: {}        # storage engine adapters
+                drivers: []         # storage engine drivers
+                engines: {}         # storage engine adapters
+
+                encrypt: false      # enable reversible encryption
+                integrity: false    # enable integrity checks
                 obfuscate: false    # base64 keys before they go into storage
                 local_only: false   # only store things locally in the storage API memory space
 
@@ -76,6 +81,34 @@ class CoreStorageAPI extends CoreAPI
             check_support: (modernizr) ->
             bootstrap: (lawnchair) ->
             provision_collection: (name, adapter, callback) ->
+            add_storage_engine: (name, driver, engine) =>
+
+                try
+                    # Instantiate the driver & engine
+                    d = new driver(apptools)
+                    e = new engine(apptools)
+
+                catch err
+                    return false
+
+                # Check compatibility, if it even instantiated
+                if e.compatible()
+
+                    # Add to installed engines
+                    @_state.config.engines[name] = e
+
+                    # Attach engine to driver and register
+                    driver.adapter = @_state.config.engines[name]
+                    @_state.config.drivers.push driver
+
+                    apptools.sys.drivers.install 'storage', name, d, d.enabled? | true, d.priority? | 50, (driver) =>
+                        apptools.events.trigger 'ENGINE_LOADED', driver: driver, engine: driver.adapter
+
+                    return true
+
+                else
+                    apptools.dev.verbose 'StorageEngine', 'Detected incompatible storage engine. Skipping.', name, driver, engine
+                    return false
 
 
         ## 3: Public Methods
@@ -90,8 +123,13 @@ class CoreStorageAPI extends CoreAPI
 
         ## 4: Runtime setup
         @_init = () =>
-            apptools.dev.verbose 'Storage', 'Storage support is currently stubbed.'
             apptools.events.trigger 'STORAGE_INIT'
+            apptools.dev.verbose 'Storage', 'Storage support is currently under construction.'
+
+            if apptools.sys?.preinit?.detected_storage_engines?
+                for engine in apptools.sys.preinit.detected_storage_engines
+                    @internal.add_storage_engine(engine.name, engine.driver, engine.adapter)
+
             apptools.events.trigger 'STORAGE_READY'
 
         ## 5: Bind/bridge events
@@ -99,15 +137,4 @@ class CoreStorageAPI extends CoreAPI
         apptools.events.bridge ['COLLECTION_CREATE', 'COLLECTION_UPDATE', 'COLLECTION_DESTROY', 'COLLECTION_SYNC', 'COLLECTION_SCAN'], 'STORAGE_ACTIVITY'
 
 
-class StorageDriver extends CoreInterface
-
-    @methods = []
-    @export = "private"
-
-    constructor: () ->
-        return
-
-
-@__apptools_preinit.abstract_base_classes.push StorageDriver
 @__apptools_preinit.abstract_base_classes.push CoreStorageAPI
-@__apptools_preinit.abstract_feature_interfaces.push {adapter: StorageDriver, name: "storage"}
