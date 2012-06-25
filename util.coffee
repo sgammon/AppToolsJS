@@ -47,6 +47,7 @@ class Util
 
     # DOM checks/manipulation
     get: (query, node=document) => # ID, class or tag
+        return query if query.nodeType
         return document.getElementById(query) or node.getElementsByClassName(query) or node.getElementsByTagName(query) or false
 
     get_offset: (elem) =>
@@ -69,20 +70,44 @@ class Util
     # Events/timing/animation
     bind: (element, event, fn, prop=false) =>
         if @is_array element # can accept multiple els for 1 event [el1, el2]
-            console.log '[Util]: Binding multiple trigger elements for '+event+' event.'
-            return @bind(el, event, fn, prop) for el in element
+            for el in element
+                do (el) =>
+                    return @bind(el, event, fn, prop)
 
-        if @is_raw_object event # ...or multiple events for 1 element {event: handler, event2: handler2}
-            return @bind(element, ev, func, prop) for ev, func of event
+        else if @is_raw_object event # ...or multiple events for 1 element {event: handler, event2: handler2}
+            for ev, func of event
+                do (ev, func) =>
+                    return @bind(element, ev, func, prop)
 
-        console.log '[Util]: Binding '+fn+' function to '+event+' event on '+ (e = if element.getAttribute('id') then element.getAttribute('id') else element.className) + '.'
-        return element.addEventListener event, fn, prop
+        else
+            return element.addEventListener event, fn, prop
 
     unbind: (element, event) =>
-        return element.removeEventListener event
+        if @is_array element # unbind 1 event from multiple elements
+            for el in element
+                do (el) =>
+                    return @unbind(el, event)
+
+        else if @is_array event # or multiple events from 1 element
+            for ev in event
+                do (ev) =>
+                    return @unbind(element, ev)
+
+        else if @is_raw_object(element) # or hash of elements & events
+            for el, ev of element
+                do (el, ev) =>
+                    return @unbind(el, ev)
+
+        else if element.constructor.name is 'NodeList'
+            els = []
+            els.push(item) for item in element
+            return @unbind(els, event)
+
+        else
+            return element.removeEventListener event
 
     block: (async_method, object={}) =>
-        console.log '[Util]: Enforcing blocking at user request... :('
+        console.log '[Util] Enforcing blocking at user request... :('
 
         _done = false
         result = null
