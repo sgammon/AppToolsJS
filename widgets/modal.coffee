@@ -95,24 +95,47 @@ class Modal extends CoreWidget
 
                 rounded: true
 
+                padding: null
+
         @_state.config = Util.extend(true, @_state.config, JSON.parse(target.getAttribute('data-options')))
 
-        @calc = () =>
+        @internal =
 
-            # returns prepared modal property object
-            css = {}
-            r = @_state.config.ratio
-            wW = window.innerWidth
-            wH = window.innerHeight
-            dW = Math.floor r.x*wW
-            dH = Math.floor r.y*wH
+            calc: () =>
+                # returns prepared modal property object
+                css = {}
+                r = @_state.config.ratio
+                wW = window.innerWidth
+                wH = window.innerHeight
+                dW = Math.floor r.x*wW
+                dH = Math.floor r.y*wH
 
-            css.width = dW+'px'
-            css.height = dH+'px'
-            css.left = Math.floor (wW-dW)/2
-            css.top = Math.floor (wH-dH)/2
+                css.width = dW+'px'
+                css.height = dH+'px'
+                css.left = Math.floor (wW-dW)/2
+                css.top = Math.floor (wH-dH)/2
 
-            return css
+                return css
+
+            classify: (element, method) =>
+
+                if method is 'close' or not method?
+
+                    ecl.remove('dropshadow') if Util.in_array('dropshadow', (ecl=element.classList))
+                    ecl.remove('rounded') if Util.in_array('rounded', ecl)
+                    element.style.padding = '0px'
+                    return element
+
+                else if method is 'open'
+
+                    ecl.add('dropshadow') if not Util.in_array('dropshadow', (ecl=element.classList))
+                    ecl.add('rounded') if not Util.in_array('rounded', ecl) and @_state.config.rounded
+                    element.style.padding = '10px'
+                    return element
+
+                else if not element?
+
+                    return false
 
         @make = () =>
 
@@ -140,7 +163,7 @@ class Modal extends CoreWidget
 
             content.classList.add content.getAttribute 'id'
             content.setAttribute 'id', id+'-modal-content'
-            content.style.height = @calc().height
+            content.style.height = @internal.calc().height
             content.innerHTML = (t = Util.get(id)).innerHTML
 
             title.classList.add title.getAttribute 'id'
@@ -171,7 +194,7 @@ class Modal extends CoreWidget
             # overlay!
             overlay = @_state.overlay or @prepare_overlay('modal')
             @_state.overlay = overlay
-            if not Util.get(overlay)
+            if not overlay.parentNode?
                 document.body.appendChild(overlay)
 
             # extend default animation params with callbacks
@@ -180,10 +203,11 @@ class Modal extends CoreWidget
             overlay_animation = @animation
 
             dialog_animation.complete = () =>
+                @internal.classify(dialog, 'open')
                 $('#'+id+'-modal-fade').animate opacity: 1, fade_animation
 
             # get final params
-            final = @calc()
+            final = @internal.calc()
             final.opacity = 1
 
             # show & bind close()
@@ -200,9 +224,9 @@ class Modal extends CoreWidget
         @close = () =>
 
             id = @_state.cached_id
-            @_state.active = false
 
             overlay = @_state.overlay
+            d_id = '#' + @_state.element_id
             dialog = Util.get @_state.element_id
 
             Util.unbind([Util.get(id+'-modal-close'), overlay], 'mousedown')
@@ -214,14 +238,12 @@ class Modal extends CoreWidget
             $('#'+id+'-modal-fade').animate({opacity: 0}, {
                 duration: 300,
                 complete: () =>
-                    dialog.classList.remove 'dropshadow'
-                    dialog.classList.remove 'rounded'
-                    dialog.style.padding = '0px'
+                    @internal.classify(dialog, 'close')
 
-                    $(dialog).animate(midpoint, {
-                        duration: 300,
+                    $(d_id).animate(midpoint, {
+                        duration: 200,
                         complete: () =>
-                            $(dialog).animate({opacity: 0}, {
+                            $(d_id).animate({opacity: 0}, {
                                 duration: 250,
                                 complete: () =>
                                     dialog.style.display = 'none'
@@ -230,6 +252,7 @@ class Modal extends CoreWidget
                                         duration: 300,
                                         complete: () =>
                                             @_state.overlay.style.display = 'none'
+                                            @_state.active = false
                                         }
                                     )
                                 }
