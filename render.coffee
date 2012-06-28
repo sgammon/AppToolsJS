@@ -1,4 +1,4 @@
-# Render API API
+# Render API
 class CoreRenderAPI extends CoreAPI
 
     @mount = 'render'
@@ -26,6 +26,17 @@ class QueryDriver extends CoreInterface
 
     constructor: () ->
         return
+
+
+class Template extends Model
+
+    constructor : () ->
+
+        @name = ''
+        @source = ''
+        @cacheable =
+            rendered: false     # should we cache rendered templates?
+            source: false       # what about source?
 
 
 @__apptools_preinit.abstract_base_classes.push QueryDriver
