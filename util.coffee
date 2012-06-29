@@ -93,7 +93,7 @@ class Util
         return result
 
     now: () =>
-        return new Date()
+        return +new Date()
 
     timestamp: (d) => # can take Date obj
         d ?= new Date()
@@ -117,6 +117,36 @@ class Util
             easing: c and e or (e and not is_function e and e)
 
         return options
+
+    throttle: (fn, buffer=150, prefire) =>
+
+        # Throttles a rapidly-firing event (i.e. mouse or scroll)
+        timer = null
+        last = 0
+
+        return () ->
+
+            args = arguments
+            elapsed = Util.now() - last
+
+            clear = () => timer = null
+
+            go = () =>
+                last = Util.now()
+                fn.apply(@, args)
+
+            go() if prefire and not timer   # if prefire, fire @ first detect
+
+            clearTimeout(timer) if !!timer
+
+            if not prefire? and elapsed >= buffer
+                go()
+            else
+                timer = setTimeout((if prefire then clear else go), (if not prefire? then buffer - elapsed else buffer))
+
+    debounce: (fn, buffer=200, prefire=false) ->
+
+        return @throttle(fn, buffer, prefire)
 
     # useful helpers
     extend: () =>
