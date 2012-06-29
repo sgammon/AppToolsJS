@@ -16,9 +16,13 @@ class StickyAPI extends CoreAPI
             element = Util.get(sticky._state.element_id)
             Util.bind(window, 'scroll', Util.wrap(Util.throttle(sticky.refresh), element))
 
+            return sticky
+
         @disable = (sticky) =>
 
-            
+            Util.unbind(window, 'scroll')
+
+            return sticky
 
         @_init = () =>
 

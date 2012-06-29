@@ -18,7 +18,6 @@ class ModalAPI extends CoreWidgetAPI
             modal = new Modal(target, trigger, options)
             id = modal._state.element_id
 
-            # one line, lol - push returns new length, minus 1 = newest index
             @_state.modals_by_id[id] = @_state.modals.push(modal) - 1
 
             return modal._init()
