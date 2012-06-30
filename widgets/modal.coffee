@@ -1,170 +1,4 @@
-# AppTools Modal Widget
-class Modal extends CoreWidget
-
-    constructor: (target, trigger, options) ->
-
-        @state =
-            el: target
-            trigger: trigger
-            dialog: null
-            overlay: null
-            active: false
-            init: false
-
-        @defaults =
-            start: # initial modal size & centered
-                width: '0px'
-                height: '0px'
-                top: window.innerHeight/2 + 'px'
-                left: window.innerHeight/2 + 'px'
-
-            ratio: # proportional to browser window
-                x: 0.4
-                y: 0.4
-
-            html: [ # modal template
-                '<div id="modal-dialog" style="opacity: 0;" class="fixed dropshadow dialog">',
-                    '<div id="modal-fade" style="opacity: 0">',
-                        '<div id="modal-content">&nbsp;</div>',
-                        '<span class="modal-ui" class="absolute">',
-                            '<span id="modal-title" class="absolute"></span>',
-                            '<span id="modal-close" class="absolute">X</span>',
-                        '</span>',
-                    '</div>',
-                '</div>',
-            ].join '\n'
-
-            rounded: true # rounded corners?
-
-        @config = $.extend true, @defaults, options
-
-        @calc = () =>
-
-            # returns prepared modal property object
-            css = {}
-            r = @config.ratio
-            wW = window.innerWidth
-            wH = window.innerHeight
-            dW = Math.floor r.x*wW
-            dH = Math.floor r.y*wH
-
-            css.width = dW+'px'
-            css.height = dH+'px'
-            css.left = Math.floor (wW-dW)/2
-            css.top = Math.floor (wH-dH)/2
-
-            return css
-
-        @make = () =>
-
-            # make & append document fragment from template string
-            range = document.createRange()
-            range.selectNode @util.get('div').item 0 # select document as current node
-            d = range.createContextualFragment @config.html # parse html string
-            document.body.appendChild d
-
-            # style & customize modal dialogue
-            dialog = @util.get 'modal-dialog'
-            title = @util.get 'modal-title'
-            content = @util.get 'modal-content'
-            close_x = @util.get 'modal-close'
-            fade = @util.get 'modal-fade'
-            id = target.getAttribute 'id'
-
-            dialog.setAttribute 'id', 'modal-dialog-'+id
-            dialog.classList.add 'rounded' if @config.rounded
-            dialog.style[prop] = val for prop, val of @config.start
-
-            content.setAttribute 'id', 'modal-content-'+id
-            content.style.height = @calc().height
-            content.innerHTML = target.innerHTML
-
-            title.setAttribute 'id', 'modal-title-'+id
-            title.innerHTML = target.getAttribute 'data-title'
-
-            close_x.setAttribute 'id', 'modal-close-'+id
-            fade.setAttribute 'id', 'modal-fade'+id
-
-            # stash a reference to dialogue element
-            @state.dialog = dialog.getAttribute 'id'
-
-            return dialog
-
-        @open = (dialog) =>
-
-            @state.active = true
-
-            # make/stash/append overlay
-            o = @overlay 'modal'
-            @state.overlay = o.getAttribute 'id'
-            document.body.appendChild o
-
-            # extend default animation params with callbacks
-            dialogAnimation = overlayAnimation = @animation
-            dialogAnimation.complete = () =>
-                @util.bind @util.get('modal-close-'+target.getAttribute 'id'), 'mousedown', @close dialog
-            overlayAnimation.complete = () =>
-                @util.bind o, 'mousedown', @close dialog
-
-            # get final params
-            final = @calc()
-            final.opacity = 1
-
-            # show
-            $(o).animate opacity: 0.5, overlayAnimation
-            $(dialog).animate final, dialogAnimation
-
-            return dialog
-
-        @close = (dialog) =>
-
-            @state.active = false
-
-            overlay = @util.get @state.overlay
-            midpoint =
-                width: window.innerWidth
-                height: '0px'
-                left: '0px'
-                right: '0px'
-                opacity: 0.5
-
-            # customize animations - since it's all nested callbacks, go inside out
-            fadeAnim = midpointAnim = finalAnim = overlayAnim = @animation
-
-            overlayAnim.duration = fadeAnim.duration = midpointAnim.duration = 300
-            finalAnim.duration = 250
-
-            overlayAnim.complete = () ->
-                document.removeChild overlay
-                document.removeChild modal
-
-            midpointAnim.complete = () ->
-                $(dialog).animate opacity: 0, finalAnim
-                $(overlay).animate opacity: 0, overlayAnim
-
-            fadeAnim.complete = () ->
-                setTimeout () ->
-                    m.classList.remove 'dropshadow'
-                    m.classList.remove 'rounded'
-                    m.style.padding = '0px'
-                , 150
-                $(dialog).animate midpoint, midpointAnim
-
-
-            @util.get('modal-content-'+target.getAttribute 'id').style.overflow = 'hidden' # disable scroll during animation
-            @util.get('modal-fade-'+target.getAttribute 'id').animate opacity: 0, fadeAnim # hide it!
-
-            return dialog
-
-    _init: () ->
-
-        dialog = @make()
-        document.body.appendChild dialog
-
-        @state.init = true
-        return $.apptools.events.trigger 'MODAL_READY', @
-
-
+## AppTools Modal Widget & API
 class ModalAPI extends CoreWidgetAPI
 
     @mount = 'modal'
@@ -172,50 +6,272 @@ class ModalAPI extends CoreWidgetAPI
 
     constructor: (apptools, widget, window) ->
 
-        @state =
+        @_state =
             modals: []
             modals_by_id: {}
-            next: modals.length
+            init: false
 
-        @create = (target, trigger, options={}) =>
+        @create = (target, trigger) =>
 
-            modal = new Modal target, trigger, options
-            @state.modals.push modal
-            @state.modals_by_id[modal.state.el.getAttribute 'id'] = @state.next
+            options = if target.hasAttribute('data-options') then JSON.parse(target.getAttribute('data-options')) else {}
 
-            return modal
+            modal = new Modal(target, trigger, options)
+            id = modal._state.element_id
+
+            @_state.modals_by_id[id] = @_state.modals.push(modal) - 1
+
+            return modal._init()
 
         @destroy = (modal) =>
 
-            id = modal.state.el.getAttribute 'id'
-            dialog = document.getElementById(modal.state.dialog)
+            id = modal._state.element_id
 
-            @state.modals.splice @state.modals_by_id[id], 1
-            delete @state.modals_by_id[id]
+            @_state.modals.splice(@_state.modals_by_id[id], 1)
+            delete @_state.modals_by_id[id]
 
-            document.removeChild dialogue
+            document.body.removeChild(Util.get(id))
+
             return modal
 
         @enable = (modal) =>
 
-            trigger = modal.state.trigger
-            @prime {trigger: @util.get modal.state.dialog}, modal.open
+            trigger = Util.get(modal._state.trigger_id)
+            Util.bind(trigger, 'mousedown', modal.open, false)
+
             return modal
 
         @disable = (modal) =>
 
-            @unprime [modal.state.trigger]
+            Util.unbind(Util.get(modal._state.trigger_id))
+
             return modal
 
-    _init: (apptools) ->
+        @_init = () =>
 
-        modals = @util.get 'modal'
-        for modal in modals
-            do (modal) =>
-                modal = @create modal, @util.get 'a-'+modal.getAttribute 'id'
-                modal = @enable modal
+            modals = Util.get 'pre-modal'
+            @enable(@create(modal, Util.get('a-'+modal.getAttribute('id')))) for modal in modals
 
-        return apptools.events.trigger 'MODAL_API_READY', @
+            return @_state.init = true
+
+
+class Modal extends CoreWidget
+
+    constructor: (target, trigger, options) ->
+
+        @_state =
+
+            cached_id: target.getAttribute('id')        # source div ID
+            trigger_id: trigger.getAttribute('id')
+            element_id: null
+            overlay: null
+
+            active: false
+            init: false
+
+            config:
+
+                initial:                                # style props at animate start
+                    width: '0px'
+                    height: '0px'
+                    top: window.innerHeight/2 + 'px'
+                    left: window.innerHeight/2 + 'px'
+
+                ratio:                                  # 0-1, final size vs. window inner
+                    x: 0.4
+                    y: 0.4
+
+                template: [                             # someday I'll write the render API
+                    '<div id="modal-dialog" style="opacity: 0;" class="fixed dropshadow">',
+                        '<div id="modal-fade" style="opacity: 0">',
+                            '<div id="modal-content">&nbsp;</div>',
+                            '<div id="modal-ui" class="absolute">',
+                                '<div id="modal-title" class="absolute"></div>',
+                                '<div id="modal-close" class="absolute">X</div>',
+                            '</div>',
+                        '</div>',
+                    '</div>'
+                ].join('\n')
+
+                rounded: true
+
+                padding: null
+
+        @_state.config = Util.extend(true, @_state.config, JSON.parse(target.getAttribute('data-options')))
+
+        @internal =
+
+            calc: () =>
+                # returns prepared modal property object
+                css = {}
+                r = @_state.config.ratio
+                wW = window.innerWidth
+                wH = window.innerHeight
+                dW = Math.floor r.x*wW
+                dH = Math.floor r.y*wH
+
+                css.width = dW+'px'
+                css.height = dH+'px'
+                css.left = Math.floor (wW-dW)/2
+                css.top = Math.floor (wH-dH)/2
+
+                return css
+
+            classify: (element, method) =>
+
+                if method is 'close' or not method?
+
+                    ecl.remove('dropshadow') if Util.in_array('dropshadow', (ecl=element.classList))
+                    ecl.remove('rounded') if Util.in_array('rounded', ecl)
+                    element.style.padding = '0px'
+                    return element
+
+                else if method is 'open'
+
+                    ecl.add('dropshadow') if not Util.in_array('dropshadow', (ecl=element.classList))
+                    ecl.add('rounded') if not Util.in_array('rounded', ecl) and @_state.config.rounded
+                    element.style.padding = '10px'
+                    return element
+
+                else if not element?
+
+                    return false
+
+        @make = () =>
+
+            template = @_state.config.template
+
+            # make & append document fragment from template string
+            range = document.createRange()
+            range.selectNode(doc = document.getElementsByTagName('div').item(0))    # select document
+            d = range.createContextualFragment(template)                            # parse html string
+            document.body.appendChild d
+
+            # style & customize modal dialogue
+            dialog = Util.get 'modal-dialog'
+            title = Util.get 'modal-title'
+            content = Util.get 'modal-content'
+            ui = Util.get 'modal-ui'
+            close_x = Util.get 'modal-close'
+            fade = Util.get 'modal-fade'
+            id = @_state.cached_id
+
+            dialog.classList.add dialog.getAttribute 'id'
+            dialog.setAttribute 'id', id+'-modal-dialog'
+            dialog.classList.add 'rounded' if @_state.config.rounded
+            dialog.style[prop] = val for prop, val of @_state.config.initial
+
+            content.classList.add content.getAttribute 'id'
+            content.setAttribute 'id', id+'-modal-content'
+            content.style.height = @internal.calc().height
+            content.innerHTML = (t = Util.get(id)).innerHTML
+
+            title.classList.add title.getAttribute 'id'
+            title.setAttribute 'id', id+'-modal-title'
+            title.innerHTML = t.getAttribute 'data-title'
+
+            ui.classList.add ui.getAttribute 'id'
+            ui.setAttribute 'id', id+'-modal-ui'
+
+            close_x.classList.add close_x.getAttribute 'id'
+            close_x.setAttribute 'id', id+'-modal-close'
+
+            fade.classList.add fade.getAttribute 'id'
+            fade.setAttribute 'id', id+'-modal-fade'
+
+            # stash a reference to dialogue element
+            @_state.element_id = dialog.getAttribute 'id'
+
+            return dialog
+
+        @open = () =>
+
+            id = @_state.cached_id
+            dialog = Util.get(@_state.element_id)
+            close_x = Util.get(id+'-modal-close')
+            @_state.active = true
+
+            # overlay!
+            overlay = @_state.overlay or @prepare_overlay('modal')
+            @_state.overlay = overlay
+            if not overlay.parentNode?
+                document.body.appendChild(overlay)
+
+            # extend default animation params with callbacks
+            fade_animation = @animation
+            dialog_animation = @animation
+            overlay_animation = @animation
+
+            dialog_animation.complete = () =>
+                @internal.classify(dialog, 'open')
+                $('#'+id+'-modal-fade').animate opacity: 1, fade_animation
+
+            # get final params
+            final = @internal.calc()
+            final.opacity = 1
+
+            # show & bind close()
+            dialog.style.display = 'block'
+            overlay.style.display = 'block'
+
+            $(overlay).animate opacity: 0.5, overlay_animation
+            $(dialog).animate final, dialog_animation
+
+            Util.bind([close_x, overlay], 'mousedown', @close)
+
+            return dialog
+
+        @close = () =>
+
+            id = @_state.cached_id
+
+            overlay = @_state.overlay
+            d_id = '#' + @_state.element_id
+            dialog = Util.get @_state.element_id
+
+            Util.unbind([Util.get(id+'-modal-close'), overlay], 'mousedown')
+
+            midpoint = Util.extend({}, @_state.config.initial, opacity: 0.5)
+
+
+            Util.get(id+'-modal-content').style.overflow = 'hidden' # disable scroll during animation
+            $('#'+id+'-modal-fade').animate({opacity: 0}, {
+                duration: 300,
+                complete: () =>
+                    @internal.classify(dialog, 'close')
+
+                    $(d_id).animate(midpoint, {
+                        duration: 200,
+                        complete: () =>
+                            $(d_id).animate({opacity: 0}, {
+                                duration: 250,
+                                complete: () =>
+                                    dialog.style.display = 'none'
+                                    dialog.style[prop] = val for prop, val of @_state.config.initial
+                                    $(@_state.overlay).animate({opacity: 0}, {
+                                        duration: 300,
+                                        complete: () =>
+                                            @_state.overlay.style.display = 'none'
+                                            @_state.active = false
+                                        }
+                                    )
+                                }
+                            )
+                        }
+                    )
+                }
+            )
+
+            return dialog
+
+        @_init = () =>
+
+            dialog = @make()
+            trigger.removeAttribute('href')
+
+            @_state.init = true
+            $.apptools.events.trigger 'MODAL_READY', @
+
+            return @
 
 
 
