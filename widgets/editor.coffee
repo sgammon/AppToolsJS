@@ -1,3 +1,4 @@
+# AppTools Editor Widget
 class Editor extends CoreWidget
 
     constructor: (target, options) ->
@@ -160,11 +161,9 @@ class EditorAPI extends CoreWidgetAPI
         editors = @util.get 'edit'
         for editor in editors
             do (editor) ->
-
-                # instantiate editor
                 editor = @create editor
 
-                # bind commands & allow editing - commented out since saving is still stubbed
+                # don't enable since saving is still stubbed
                 #editor = @enable editor
 
         return apptools.events.trigger 'EDITOR_API_READY', @
