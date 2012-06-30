@@ -8,7 +8,7 @@ class Util
     @mount = 'util'
     @events = []
 
-    is: (thing) =>
+    is: (thing) => # positive existence
         return !@in_array thing, [false, null, NaN, undefined, 0, {}, [], '','false', 'False', 'null', 'NaN', 'undefined', '0', 'none', 'None']
 
     # type/membership checks
@@ -55,15 +55,15 @@ class Util
         loop
             offL += elem.offsetLeft
             offT += elem.offsetTop
-            break unless (elem = elem.offsetParent)
+            break unless elem = elem.offsetParent
 
         return left: offL, top: offT
 
     has_class: (element, cls) =>
-        return element.classList?.contains?(cls) or element.className && new RegExp('\\s*'+cls+'\\s*').test element.className
+        return element.classList.contains(cls) or (element.className && new RegExp('\\s*'+cls+'\\s*').test(element.className))
 
     is_id: (str) =>
-        if str.charAt(0) is '#' or document.getElementById str isnt null
+        if str.charAt(0) is '#' or document.getElementById(str) isnt null
             return true
         else false
 

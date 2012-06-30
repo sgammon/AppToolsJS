@@ -56,7 +56,7 @@ class Uploader extends CoreWidget
 
             preview: (e) =>
 
-                return
+                return apptools.
 
             progress: (file, xhr) =>
 
@@ -73,7 +73,7 @@ class Uploader extends CoreWidget
                 base = @_state.config.boundary_base
                 rand = Math.floor(Math.pow(Math.random() * 10000, 3))
 
-                _b.push(base[char]) for char in (chars = rand.toString().split(''))
+                _b.push(base[char]) for char in rand.toString().split(''))
                 _b.push('-----')
 
                 return _b.join('')
@@ -94,8 +94,8 @@ class Uploader extends CoreWidget
 
                     if xhr.readyState = 4
                         if xhr.status = 200
-                            @internal.update_cache(file, xhr)
-                            # do something else
+                            @internal.update_cache file, xhr, (f, x) =>
+                                @finish(f, x)
                         else
                             # oops wut
 
@@ -114,7 +114,7 @@ class Uploader extends CoreWidget
                 apptools.dev.verbose 'UPLOADER', 'About to upload file: ' + file.name
                 return if !!body then xhr.send body else false
 
-            update_cache: (file, xhr) =>
+            update_cache: (file, xhr, callback) =>
 
                 if (t = @_state.cache.uploads_by_type)[type=file.type]?
                     t[type]++
@@ -123,6 +123,8 @@ class Uploader extends CoreWidget
 
                 (u = @_state.cache.uploaded).push(name)
                 u = u.splice(l - mx) if (l=u.length) > (mx = @_state.config.max_cache) # eject stalest items from cache
+
+                return callback?.call(@, file, xhr)
 
 
         @upload = (e) =>

@@ -11,9 +11,9 @@ class ModalAPI extends CoreWidgetAPI
             modals_by_id: {}
             init: false
 
-        @create = (target, trigger, options) =>
+        @create = (target, trigger) =>
 
-            options = JSON.parse(target.getAttribute('data-options')) if target.hasAttribute('data-options')
+            options = if target.hasAttribute('data-options') then JSON.parse(target.getAttribute('data-options')) else {}
 
             modal = new Modal(target, trigger, options)
             id = modal._state.element_id
@@ -26,7 +26,7 @@ class ModalAPI extends CoreWidgetAPI
 
             id = modal._state.element_id
 
-            @_state.modals.splice @_state.modals_by_id[id], 1
+            @_state.modals.splice(@_state.modals_by_id[id], 1)
             delete @_state.modals_by_id[id]
 
             document.body.removeChild(Util.get(id))
