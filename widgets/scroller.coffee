@@ -1,39 +1,118 @@
-# AppTools Scroller Widget
+## AppTools Scroller Widget & API
+class ScrollerAPI extends CoreWidgetAPI
+
+    @mount = 'scroller'
+    @events = ['SCROLLER_READY', 'SCROLLER_API_READY']
+
+    constructor: (apptools, widget, window) ->
+
+        @_state =
+            scrollers: []
+            scrollers_by_id: {}
+            init: false
+
+        @internal =
+            make: (scroller) =>
+                scroller = @create scroller
+                console.log 'CREATED SCROLLER: ', scroller
+                scroller = @enable scroller
+                console.log 'ENABLED SCROLLER: ', scroller
+
+                return scroller
+
+
+        @create = (target, options) =>
+
+            options ?= if target.hasAttribute('data-options') then JSON.parse(target.getAttribute('data-options')) else {}
+
+            scroller = new Scroller target, options
+            id = scroller._state.element_id
+            @_state.scrollers_by_id[id] = @_state.scrollers.push(scroller) - 1
+
+            scroller._init()
+            return scroller
+
+        @destroy = (scroller) =>
+
+            id = scroller._state.element_id
+
+            @_state.scrollers.splice @_state.scrollers_by_id[id], 1
+            delete @_state.scrollers_by_id[id]
+
+            document.body.removeChild(Util.get(id))
+
+            return scroller
+
+        @enable = (scroller) =>
+
+            for k, v of scroller._state.panes
+                do (k, v) =>
+                    console.log '[Scroller]', 'K: ', k
+                    console.log '[Scroller]', 'V: ', v
+                    Util.bind(Util.get(k), 'mousedown', scroller.jump(v))
+
+            return scroller
+
+        @disable = (scroller) =>
+
+            Util.unbind(k, 'mousedown') for k in scroller._state.panes
+            return scroller
+
+
+        @_init = () =>
+
+            scrollers = Util.get 'pre-scroller'
+            console.log 'SCROLLERS: ', scrollers
+            if not Util.is_array scrollers
+                @internal.make(scrollers)
+            else
+                @internal.make(scroller) for scroller in scrollers
+
+            return @_state.init = true
+
+
 class Scroller extends CoreWidget
 
     constructor: (target, options) ->
 
-        @state =
-            el: target
+        @_state =
+
+            frame_id: target.getAttribute 'id'
             panes: {}
             current_pane: null
+
             active: false
-            infinite: false # not yet supported
             init: false
 
-        @defaults =
-            axis: 'horizontal'
+            config:
 
-        @config = $.extend true, @defaults, options
+                axis: 'horizontal'
+
+        @_state.config = Util.extend(true, @_state.config, options)
 
         @classify = () =>
 
-            panes = @util.get 'scrollerpane', target
+            target = Util.get(@_state.frame_id)
+            if Util.in_array(target.classList, 'pre-scroller')
+                target.classList.remove 'pre-scroller'
+
+            panes = Util.get 'scroller-pane', target
 
             for pane in panes
                 do (pane) =>
 
                     # stash trigger/target
-                    @state.panes[@util.get 'a-'+pane.getAttribute 'id'] = pane
+                    trigger_id = 'a-'+pane.getAttribute 'id'
+                    @_state.panes[trigger_id] = pane
 
-                    if @config.axis is 'horizontal'
+                    if @_state.config.axis is 'horizontal'
 
                         pane.classList.remove 'left'
                         pane.classList.remove 'clear'
                         pane.classList.add 'in-table'
                         target.classList.add 'nowrap'
 
-                    else if @config.axis is 'vertical'
+                    else if @_state.config.axis is 'vertical'
 
                         target.classList.remove 'nowrap'
                         pane.classList.remove 'in-table'
@@ -43,88 +122,39 @@ class Scroller extends CoreWidget
 
         @jump = (pane) =>
 
-            @state.active = true
+            console.log 'PANE TOLERANCE: ', pane
+
+            @_state.active = true
 
             animation = @animation
             animation.complete = () =>
-                @state.active = false
-                @state.current_pane = pane.getAttribute 'id'
+                @_state.active = false
 
-            frameO = @util.getOffset target
-            paneO = @util.getOffset pane
+            @_state.current_pane = pane.getAttribute 'id'
 
-            if @config.axis is 'horizontal'
+            frameO = Util.get_offset target
+            paneO = Util.get_offset pane
+
+            if @_state.config.axis is 'horizontal'
 
                 diff = Math.floor paneO.left - frameO.left
                 $(target).animate scrollLeft: '+='+diff, animation
 
-            else if @config.axis is 'vertical'
+            else if @_state.config.axis is 'vertical'
 
                 diff = Math.floor paneO.top - frameO.left
                 $(target).animate scrollTop: '+='+diff, animation
 
 
-    _init: () =>
+        @_init = () =>
 
-        @classify()
+            @classify()
 
-        @state.init = true
-        return $.apptools.events.trigger 'SCROLLER_READY', @
-
-
-class ScrollerAPI extends CoreWidgetAPI
-
-    @mount = 'scroller'
-    @events = ['SCROLLER_READY', 'SCROLLER_API_READY']
-
-    constructor: (apptools, widget, window) ->
-
-        @state =
-            scrollers: []
-            scrollers_by_id: {}
-            next: scrollers.length
-
-        @create = (target, options={}) =>
-
-            scroller = new Scroller target, options
-            @state.scrollers_by_id[scroller.state.el.getAttribute 'id'] = @state.next
-            @state.scrollers.push scroller
-
-            return scroller
-
-        @destroy = (scroller) =>
-
-            id = scroller.state.el.getAttribute 'id'
-
-            @state.scrollers.splice @state.scrollers_by_id[id], 1
-            delete @state.scrollers_by_id[id]
-
-            return scroller
-
-        @enable = (scroller) =>
-
-            @prime scroller.state.panes, scroller.jump
-            return scroller
-
-        @disable = (scroller) =>
-
-            @unprime scroller.state.panes
-            return scroller
-
-
-    _init: (apptools) =>
-
-        scrollers = @util.get 'scroller'
-        for scroller in scrollers
-            do (scroller) =>
-                axis = scroller.getAttribute 'data-axis'
-                scroller = if axis? then @create scroller, axis: axis else @create scroller
-                scroller = @enable scroller
-
-        return apptools.events.trigger 'SCROLLER_API_READY', @
+            @_state.init = true
+            return $.apptools.events.trigger 'SCROLLER_READY', @
 
 
 
-@__apptools_preinit.abstract_base_classes.push ColorPicker
-@__apptools_preinit.abstract_base_classes.push ColorPickerAPI
-@__apptools_preinit.deferred_core_modules.push {module: ColorPickerAPI, package: 'widgets'}
+@__apptools_preinit.abstract_base_classes.push Scroller
+@__apptools_preinit.abstract_base_classes.push ScrollerAPI
+@__apptools_preinit.deferred_core_modules.push {module: ScrollerAPI, package: 'widgets'}

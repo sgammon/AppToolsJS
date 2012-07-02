@@ -1,4 +1,3 @@
-# AppTools Accordion Widget
 class Accordion extends CoreWidget
 
     constructor: (target, options) ->
@@ -47,13 +46,15 @@ class Accordion extends CoreWidget
 
             if current isnt false
                 closeAnimation.complete = () =>
-                    _current = if current isnt section then current else section
-                    _current.className.replace /block/, 'none'
+                    if current isnt section
+                        current.className.replace /block/, 'none'
+                    else
+                        section.className.replace /block/, 'none'
 
-                    return @state.active = false
+                    @state.active = false
             else
                 openAnimation.complete = () =>
-                    return @state.active = false
+                    @state.active = false
 
             if @util.hasClass section, 'none'
 

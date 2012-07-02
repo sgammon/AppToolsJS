@@ -1,10 +1,72 @@
-# AppTools Editor Widget
+## AppTools content editor widget & api
+class EditorAPI extends CoreWidgetAPI
+
+    @mount = 'editor'
+    @events = ['EDITOR_READY', 'EDITOR_API_READY']
+
+    constructor: (apptools, widget, window) ->
+
+        @_state =
+            editors: []
+            editors_by_id: {}
+            init: false
+
+
+        @create = (target) =>
+
+            options = if target.hasAttribute('data-options') then JSON.parse(target.getAttribute('data-options')) else {}
+
+            editor = new Editor target, options
+            id = editor._state.element_id
+
+            @_state.editors_by_id[id] = @_state.editors.push(editor) - 1
+
+            return editor._init()
+
+        @destroy = (editor) =>
+
+            id = editor._state.element_id
+            @_state.editors.splice(@_state.editors_by_id[id], 1)
+            delete @_state.editors_by_id[id]
+
+            return editor
+
+        @enable = (editor) =>
+
+            target = Util.get(editor._state.element_id)
+            Util.bind(target, 'mousedown', editor.open, false)
+
+            return editor
+
+        @disable = (editor) =>
+
+            Util.unbind(Util.get(editor._state.element_id))
+
+            return editor
+
+
+        @_init = () =>
+
+            editors = Util.get 'mini-editable'
+            for editor in editors
+                do (editor) =>
+
+                    # instantiate editor
+                    editor = @create editor
+
+                    # bind commands & allow editing - stubbed
+                    #editor = @enable editor
+
+            return apptools.events.trigger 'EDITOR_API_READY', @
+
+
 class Editor extends CoreWidget
 
     constructor: (target, options) ->
 
         @state =
-            el: target
+        
+            element_id: target.getAttribute('id')
             pane: null
             active: false
             init: false
@@ -26,7 +88,7 @@ class Editor extends CoreWidget
                     h2: () -> document.execCommand 'heading', false, 'h2'
                     h3: () -> document.execCommand 'heading', false, 'h3'
                     fontColor: () =>
-                        c = @util.toHex prompt 'Please enter hex (#000000) or RGB (rgb(0,0,0)) values.'
+                        c = Util.toHex prompt 'Please enter hex (#000000) or RGB (rgb(0,0,0)) values.'
                         sel = document.selection() or window.getSelection()
                         document.execCommand 'insertHTML', false, '<span style="color: '+c+';">'+sel+'</span>'
                     fontSize: () =>
@@ -47,7 +109,7 @@ class Editor extends CoreWidget
                             t = prompt 'What link text do you want to display?'
 
                         l = _t or prompt 'What URL do you want to link to? (http://www...)'
-                        document.execCommand 'insertHTML', false, '<a href="'+@util.stripScript l+'">'+t+'</a>'
+                        document.execCommand 'insertHTML', false, '<a href="'+Util.stripScript l+'">'+t+'</a>'
 
             bundle: 'rich'
 
@@ -58,8 +120,8 @@ class Editor extends CoreWidget
             pane = document.createElement 'div'
             pane.setAttribute 'id', 'editor-pane-'+target.getAttribute 'id'
             pane.style.width = '150px'
-            pane.style.left = @util.getOffset(target).left - pane.style.width
-            pane.style.top = @util.getOffset(target).top
+            pane.style.left = Util.getOffset(target).left - pane.style.width
+            pane.style.top = Util.getOffset(target).top
             pane.style.opacity = 0
 
             features = @config.bundles.basic
@@ -71,7 +133,7 @@ class Editor extends CoreWidget
                     button = document.createElement 'button'
                     button.value = button.innerHTML = feature
                     button.className = 'editorbutton'
-                    @util.bind button, 'mousedown', command
+                    Util.bind button, 'mousedown', command
                     pane.appendChild button
 
             document.body.appendChild pane
@@ -91,7 +153,7 @@ class Editor extends CoreWidget
 
         @edit = () =>
 
-            @show @util.get @state.pane
+            @show Util.get @state.pane
             target.contentEditable = true
             @state.active = true
 
@@ -99,7 +161,7 @@ class Editor extends CoreWidget
 
         @save = () =>
 
-            @hide @util.get @state.pane
+            @hide Util.get @state.pane
             target.contentEditable = false
             return @state.active = false
 
@@ -111,62 +173,6 @@ class Editor extends CoreWidget
 
         @state.init = true
         return $.apptools.events.trigger 'EDITOR_READY', @
-
-
-class EditorAPI extends CoreWidgetAPI
-
-    @mount = 'editor'
-    @events = ['EDITOR_READY', 'EDITOR_API_READY']
-
-    constructor: (apptools, widget, window) ->
-
-        @state =
-            editors: []
-            editors_by_id: {}
-            next: editors.length
-
-        @create = (target, options={}) =>
-
-            editor = new Editor target, options
-            @state.editors.push editor
-            @state.editors_by_id[editor.state.el.getAttribute 'id'] = @state.next
-
-            return editor
-
-        @destroy = (editor) =>
-
-            id = editor.state.el.getAttribute 'id'
-            pane = document.getElementById editor.state.pane
-
-            @state.editors.splice @state.pickers_by_id[id], 1
-            delete @state.pickers_by_id[id]
-
-            document.removeChild pane
-            return editor
-
-        @enable = (editor) =>
-
-            el = editor.state.el
-            @prime {el: @util.get editor.state.pane}, editor.edit
-            return editor
-
-        @disable = (editor) =>
-
-            @unprime [editor.state.el]
-            return editor
-
-
-    _init: (apptools) ->
-
-        editors = @util.get 'edit'
-        for editor in editors
-            do (editor) ->
-                editor = @create editor
-
-                # don't enable since saving is still stubbed
-                #editor = @enable editor
-
-        return apptools.events.trigger 'EDITOR_API_READY', @
 
 
 
