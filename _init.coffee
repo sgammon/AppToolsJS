@@ -69,8 +69,8 @@ class AppTools
 
                     ## Preinit: consider feature interfaces
                     if preinit.abstract_feature_interfaces?
-                        for interface in preinit.abstract_feature_interfaces
-                            @sys.interfaces.install(interface.name, interface.adapter)
+                        for _interface in preinit.abstract_feature_interfaces
+                            @sys.interfaces.install(_interface.name, _interface.adapter)
 
                     return preinit
 
