@@ -66,6 +66,7 @@ class Modal extends CoreWidget
         @_state =
 
             cached_id: target.getAttribute('id')        # source div ID
+            cached_html: null
             trigger_id: trigger.getAttribute('id')
             element_id: null
             overlay: null
@@ -185,6 +186,8 @@ class Modal extends CoreWidget
 
             # stash a reference to dialogue element
             @_state.element_id = dialog.getAttribute 'id'
+            @_state.cached_html = t.innerHTML
+            t.innerHTML = ''
 
             return dialog
 
