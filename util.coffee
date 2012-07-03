@@ -47,14 +47,14 @@ class Util
 
     to_array: (node_or_token_list) =>
 
-        array = [];
+        array = []
         `for (i = node_or_token_list.length; i--; array.unshift(node_or_token_list[i]))`
         return if array isnt [] then array else null
 
     # DOM checks/manipulation
     get: (query, node=document) => # ID, class or tag
         return query if query.nodeType
-        return document.getElementById(query) or @to_array(node.getElementsByClassName(query)) or @to_array(node.getElementsByTagName(query)) or null
+        return if (id = document.getElementById(query))? then id else (if (cls = node.getElementsByClassName(query)).length > 0 then @to_array(cls) else (if (tg = node.getElementsByTagName(query)).length > 0 then @to_array(tg) else null))
 
     get_offset: (elem) =>
         offL = offT = 0
