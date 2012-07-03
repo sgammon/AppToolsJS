@@ -8,7 +8,7 @@ class Util
     @mount = 'util'
     @events = []
 
-    is: (thing) => # positive existence
+    is: (thing) =>
         return !@in_array thing, [false, null, NaN, undefined, 0, {}, [], '','false', 'False', 'null', 'NaN', 'undefined', '0', 'none', 'None']
 
     # type/membership checks
@@ -45,25 +45,31 @@ class Util
 
         return matches.length > 0
 
+    to_array: (nodelist) =>
+
+        array = [];
+        `for (i = nodelist.length; i--; array.unshift(nodelist[i]))`
+        return array
+
     # DOM checks/manipulation
     get: (query, node=document) => # ID, class or tag
         return query if query.nodeType
-        return document.getElementById(query) or node.getElementsByClassName(query) or node.getElementsByTagName(query) or false
+        return document.getElementById(query) or @to_array(node.getElementsByClassName(query)) or @to_array(node.getElementsByTagName(query)) or null
 
     get_offset: (elem) =>
         offL = offT = 0
         loop
             offL += elem.offsetLeft
             offT += elem.offsetTop
-            break unless elem = elem.offsetParent
+            break unless (elem = elem.offsetParent)
 
         return left: offL, top: offT
 
     has_class: (element, cls) =>
-        return element.classList.contains(cls) or (element.className && new RegExp('\\s*'+cls+'\\s*').test(element.className))
+        return element.classList?.contains?(cls) or element.className && new RegExp('\\s*'+cls+'\\s*').test element.className
 
     is_id: (str) =>
-        if str.charAt(0) is '#' or document.getElementById(str) isnt null
+        if str.charAt(0) is '#' or document.getElementById str isnt null
             return true
         else false
 
@@ -121,7 +127,7 @@ class Util
         return result
 
     now: () =>
-        return +new Date()
+        return new Date()
 
     timestamp: (d) => # can take Date obj
         d ?= new Date()
@@ -138,14 +144,17 @@ class Util
             ].join(':'),
         ].join ' '
 
-    prep_animation: (t,e,c) => # time (ms), easing (jQuery easing), callback
-        options = if t? and @is_object t then @extend {}, t else
-            complete: c or (not c and e) or (is_function t and t)
-            duration: t
-            easing: (c and e) or (e and not is_function e)
+prep_animation: (t,e,c) => # time (ms), easing (jQuery easing), callback
+    options = if not t? then duration: 400 else (if t? and @is_object t then @extend {}, t else
+        complete: c or (not c and e) or (is_function t and t)
+        duration: t
+        easing: (c and e) or (e and not is_function e)
+    )
 
-        return options
+    return options
 
+<<<<<<< Updated upstream
+=======
     throttle: (fn, buffer=150, prefire) =>
 
         # Throttles a rapidly-firing event (i.e. mouse or scroll)
@@ -170,12 +179,13 @@ class Util
             if not prefire? and elapsed >= buffer
                 go()
             else
-                timer = setTimeout((if prefire then clear else go), (if not prefire? then buffer - elapsed else buffer))
+                timer = setTimeout((if prefire then clear else go), if not prefire? then buffer - elapsed else buffer)
 
     debounce: (fn, buffer=200, prefire=false) ->
 
         return @throttle(fn, buffer, prefire)
 
+>>>>>>> Stashed changes
     # useful helpers
     extend: () =>
 
@@ -249,14 +259,11 @@ class Util
                 parseInt RegExp.$2, 10
                 parseInt RegExp.$3, 10
             ]
-            zfill = (s) =>
-                if s.length < 2
-                    s = '0'+s
 
             if c.length is 3 # convert to hex
-                r = zfill c[0].toString 16
-                g = zfill c[1].toString 16
-                b = zfill c[2].toString 16
+                r = @zero_fill c[0].toString 16, 2
+                g = @zero_fill c[1].toString 16, 2
+                b = @zero_fill c[2].toString 16, 2
 
                 return '#'+r+g+b
 
@@ -289,18 +296,25 @@ class Util
 
     wrap: (e, fn) =>
 
+        i = 2
+
         # catch incoming events
         if e.preventDefault?
             e.preventDefault()
             e.stopPropagation()
         else
             fn = e
+            i--
+
 
         # freshen up the context
-        args = Array.prototype.slice.call arguments, 1
-        return () =>
+        args = Array.prototype.slice.call arguments, i
+        return () ->
             fn.apply @, args
 
+    zero_fill: (num, length) =>
+
+        return (Array(length).join('0') + num).slice(-length)
 
     constructor: () ->
         return @

@@ -33,12 +33,20 @@ class Uploader extends CoreWidget
 
             allow: (file) =>
 
-                extension = (file.name.split('.'))[(n.length-1)]
+                extension = file.name.split('.').pop()
+
                 type = file.type
 
                 return false if Util.in_array(extension, @_state.config.banned_extensions)
                 return false if Util.in_array(type, @_state.config.banned_types)
                 return true
+
+            finish: @_state.config.finish or (file, xhr) =>
+
+
+
+                # will eventually be default post-send callback
+
 
             prep_body: (file, data) =>
 
@@ -56,7 +64,9 @@ class Uploader extends CoreWidget
 
             preview: (e) =>
 
-                return apptools.
+                # need upload UI before I know what goes here
+
+                return
 
             progress: (file, xhr) =>
 
@@ -65,7 +75,9 @@ class Uploader extends CoreWidget
                     _f = file.name.split('.')[0]
                     if ev.lengthComputable
                         percent = Math.floor (ev.loaded/ev.total)*100
-                        # finish this shit
+
+                        # need upload UI before I know what goes here
+                        return percent
 
             provision_boundary: () =>
 
@@ -78,7 +90,6 @@ class Uploader extends CoreWidget
 
                 return _b.join('')
 
-
             read: (file, callback) =>
 
                 reader = new FileReader()
@@ -87,7 +98,6 @@ class Uploader extends CoreWidget
 
                 return reader.readAsBinaryString file
 
-
             ready: (file, xhr) =>
 
                 xhr.onreadystatechange = () =>
@@ -95,9 +105,12 @@ class Uploader extends CoreWidget
                     if xhr.readyState = 4
                         if xhr.status = 200
                             @internal.update_cache file, xhr, (f, x) =>
-                                @finish(f, x)
+                                @internal.finish(f, x)
                         else
-                            # oops wut
+
+                            # ideally we would handle all error cases - for now:
+
+                            return false
 
             send: (file, data, url) =>
 
@@ -134,28 +147,21 @@ class Uploader extends CoreWidget
 
             files = e.dataTransfer.files or []
 
-            for file in files
-                do (file) =>
+            $.apptools.api.assets.generate_upload_url().fulfill(
 
-                    $.apptools.api.assets.generate_upload_url().fulfill
+                success: (response) =>
+                    @internal.read file, (e) =>
+                        e.preventDefault()
+                        e.stopPropagation()
 
-                        success: (response) =>
+                        f = e.target.file
+                        data = e.target.result
+                        @internal.send(f, data, response.url)
 
-                            @internal.read(file, (e) =>
+                failure: (error) =>
+                    apptools.dev.error 'UPLOADER', 'Upload failed with error: ' + error + ' :('
 
-                                e.preventDefault()
-                                e.stopPropagation()
-
-                                f = e.target.file
-                                data = e.target.result
-
-                                @internal.send(f, data, response.url)
-
-                            )
-
-                        failure: (error) =>
-
-                            apptools.dev.error 'UPLOADER', 'Upload failed with error: ' + error + ' :('
+            ) for file in files
 
         @_init = () =>
 

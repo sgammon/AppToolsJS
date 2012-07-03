@@ -46,11 +46,16 @@ class ModalAPI extends CoreWidgetAPI
 
             return modal
 
+        @get = (element_id) =>
+
+            return @_state.modals_by_id(element_id) or false
+
         @_init = () =>
 
             modals = Util.get 'pre-modal'
             @enable(@create(modal, Util.get('a-'+modal.getAttribute('id')))) for modal in modals
 
+            apptools.events.trigger 'MODAL_API_READY', @
             return @_state.init = true
 
 
@@ -95,6 +100,8 @@ class Modal extends CoreWidget
                 rounded: true
 
                 padding: null
+
+            hook: null
 
         @_state.config = Util.extend(true, @_state.config, JSON.parse(target.getAttribute('data-options')))
 
@@ -218,7 +225,7 @@ class Modal extends CoreWidget
 
             Util.bind([close_x, overlay], 'mousedown', @close)
 
-            return dialog
+            return @
 
         @close = () =>
 
@@ -261,15 +268,15 @@ class Modal extends CoreWidget
                 }
             )
 
-            return dialog
+            return @
 
         @_init = () =>
 
             dialog = @make()
-            trigger.removeAttribute('href')
+            Util.get(@_state.trigger_id).removeAttribute('href')
 
             @_state.init = true
-            $.apptools.events.trigger 'MODAL_READY', @
+            apptools.events.trigger 'MODAL_READY', @
 
             return @
 
