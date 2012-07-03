@@ -118,7 +118,8 @@ class Tabs extends CoreWidget
             @_state.active = true
 
             tabset = Util.get(@_state.element_id)
-            current = Util.get('tab-current', tabset)[0] or Util.get(@_state.active_tab) or false
+            currents = Util.get('tab-current', tabset)
+            current = if currents? then Util.get('tab-current', tabset)[0] else (if (_at=@_state.active_tab)? then Util.get(_at) else false)
             target = Util.get(target_id=(trigger=e.target).getAttribute('id').split('-').splice(1))
 
             return @ if current is target # return if current tab selected
