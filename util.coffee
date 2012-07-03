@@ -153,8 +153,6 @@ prep_animation: (t,e,c) => # time (ms), easing (jQuery easing), callback
 
     return options
 
-<<<<<<< Updated upstream
-=======
     throttle: (fn, buffer=150, prefire) =>
 
         # Throttles a rapidly-firing event (i.e. mouse or scroll)
@@ -185,7 +183,6 @@ prep_animation: (t,e,c) => # time (ms), easing (jQuery easing), callback
 
         return @throttle(fn, buffer, prefire)
 
->>>>>>> Stashed changes
     # useful helpers
     extend: () =>
 
