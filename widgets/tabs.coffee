@@ -115,12 +115,13 @@ class Tabs extends CoreWidget
 
         @switch = (e) =>
 
+            console.log('event target: '+e.target);
             @_state.active = true
 
             tabset = Util.get(@_state.element_id)
             currents = Util.get('tab-current', tabset)
             current = if currents? then Util.get('tab-current', tabset)[0] else (if (_at=@_state.active_tab)? then Util.get(_at) else false)
-            target = Util.get(target_id=(trigger=e.target).getAttribute('id').split('-').splice(1))
+            target = Util.get(target_id=(trigger=e.target).getAttribute('id').split('-').splice(1).join('-'))
             console.log('TARGET_ID: '+target_id+' AND TARGET: '+target)
 
             return @ if current is target # return if current tab selected
