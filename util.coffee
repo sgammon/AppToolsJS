@@ -144,14 +144,15 @@ class Util
             ].join(':'),
         ].join ' '
 
-prep_animation: (t,e,c) => # time (ms), easing (jQuery easing), callback
-    options = if not t? then duration: 400 else (if t? and @is_object t then @extend {}, t else
-        complete: c or (not c and e) or (is_function t and t)
-        duration: t
-        easing: (c and e) or (e and not is_function e)
-    )
+    prep_animation: (t,e,c) => # time (ms), easing (jQuery easing), callback
 
-    return options
+        options = if not t? then duration: 400 else (if t? and @is_object t then @extend({}, t)else
+            complete: c or (not c and e) or (is_function t and t)
+            duration: t
+            easing: (c and e) or (e and not is_function e)
+        )
+
+        return options
 
     throttle: (fn, buffer=150, prefire) =>
 
