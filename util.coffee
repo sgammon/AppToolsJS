@@ -45,11 +45,11 @@ class Util
 
         return matches.length > 0
 
-    to_array: (nodelist) =>
+    to_array: (node_or_token_list) =>
 
         array = [];
-        `for (i = nodelist.length; i--; array.unshift(nodelist[i]))`
-        return array
+        `for (i = node_or_token_list.length; i--; array.unshift(node_or_token_list[i]))`
+        return if array isnt [] then array else null
 
     # DOM checks/manipulation
     get: (query, node=document) => # ID, class or tag

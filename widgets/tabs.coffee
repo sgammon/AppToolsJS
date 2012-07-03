@@ -104,7 +104,10 @@ class Tabs extends CoreWidget
                         return false
                     else
                         content_div.style.opacity = 0
+                        content_div.classList.remove('pre-tabs')
+
                         trigger.removeAttribute('href')
+
                         @_state.tabs[trigger_id] = content_id
                         @_state.tab_count++
 
