@@ -146,7 +146,7 @@ class Tabs extends CoreWidget
 
             tabs = @make()
 
-            Util.get('a', Util.get(@_state.element_id))[0].click()
+            $(Util.get('a', Util.get(@_state.element_id))[0]).click()
 
             @_state.init = true
             apptools.events.trigger 'TABS_READY', @
