@@ -2,7 +2,7 @@
 class TabsAPI extends CoreAPI
 
     @mount = 'tabs'
-    @events = ['tabs_READY', 'tabs_API_READY']
+    @events = ['TABS_READY', 'TABS_API_READY']
 
     constructor: (apptools, widget, window) ->
 
@@ -35,12 +35,12 @@ class TabsAPI extends CoreAPI
 
         @enable = (tabs) =>
 
-            #
+            Util.bind(Util.get(trigger), 'click', tabs.switch, false) for trigger of tabs._state.tabs
             return tabs
 
         @disable = (tabs) =>
 
-            #
+            Util.unbind(Util.get(trigger), 'click') for trigger of tabs._state.tabs
             return tabs
 
         @_init = () =>
@@ -71,30 +71,84 @@ class Tabs extends CoreWidget
                 rounded: true
                 width: '500px'
 
-        @_state.config = Util.extend(true, @_state.config, JSON.parse(target.getAttribute('data-options')))
+        @_state.config = Util.extend(true, @_state.config, options)
 
         @internal =
 
             classify: () =>
 
-                tabset = Util.get(@_state.element_id)
-                triggers = Util.get('tab-trigger', tabset) # the actual stylized 'tab' element
-                tabs = Util.get('tab', tabset) # the attached
+                target = Util.get(@_state.element_id)
+                triggers = Util.get('a', target) # <a> --> actual 'tab'-looking element
+                tabs = Util.get('div', target) # the content divs
 
-                tabset.classList.add('relative') if not Util.has_class(tabset, 'relative')
+                target.style.width = @_state.config.width
+                target.classList.add(cls) for cls in ['relative', 'tabset']
 
-                trigger.classList.add('')
+                (if @_state.config.rounded then trigger.classList.add('tab-rounded') else trigger.classList.add('tab-link')) for trigger in triggers
 
+                tab.classList.add(_cls) for _cls in ['absolute', 'tab'] for tab in tabs
+
+                return @
+
+        @make = () =>
+
+            target = Util.get(@_state.element_id)
+            triggers = Util.get('a', target)
+
+            for trigger in triggers
+                do (trigger) =>
+                    content_div = Util.get(content_id=trigger.getAttribute('href').slice(1))
+                    trigger.setAttribute('id', (trigger_id = 'a-'+content_id))
+
+                    if not content_div?
+                        return false
+                    else
+                        content_div.style.opacity = 0
+                        trigger.removeAttribute('href')
+                        @_state.tabs[trigger_id] = content_id
+                        @_state.tab_count++
+
+            return @internal.classify()
 
         @switch = (e) =>
 
             @_state.active = true
 
             tabset = Util.get(@_state.element_id)
-            current = if (a_t=@_state.active_tab)? then Util.get(a_t) else Util.get('current-tab', tabset)[0]
-            target = Util.get((trigger=e.target).getAttribute('id').split('-').splice(1))
+            current = Util.get('tab-current', tabset)[0] or Util.get(@_state.active_tab) or false
+            target = Util.get(target_id=(trigger=e.target).getAttribute('id').split('-').splice(1))
 
-            current.style.opacity = 0
-            target.style.opacity = 1
+            return @ if current is target # return if current tab selected
+
+            if current is false    # if no tab selected (first click), select first tab
+
+                current = Util.get('div', tabset)[0]
+                current.classList.add 'tab-current'
+
+            $(current).animate opacity: 0,
+                duration: 200
+                complete: () =>
+                    current.classList.remove('tab-current')
+                    target.classList.add('tab-current')
+                    @_state.active_tab = target_id
+                    $(target).animate opacity: 1,
+                        duration: 300
+                        complete: () =>
+                            @_state.active = false
+
+        @_init = () =>
+
+            tabs = @make()
+
+            Util.get('a', Util.get(@_state.element_id))[0].click()
+
+            @_state.init = true
+            apptools.events.trigger 'TABS_READY', @
+
+            return @
 
 
+
+@__apptools_preinit.abstract_base_classes.push Tabs
+@__apptools_preinit.abstract_base_classes.push TabsAPI
+@__apptools_preinit.deferred_core_modules.push {module: TabsAPI, package: 'widgets'}

@@ -65,7 +65,7 @@ class Editor extends CoreWidget
     constructor: (target, options) ->
 
         @state =
-        
+
             element_id: target.getAttribute('id')
             pane: null
             active: false
@@ -109,7 +109,7 @@ class Editor extends CoreWidget
                             t = prompt 'What link text do you want to display?'
 
                         l = _t or prompt 'What URL do you want to link to? (http://www...)'
-                        document.execCommand 'insertHTML', false, '<a href="'+Util.stripScript l+'">'+t+'</a>'
+                        document.execCommand 'insertHTML', false, '<a href="'+Util.strip_script l+'">'+t+'</a>'
 
             bundle: 'rich'
 

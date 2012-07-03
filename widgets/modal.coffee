@@ -48,7 +48,7 @@ class ModalAPI extends CoreWidgetAPI
 
         @get = (element_id) =>
 
-            return @_state.modals_by_id(element_id) or false
+            return @_state.modals_by_id[element_id] or false
 
         @_init = () =>
 
@@ -101,9 +101,7 @@ class Modal extends CoreWidget
 
                 padding: null
 
-            hook: null
-
-        @_state.config = Util.extend(true, @_state.config, JSON.parse(target.getAttribute('data-options')))
+        @_state.config = Util.extend(true, @_state.config, options)
 
         @internal =
 

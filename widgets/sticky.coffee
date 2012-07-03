@@ -44,8 +44,8 @@ class Sticky extends CoreWidget
             cache:
                 original_offset: Util.get_offset(target)
                 past_offset: null
-                classes: target.className
-                style: target.getAttribute 'style' or ''
+                classes: null
+                style: null
 
         @_state.config = Util.extend(true, @_state.config, options)
 
@@ -53,7 +53,7 @@ class Sticky extends CoreWidget
 
             offset_side = if @_state.config.axis is 'vertical' then 'top' else 'left'
 
-            current = (Util.get_offset(el))[offset_side]
+            current = (c=Util.get_offset(el))[offset_side]
             past = @_state.cache.past_offset[offset_side] or (orig = @_state.cache.original_offset[offset_side]) or false
             target = @_state.config.target_offset
 
@@ -69,8 +69,13 @@ class Sticky extends CoreWidget
 
                 @stick(el, offset_side) if current <= 0
 
+            @_state.cache.past_offset = c
+
 
         @stick = (el, side) =>
+
+            @_state.cache.classes = el.className
+            @_state.cache.style = el.style
 
             el.classList.add 'fixed'
             el.style[side] = @_state.config.target_offset

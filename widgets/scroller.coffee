@@ -122,8 +122,6 @@ class Scroller extends CoreWidget
 
         @jump = (pane) =>
 
-            console.log 'PANE TOLERANCE: ', pane
-
             @_state.active = true
 
             animation = @animation
