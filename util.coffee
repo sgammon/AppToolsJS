@@ -31,8 +31,11 @@ class Util
         return false for key in object
         return true
 
+    is_body: (object) =>
+        return @is_object(object) and (Object.prototype.toString.call(object) is '[object HTMLBodyElement]' or object.constructor.name is 'HTMLBodyElement')
+
     is_array: Array.isArray or (object) =>
-        return (typeof object is 'array' or Object.prototype.toString.call(object) is '[object Array]')
+        return (typeof object is 'array' or Object.prototype.toString.call(object) is '[object Array]' or object.constructor.name is 'Array')
 
     in_array: (item, array) =>
         if array.indexOf?
@@ -46,12 +49,63 @@ class Util
         return matches.length > 0
 
     to_array: (node_or_token_list) =>
-
         array = []
         `for (i = node_or_token_list.length; i--; array.unshift(node_or_token_list[i]))`
-        return if array isnt [] then array else null
+        return array
+
+    filter: (array, condition) =>       # condition function must return t/f
+        new_array = []
+        (if condition(item)
+            new_array.push(item)
+        ) for item in array
+        return new_array
+
+    sort: null
 
     # DOM checks/manipulation
+    create_element_string: (tag, attrs) =>
+        no_close = ['area', 'base', 'basefont', 'br', 'col', 'frame', 'hr', 'img', 'input', 'link']
+        tag = tag.toLowerCase()
+
+        el_str = '<' + tag
+        el_str += ' ' + k + '="' + v + '"' for k, v of attrs
+        el_str += '>'
+        el_str += '</' + tag + '>' if not @in_array(tag, no_close)
+
+        return el_str
+
+    create_doc_frag: (html_string) =>
+        range = document.createRange()
+        range.selectNode(document.getElementsByTagName('div').item(0))
+        frag = range.createContextualFragment(html_string)
+
+        return frag
+
+    add: (element_type, attrs, parent_node) =>
+        # tag name, attr hash, doc node to insert into (defaults to body)
+        if not element_type? or not @is_object(attrs)
+            return false
+
+        q_name = if (@is_body(parent_node) or not parent_node? or !(node_id = parent_node.getAttribute('id'))) then 'dom' else parent_node.getAttribute('id')
+        @internal.queues.add(q_name) if not @_state.queues[q_name]?
+
+        @_state.queues[q_name].push([element_type, attrs])
+
+        @internal.queues.go(q_name, (response) =>
+
+            q = response.queue
+            parent = if response.name is 'dom' then document.body else @get(response.name)
+
+            html = []
+            html.push(@create_element_string.apply(@, args)) for args in q
+
+            dfrag = @create_doc_frag(html.join(''))
+            parent.appendChild(dfrag)
+        )
+
+    remove: (node) =>
+        return node.parentNode.removeChild(node)
+
     get: (query, node=document) => # ID, class or tag
         return query if query.nodeType
         return if (id = document.getElementById(query))? then id else (if (cls = node.getElementsByClassName(query)).length > 0 then @to_array(cls) else (if (tg = node.getElementsByTagName(query)).length > 0 then @to_array(tg) else null))
@@ -90,24 +144,18 @@ class Util
 
     unbind: (element, event) =>
         if @is_array element # unbind 1 event from multiple elements
-            for el in element
-                do (el) =>
-                    return @unbind(el, event)
+            @unbind(el, event) for el in element
 
         else if @is_array event # or multiple events from 1 element
-            for ev in event
-                do (ev) =>
-                    return @unbind(element, ev)
+            @unbind(element, ev) for ev in event
 
         else if @is_raw_object(element) # or hash of elements & events
-            for el, ev of element
-                do (el, ev) =>
-                    return @unbind(el, ev)
+            @unbind(el, ev) for el, ev of element
 
         else if element.constructor.name is 'NodeList'
             els = []
             els.push(item) for item in element
-            return @unbind(els, event)
+            @unbind(els, event)
 
         else
             return element.removeEventListener event
@@ -127,7 +175,7 @@ class Util
         return result
 
     now: () =>
-        return new Date()
+        return +new Date()
 
     timestamp: (d) => # can take Date obj
         d ?= new Date()
@@ -145,7 +193,6 @@ class Util
         ].join ' '
 
     prep_animation: (t,e,c) => # time (ms), easing (jQuery easing), callback
-
         options = if not t? then duration: 400 else (if t? and @is_object t then @extend({}, t)else
             complete: c or (not c and e) or (is_function t and t)
             duration: t
@@ -154,34 +201,34 @@ class Util
 
         return options
 
-    throttle: (fn, buffer=150, prefire) =>
-
+    throttle: (fn, buffer, prefire) =>
         # Throttles a rapidly-firing event (i.e. mouse or scroll)
-        timer = null
+        timer_id = null
         last = 0
 
-        return () ->
+        return () =>
 
             args = arguments
-            elapsed = Util.now() - last
+            elapsed = @now() - last
 
-            clear = () => timer = null
+            clear = () =>
+                go()
+                timer_id = null
 
             go = () =>
-                last = Util.now()
+                last = @now()
                 fn.apply(@, args)
 
-            go() if prefire and not timer   # if prefire, fire @ first detect
+            go() if prefire and not timer_id   # if prefire, fire @ first detect
 
-            clearTimeout(timer) if !!timer
+            clearTimeout(timer_id) if !!timer_id
 
             if not prefire? and elapsed >= buffer
                 go()
             else
-                timer = setTimeout((if prefire then clear else go), if not prefire? then buffer - elapsed else buffer)
+                timer_id = setTimeout((if prefire then clear else go), if not prefire? then buffer - elapsed else buffer)
 
     debounce: (fn, buffer=200, prefire=false) ->
-
         return @throttle(fn, buffer, prefire)
 
     # useful helpers
@@ -304,21 +351,60 @@ class Util
             fn = e
             i--
 
-
         # freshen up the context
         args = Array.prototype.slice.call arguments, i
         return () ->
             fn.apply @, args
 
     zero_fill: (num, length) =>
-
         return (Array(length).join('0') + num).slice(-length)
 
     constructor: () ->
-        return @
 
-    @_init = () =>
-        return
+        @_state =
+            active: null
+
+            queues:
+                fx: []
+                dom: []
+
+                handlers: {}
+
+        @internal =
+
+            queues:
+
+                add: (name, callback) =>
+
+                    @_state.queues[name] = []
+                    @_state.queues.handlers[name] = @debounce(
+                        (n, c) => return @internal.queues.process(n, c),
+                        @prep_animation().duration,
+                        true)
+
+                remove: (name, callback) =>
+
+                    handler = @_state.queues.handlers[name]
+                    delete @_state.queues.handlers[name]
+
+                    q = @_state.queues[name]
+                    delete @_state.queues[name]
+
+                    return if q.length > 0 then {queue: q, handler: handler} else true
+
+                go: (name, callback) =>
+
+                    return @_state.queues.handlers[name](name, callback)
+
+                process: (name, callback) =>
+
+                    q = @_state.queues[name]
+                    @_state.queues[name] = []
+
+                    return callback?.call(@, {queue: q, name: name})
+
+        @_init = () =>
+            return
 
 
 @__apptools_preinit.abstract_base_classes.push Util

@@ -199,15 +199,15 @@ class Modal extends CoreWidget
             @_state.active = true
 
             # overlay!
-            overlay = @_state.overlay or @prepare_overlay('modal')
-            @_state.overlay = overlay
-            if not overlay.parentNode?
-                document.body.appendChild(overlay)
+            #overlay = @_state.overlay or @prepare_overlay('modal')
+            #@_state.overlay = overlay
+            #if not overlay.parentNode?
+                #document.body.appendChild(overlay)
 
             # extend default animation params with callbacks
             fade_animation = @animation
             dialog_animation = @animation
-            overlay_animation = @animation
+            #overlay_animation = @animation
 
             dialog_animation.complete = () =>
                 @internal.classify(dialog, 'open')
@@ -219,12 +219,12 @@ class Modal extends CoreWidget
 
             # show & bind close()
             dialog.style.display = 'block'
-            overlay.style.display = 'block'
+            #overlay.style.display = 'block'
 
-            $(overlay).animate opacity: 0.5, overlay_animation
+            #$(overlay).animate opacity: 0.5, overlay_animation
             $(dialog).animate final, dialog_animation
 
-            Util.bind([close_x, overlay], 'mousedown', @close)
+            Util.bind(close_x, 'mousedown', @close)
 
             return @
 
@@ -232,11 +232,10 @@ class Modal extends CoreWidget
 
             id = @_state.cached_id
 
-            overlay = @_state.overlay
-            d_id = '#' + @_state.element_id
+            #overlay = @_state.overlay
             dialog = Util.get @_state.element_id
 
-            Util.unbind([Util.get(id+'-modal-close'), overlay], 'mousedown')
+            Util.unbind(Util.get(id+'-modal-close'), 'mousedown')
 
             midpoint = Util.extend({}, @_state.config.initial, opacity: 0.5)
 
@@ -247,21 +246,15 @@ class Modal extends CoreWidget
                 complete: () =>
                     @internal.classify(dialog, 'close')
 
-                    $(d_id).animate(midpoint, {
+                    $(dialog).animate(midpoint, {
                         duration: 200,
                         complete: () =>
-                            $(d_id).animate({opacity: 0}, {
+                            $(dialog).animate({opacity: 0}, {
                                 duration: 250,
                                 complete: () =>
                                     dialog.style.display = 'none'
                                     dialog.style[prop] = val for prop, val of @_state.config.initial
-                                    $(@_state.overlay).animate({opacity: 0}, {
-                                        duration: 300,
-                                        complete: () =>
-                                            @_state.overlay.style.display = 'none'
-                                            @_state.active = false
-                                        }
-                                    )
+                                    @_state.active = false
                                 }
                             )
                         }

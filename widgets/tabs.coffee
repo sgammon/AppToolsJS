@@ -78,8 +78,10 @@ class Tabs extends CoreWidget
             classify: () =>
 
                 target = Util.get(@_state.element_id)
-                triggers = Util.get('a', target) # <a> --> actual 'tab'-looking element
-                tabs = Util.get('div', target) # the content divs
+                tabs = Util.filter(Util.get('div', target), (test=(el) ->       # content div elements
+                    return if el.parentNode is target then true else false
+                ))
+                triggers = Util.filter(Util.get('a', target), test)             # <a> --> actual 'tab'-looking element
 
                 target.style.width = @_state.config.width
                 target.classList.add(cls) for cls in ['relative', 'tabset']
@@ -115,7 +117,7 @@ class Tabs extends CoreWidget
 
         @switch = (e) =>
 
-            console.log('event target: '+e.target);
+            #console.log('K: '+k+' and V: '+v) for k, v of e
             @_state.active = true
 
             tabset = Util.get(@_state.element_id)

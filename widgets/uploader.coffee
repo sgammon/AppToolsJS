@@ -12,6 +12,8 @@ class Uploader extends CoreWidget
         @_state =
 
             active: false
+            init: false
+
             boundary: null
 
             config:
@@ -166,3 +168,8 @@ class Uploader extends CoreWidget
         @_init = () =>
 
             @_state.boundary = @internal.provision_boundary()
+            @_state.init = true
+
+            apptools.events.trigger 'UPLOADER_READY', @
+
+            return @
