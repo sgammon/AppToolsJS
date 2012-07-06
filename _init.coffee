@@ -116,8 +116,7 @@ class AppTools
                             @sys.state.modules[module_name] = {module: target_mod, classes: {}}
 
                     ## Call module init callback, if there is one
-                    if module._init?
-                        module._init(@)
+                    module._init?(@)
 
                     ## If dev is available, log this
                     if @dev? and @dev.verbose?
