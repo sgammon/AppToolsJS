@@ -86,7 +86,8 @@ class Util
         if not element_type? or not @is_object(attrs)
             return false
 
-        q_name = if (@is_body(parent_node) or not parent_node? or !(node_id = parent_node.getAttribute('id'))) then 'dom' else parent_node.getAttribute('id')
+        q_name = if (@is_body(parent_node) or not parent_node? or !(node_id = parent_node.getAttribute('id'))) then 'dom' else node_id
+
         @internal.queues.add(q_name) if not @_state.queues[q_name]?
 
         @_state.queues[q_name].push([element_type, attrs])
@@ -130,32 +131,29 @@ class Util
     # Events/timing/animation
     bind: (element, event, fn, prop=false) =>
         if @is_array element # can accept multiple els for 1 event [el1, el2]
-            for el in element
-                do (el) =>
-                    return @bind(el, event, fn, prop)
+            @bind(el, event, fn, prop) for el in element
 
-        else if @is_raw_object event # ...or multiple events for 1 element {event: handler, event2: handler2}
-            for ev, func of event
-                do (ev, func) =>
-                    return @bind(element, ev, func, prop)
+        else if @is_array event #...multiple events for 1 handler on 1 element
+            @bind(element, evt, fn, prop) for evt in event
+
+        else if @is_raw_object event # ...or multiple event/handler pairs for 1 element {event: handler, event2: handler2}
+            @bind(element, ev, func, prop) for ev, func of event
 
         else
             return element.addEventListener event, fn, prop
 
     unbind: (element, event) =>
-        if @is_array element # unbind 1 event from multiple elements
+        if @is_array element
             @unbind(el, event) for el in element
 
-        else if @is_array event # or multiple events from 1 element
+        else if @is_array event
             @unbind(element, ev) for ev in event
 
-        else if @is_raw_object(element) # or hash of elements & events
+        else if @is_raw_object(element)
             @unbind(el, ev) for el, ev of element
 
-        else if element.constructor.name is 'NodeList'
-            els = []
-            els.push(item) for item in element
-            @unbind(els, event)
+        else if element.constructor.name is 'NodeList' # handle nodelists from dom queries
+            @unbind(@to_array(element), event)
 
         else
             return element.removeEventListener event

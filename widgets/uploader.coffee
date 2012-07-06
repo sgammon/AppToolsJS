@@ -1,8 +1,63 @@
 ## AppTools standalone media upload widget
 class UploaderAPI extends CoreAPI
 
-    @mount = 'upload'
-    @events = ['UPLOADER_INIT', 'UPLOADER_READY']
+    @mount = 'uploader'
+    @events = ['UPLOADER_READY', 'UPLOADER_API_READY']
+
+    constructor: (apptools, widget, window) ->
+
+        @_state =
+            uploaders: []
+            uploaders_by_id: {}
+            init: false
+
+        @create = (target) =>
+
+            options = if target.hasAttribute('data-options') then JSON.parse(target.getAttribute('data-options')) else {}
+
+            uploader = new Uploader(target, options)
+            id = uploader._state.element_id
+
+            @_state.uploaders_by_id[id] = @_state.uploaders.push(uploader) - 1
+
+            return uploader._init()
+
+        @destroy = (uploader) =>
+
+            id = uploader._state.element_id
+
+            @_state.uploaders.splice(@_state.uploaders_by_id[id], 1)
+            delete @_state.uploaders_by_id[id]
+
+            return uploader
+
+        @enable = (uploader) =>
+
+            target = Util.get(uploader._state.element_id)
+            Util.bind(target, ['dragenter', 'dragexit', 'dragleave'], uploader.handle)
+            Util.bind(target, 'dragover', Util.debounce(uploader.handle, 200, true))
+            Util.bind(target, 'drop', uploader.upload)
+
+            return uploader
+
+        @disable = (uploader) =>
+
+            target = Util.get(uploader._state.element_id)
+            Util.unbind(target, 'dragenter', 'dragover', 'dragexit', 'dragleave', 'drop')
+
+            return uploader
+
+        @get = (element_id) =>
+
+            return if (u = @_state.uploaders_by_id[element_id])? then @_state.uploaders[u] else false
+
+        @_init = () =>
+
+            uploaders = Util.get('pre-uploader')
+            @enable(@create(uploader)) for uploader in uploaders
+
+            apptools.events.trigger 'UPLOADER_API_READY', @
+            return @_state.init = true
 
 
 class Uploader extends CoreWidget
@@ -11,10 +66,11 @@ class Uploader extends CoreWidget
 
         @_state =
 
+            element_id: target.getAttribute 'id'
+            boundary: null
+
             active: false
             init: false
-
-            boundary: null
 
             config:
 
@@ -45,10 +101,8 @@ class Uploader extends CoreWidget
 
             finish: @_state.config.finish or (file, xhr) =>
 
-
-
                 # will eventually be default post-send callback
-
+                return true
 
             prep_body: (file, data) =>
 
@@ -87,7 +141,7 @@ class Uploader extends CoreWidget
                 base = @_state.config.boundary_base
                 rand = Math.floor(Math.pow(Math.random() * 10000, 3))
 
-                _b.push(base[char]) for char in rand.toString().split(''))
+                _b.push(base[char]) for char in rand.toString().split('')
                 _b.push('-----')
 
                 return _b.join('')
@@ -141,11 +195,31 @@ class Uploader extends CoreWidget
 
                 return callback?.call(@, file, xhr)
 
+        @handle = (e) =>
+
+            console.log('EVENT OF TYPE '+e.type+' CAPTURED')
+
+            if e.preventDefault
+                e.preventDefault()
+                e.stopPropagation()
+
+            target = e.target
+
+            switch e.type
+
+                when 'dragenter', 'dragover'
+                    target.style.border = '2px dashed green'
+
+                when 'dragexit', 'dragleave'
+                    target.style.border = '2px solid transparent'
+
+                else return
 
         @upload = (e) =>
 
-            e.preventDefault()
-            e.stopPropagation()
+            if e.preventDefault
+                e.preventDefault()
+                e.stopPropagation()
 
             files = e.dataTransfer.files or []
 
@@ -173,3 +247,9 @@ class Uploader extends CoreWidget
             apptools.events.trigger 'UPLOADER_READY', @
 
             return @
+
+
+
+@__apptools_preinit.abstract_base_classes.push Uploader
+@__apptools_preinit.abstract_base_classes.push UploaderAPI
+@__apptools_preinit.deferred_core_modules.push {module: UploaderAPI, package: 'widgets'}

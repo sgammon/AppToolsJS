@@ -148,8 +148,8 @@ class Modal extends CoreWidget
 
             # make & append document fragment from template string
             range = document.createRange()
-            range.selectNode(doc = document.getElementsByTagName('div').item(0))    # select document
-            d = range.createContextualFragment(template)                            # parse html string
+            range.selectNode(document.getElementsByTagName('div').item(0))  # select document body
+            d = range.createContextualFragment(template)                    # parse html string
             document.body.appendChild d
 
             # style & customize modal dialogue

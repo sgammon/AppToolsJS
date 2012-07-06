@@ -34,13 +34,13 @@ class EditorAPI extends CoreWidgetAPI
         @enable = (editor) =>
 
             target = Util.get(editor._state.element_id)
-            Util.bind(target, 'mousedown', editor.open, false)
+            Util.bind(target, 'dblclick', editor.edit, false)
 
             return editor
 
         @disable = (editor) =>
 
-            Util.unbind(Util.get(editor._state.element_id))
+            Util.unbind(Util.get(editor._state.element_id), 'dblclick')
 
             return editor
 
@@ -48,14 +48,7 @@ class EditorAPI extends CoreWidgetAPI
         @_init = () =>
 
             editors = Util.get 'mini-editable'
-            for editor in editors
-                do (editor) =>
-
-                    # instantiate editor
-                    editor = @create editor
-
-                    # bind commands & allow editing - stubbed
-                    #editor = @enable editor
+            @enable(@create(editor)) for editor in editors
 
             return apptools.events.trigger 'EDITOR_API_READY', @
 
@@ -64,115 +57,133 @@ class Editor extends CoreWidget
 
     constructor: (target, options) ->
 
-        @state =
+        @_state =
 
             element_id: target.getAttribute('id')
-            pane: null
+            pane_id: null
             active: false
             init: false
 
-        @defaults =
-            bundles:
-                basic:
-                    b: () -> document.execCommand 'bold'
-                    u: () -> document.execCommand 'underline'
-                    i: () -> document.execCommand 'italic'
-                    clear: () -> document.execCommand 'removeFormat'
-                    undo: () -> document.execCommand 'undo'
-                    redo: () -> document.execCommand 'redo'
-                    cut: () -> document.execCommand 'cut'
-                    paste: () -> document.execCommand 'paste'
+            config:
+                bundles:
+                    plain:
+                        save: () -> return @save()
+                    basic:
+                        b: () -> document.execCommand 'bold'
+                        u: () -> document.execCommand 'underline'
+                        i: () -> document.execCommand 'italic'
+                        clear: () -> document.execCommand 'removeFormat'
+                        undo: () -> document.execCommand 'undo'
+                        redo: () -> document.execCommand 'redo'
+                        cut: () -> document.execCommand 'cut'
+                        paste: () -> document.execCommand 'paste'
 
-                rich:
-                    h1: () -> document.execCommand 'heading', false, 'h1'
-                    h2: () -> document.execCommand 'heading', false, 'h2'
-                    h3: () -> document.execCommand 'heading', false, 'h3'
-                    fontColor: () =>
-                        c = Util.toHex prompt 'Please enter hex (#000000) or RGB (rgb(0,0,0)) values.'
-                        sel = document.selection() or window.getSelection()
-                        document.execCommand 'insertHTML', false, '<span style="color: '+c+';">'+sel+'</span>'
-                    fontSize: () =>
-                        s = prompt 'Please enter desired numerical pt size (i.e. 10)'
-                        sel = document.selection() or window.getSelection()
-                        document.execCommand 'insertHTML', false, '<span style="font-size: '+s+';">'+sel+'</span>'
-                    left: () -> document.execCommand 'justifyLeft'
-                    right: () -> document.execCommand 'justifyRight'
-                    center: () -> document.execCommand 'justifyCenter'
-                    indent: () -> document.execCommand 'indent'
-                    outdent: () -> document.execCommand 'outdent'
-                    link: () =>
-                        t = document.selection() or window.getSelection()
-                        if t? and t.match ///^http|www///
-                            _t = t
-                            t = prompt 'What link text do you want to display?'
-                        else if not t?
-                            t = prompt 'What link text do you want to display?'
+                    rich:
+                        h1: () -> document.execCommand 'heading', false, 'h1'
+                        h2: () -> document.execCommand 'heading', false, 'h2'
+                        h3: () -> document.execCommand 'heading', false, 'h3'
+                        fontColor: () =>
+                            c = Util.toHex prompt 'Please enter hex (#000000) or RGB (rgb(0,0,0)) values.'
+                            sel = document.selection() or window.getSelection()
+                            document.execCommand 'insertHTML', false, '<span style="color: '+c+';">'+sel+'</span>'
+                        fontSize: () =>
+                            s = prompt 'Please enter desired numerical pt size (i.e. 10)'
+                            sel = document.selection() or window.getSelection()
+                            document.execCommand 'insertHTML', false, '<span style="font-size: '+s+';">'+sel+'</span>'
+                        left: () -> document.execCommand 'justifyLeft'
+                        right: () -> document.execCommand 'justifyRight'
+                        center: () -> document.execCommand 'justifyCenter'
+                        indent: () -> document.execCommand 'indent'
+                        outdent: () -> document.execCommand 'outdent'
+                        link: () =>
+                            t = document.selection() or window.getSelection()
+                            if t? and t.match ///^http|www///
+                                _t = t
+                                t = prompt 'What link text do you want to display?'
+                            else if not t?
+                                t = prompt 'What link text do you want to display?'
 
-                        l = _t or prompt 'What URL do you want to link to? (http://www...)'
-                        document.execCommand 'insertHTML', false, '<a href="'+Util.strip_script l+'">'+t+'</a>'
+                            l = _t or prompt 'What URL do you want to link to? (http://www...)'
+                            document.execCommand 'insertHTML', false, '<a href="'+Util.strip_script l+'">'+t+'</a>'
 
-            bundle: 'rich'
+                bundle: 'rich'
 
-        @config = $.extend true, @defaults, options
+                width: 150
+
+        @_state.config = Util.extend true, @_state.config, options
 
         @make = () =>
 
+            t = Util.get(t_id = @_state.element_id)
+            width = @_state.config.width
+
             pane = document.createElement 'div'
-            pane.setAttribute 'id', 'editor-pane-'+target.getAttribute 'id'
-            pane.style.width = '150px'
-            pane.style.left = Util.getOffset(target).left - pane.style.width
-            pane.style.top = Util.getOffset(target).top
+            pane.setAttribute 'id', (pane_id = 'editor-pane-'+t_id)
+            pane.classList.add 'absolute'
+            pane.style.width = width + 'px'
+            pane.style.left = ((t_off = Util.get_offset(t)).left - width) + 'px'
+            pane.style.top = t_off.top + 'px'
+            pane.style.zIndex = '9990'
             pane.style.opacity = 0
 
-            features = @config.bundles.basic
-            if @config.bundle is 'rich'
-                features[k] = v for k, v of @config.bundles.rich
+            features = @_state.config.bundles.plain
+            if @_state.config.bundle is 'rich'
+                features[k] = v for k, v of @_state.config.bundles.rich
 
-            for feature, command of features
-                do (feature, command) =>
-                    button = document.createElement 'button'
-                    button.value = button.innerHTML = feature
-                    button.className = 'editorbutton'
-                    Util.bind button, 'mousedown', command
-                    pane.appendChild button
+            (button = document.createElement 'button'
+            button.value = button.innerHTML = feature
+            button.className = 'editorbutton'
+            Util.bind button, 'mousedown', command
+            pane.appendChild button) for feature, command of features
 
             document.body.appendChild pane
 
             # stash pane reference
-            @state.pane = pane.getAttribute 'id'
+            @_state.pane_id = pane_id
 
             return pane
 
-        @show = (pane) =>
+        @show = () =>
 
-            return $(pane).animate opacity: 1, @animation
+            $('#'+(p=@_state.pane_id)).animate opacity: 1, (Util.prep_animation())
+            return @
 
-        @hide = (pane) =>
+        @hide = () =>
 
-            return $(pane).animate opacity: 0, @animation
+            $('#'+@_state.pane_id).animate opacity: 0, (Util.prep_animation())
+            return @
 
         @edit = () =>
 
-            @show Util.get @state.pane
-            target.contentEditable = true
-            @state.active = true
+            @show()
+            (el = Util.get(@_state.element_id)).contentEditable = true
+            @_state.active = true
 
-            return target.focus()
+            Util.bind(el, 'dblclick', @save)
+            el.focus()
+
+            return @
 
         @save = () =>
 
-            @hide Util.get @state.pane
-            target.contentEditable = false
-            return @state.active = false
+            console.log('Saving...')
 
+            @hide()
+            (el = Util.get(@_state.element_id)).contentEditable = false
+            @_state.active = false
 
-    _init: () ->
+            Util.unbind(el, 'dblclick')
 
-        pane = @make()
-        document.body.appendChild pane
+            return @
 
-        @state.init = true
-        return $.apptools.events.trigger 'EDITOR_READY', @
+        @_init = () ->
+
+            pane = @make()
+            document.body.appendChild pane
+
+            @_state.init = true
+            $.apptools.events.trigger 'EDITOR_READY', @
+            return @
 
 
 

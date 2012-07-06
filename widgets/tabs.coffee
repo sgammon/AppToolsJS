@@ -35,12 +35,12 @@ class TabsAPI extends CoreAPI
 
         @enable = (tabs) =>
 
-            Util.bind(Util.get(trigger), 'click', tabs.switch, false) for trigger of tabs._state.tabs
+            Util.bind(Util.get(trigger), 'mousedown', tabs.switch, false) for trigger of tabs._state.tabs
             return tabs
 
         @disable = (tabs) =>
 
-            Util.unbind(Util.get(trigger), 'click') for trigger of tabs._state.tabs
+            Util.unbind(Util.get(trigger), 'mousedown') for trigger of tabs._state.tabs
             return tabs
 
         @_init = () =>
@@ -117,43 +117,58 @@ class Tabs extends CoreWidget
 
         @switch = (e) =>
 
-            #console.log('K: '+k+' and V: '+v) for k, v of e
             @_state.active = true
 
             tabset = Util.get(@_state.element_id)
             currents = Util.get('tab-current', tabset)
-            current = if currents? then Util.get('tab-current', tabset)[0] else (if (_at=@_state.active_tab)? then Util.get(_at) else false)
+            current = if currents? then currents[0] else (if (_at=@_state.active_tab)? then Util.get(_at) else false)
 
-            if e? and not e.preventDefault?
-                target = Util.get(e)
+            if e?
+                if e.preventDefault
+                    e.preventDefault()
+                    e.stopPropagation()
 
-            else if not e?
-                e = {target: Util.get('a', tabset)[0]}
-                target = Util.get(target_id=(trigger=e.target).getAttribute('id').split('-').splice(1).join('-'))
+                    target = Util.get(target_id=(trigger=e.target).getAttribute('id').split('-').splice(1).join('-'))
+
+                else if e? and e.nodeType
+                    target = e
+                    target_id = e.getAttribute('id')
+
+                else       # assume it's a string ID
+                    target = Util.get(e)
+                    target_id = e
+
+            else
+                target = Util.get(target_id=(Util.get('a', tabset)[0]).getAttribute('id').split('-').splice(1).join('-'))
 
             return @ if current is target # return if current tab selected
 
+            console.log('Switching to tab: '+ target_id)
+
             if current is false    # if no tab selected (first click), select first tab
+                target.classList.add('tab-current')
+                $(target).animate opacity: 1,
+                    duration: 300
+                    complete: () =>
+                        @_state.active = false
 
-                current = Util.get('div', tabset)[0]
-                current.classList.add 'tab-current'
-
-            $(current).animate opacity: 0,
-                duration: 200
-                complete: () =>
-                    current.classList.remove('tab-current')
-                    target.classList.add('tab-current')
-                    @_state.active_tab = target_id
-                    $(target).animate opacity: 1,
-                        duration: 300
-                        complete: () =>
-                            @_state.active = false
+            else
+                $(current).animate opacity: 0,
+                    duration: 200
+                    complete: () =>
+                        current.classList.remove('tab-current')
+                        target.classList.add('tab-current')
+                        @_state.active_tab = target_id
+                        $(target).animate opacity: 1,
+                            duration: 300
+                            complete: () =>
+                                @_state.active = false
 
         @_init = () =>
 
             tabs = @make()
 
-            @switch(Util.get('div', Util.get(@_state.element_id))[0])
+            @switch()
 
             @_state.init = true
             apptools.events.trigger 'TABS_READY', @
