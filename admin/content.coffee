@@ -1,10 +1,6 @@
-## Content Management
-class ContentManagerAPI extends CoreAdminAPI
+class ContentManagerAPI extends CoreAPI
 
-    @mount = 'content'
-    @events = []
-
-    constructor: (apptools, admin, window) ->
+    constructor: (apptools) ->
 
         editing = false
         style_cache = {}
@@ -14,72 +10,74 @@ class ContentManagerAPI extends CoreAdminAPI
         features =
             panel:
                 commands:
-                    undo: () ->
+                    undo: () =>
                         document.execCommand 'undo'
-                    redo: () ->
+                    redo: () =>
                         document.execCommand 'redo'
-                    cut: () ->
+                    cut: () =>
                         document.execCommand 'cut'
-                    paste: () ->
+                    paste: () =>
                         document.execCommand 'paste'
-                    table: () ->
+                    table: () =>
                         document.execCommand 'enableInlineTableEditing'
-                    resize: () ->
+                    resize: () =>
                         document.execCommand 'enableObjectResizing'
                     clip: null
-                    b: () ->
-                        document.execCommand 'bold'
-                    u: () ->
-                        document.execCommand 'underline'
-                    i: () ->
-                        document.execCommand 'italic'
-                    clear: () ->
-                        document. execCommand 'removeFormat'
-                    h1: () ->
-                        t = if document.selection then document.selection() else window.getSelection()
-                        document.execCommand 'insertHTML', false, '<h1 class="h1">'+String(t)+'</h1>'
-                    h2: () ->
-                        t = if document.selection then document.selection() else window.getSelection()
-                        document.execCommand 'insertHTML', false, '<h2 class="h2">'+String(t)+'</h2>'
-                    h3: () ->
-                        t = if document.selection then document.selection() else window.getSelection()
-                        document.execCommand 'insertHTML', false, '<h3 class="h3">'+String(t)+'</h3>'
-                    fontColor: () ->
-                        t = if document.selection then document.selection() else window.getSelection()
+                    b: () =>
+                        @config.panel.commands.html 'b'
+                    u: () =>
+                        @config.panel.commands.html 'u'
+                    i: () =>
+                        @config.panel.commands.html 'i'
+                    clear: () =>
+                        document.execCommand 'removeFormat'
+                    h1: () =>
+                        @config.panel.commands.html 'h1', 'class="h1"'
+                    h2: () =>
+                        @config.panel.commands.html 'h2', 'class="h2"'
+                    h3: () =>
+                        @config.panel.commands.html 'h3', 'class="h3"'
+                    fontColor: () =>
                         c = prompt 'Please enter a hexidecimal color value (i.e. #ffffff)'
                         c = if c[0] is '#' then c else '#' + c
-                        document.execCommand 'insertHTML', false, '<span style="color:'+c+';">'+t+'</span>'
-                    fontSize: () ->
-                        t = if document.selection then document.selection() else window.getSelection()
+                        @config.panel.commands.html 'span', 'style="color:'+String c+';"'
+                    fontSize: () =>
                         s = prompt 'Please enter desired point size (i.e. 10)'
-                        document.execCommand 'insertHTML', false, '<span style="font-size:'+s+'pt;">'+t+'</span>'
+                        @config.panel.commands.html 'span', 'style="font-size:'+String s+'pt;"'
                     fontFace: null
-                    l: () ->
+                    l: () =>
                         document.execCommand 'justifyLeft'
-                    r: () ->
+                    r: () =>
                         document.execCommand 'justifyRight'
-                    c: () ->
+                    c: () =>
                         document.execCommand 'justifyCenter'
-                    in: () ->
+                    in: () =>
                         document.execCommand 'indent'
-                    out: () ->
+                    out: () =>
                         document.execCommand 'outdent'
-                    bullet: () ->
+                    bullet: () =>
                         document.execCommand 'insertUnorderedList'
-                    number: () ->
+                    number: () =>
                         document.execCommand 'insertOrderedList'
                     indentSpecial: null
                     lineSpacing: null
-                    link: () ->
+                    link: () =>
                         t = if document.selection then document.selection() else window.getSelection()
-                        if not util.is t
+                        if not _this.util.is t
                             t = prompt "What link text do you want to display?"
                         l = prompt 'What URL do you want to link to?'
-                        document.execCommand 'insertHTML', false, '<a href="'+l+'">'+t+'</a>'
+                        @config.panel.commands.html 'a', 'href="'+l+'"'
                     image: null
                     video: null
 
-                panel_html: ['<div id="CMS_wrap">', '<div id="CMS_panel" class="fixed panel" style="opacity: 0;">', '<div id="CMS_frame" class="nowrap">', '<div class="cms_pane" id="buttons">', '<div class="cms_subpane">', '<h1 class="cms_sp">editing</h1>', '<p>', '<button id="cms_undo" value="undo">undo</button>', '<button id="cms_redo" value="redo">redo</button>', '<button id="cms_cut" value="cut">cut</button>', '<button id="cms_paste" value="paste">paste</button>', '</p>', '</div>', '<hr/>', '<div class="cms_subpane">', '<h1 class="cms_sp">typography</h1>', '<p>', '<select id="cms_headers" class="cms">', '<option id="cms_h1" class="h1">Heading 1</option>', '<option id="cms_h2" class="h2">Heading 2</option>', '<option id="cms_h3" class="h3">Heading 3</option>', '</select>', '<button id="cms_b" value="bold">B</button>', '<button id="cms_u" value="underline">U</button>', '<button id="cms_i" value="italic">I</button>', '<button id="cms_clear" value="clear formatting">clear</button>', '<button id="cms_fontColor" value="font color">font color</button>', '<button id="cms_fontSize" value="font size">font size</button>', '</p>', '</div>', '<hr/>', '<div class="cms_subpane">', '<h1 class="cms_sp">alignment</h1>', '<p style="text-lign:center">', '<button id="cms_l" value="left">left</button>', '<button id="cms_c" value="center">center</button>', '<button id="cms_r" value="right">right</button>', '<br>', '<button id="cms_in" value="indent">&raquo;</button>', '<button id="cms_out" value="outdent">&laquo;</button>', '<br>', '<button id="cms_ul" value="unordered list">&lt;ul&gt;</button>', '<button id="cms_ol" value="ordered list">&lt;ol&gt;</button>', '</p>', '</div>', '<hr/>', '<div class="cms_subpane">', '<h1 class="cms_sp">interactive</h1>', '<p>', '<button id="cms_link" value="link">add link</button>', '</p>', '</div>', '</div>', '<div class="cms_pane" id="styles">', '<div class="cms_subpane">', '<h1 class="cms_sp">styles</h1>', '<p>MIDDLE</p>', '</div>', '</div>', '<div class="cms_pane" id="assets">','<div class="cms_subpane">','<h1 class="cms_sp">drop files here</h1>','<div id="upload_wrap">','<div id="upload" class="dragdrop">','<span class="center-text" id="up_content">+</span>','</div>','</div>','</div>','<hr>','<div class="cms_subpane">','<h1 class="cms_sp">uploaded assets</h1>','<p>','<button id="pop_assets_button" class="pop" name="assets" value="pop out this pane!">pop me out</button>','</p>','</div>','</div>','</div>', '<div id="CMS_nav">', '<a class="scroll" href="#buttons">buttons</a>', '<a class="scroll" href="#styles">styles</a>', '<a class="scroll" href="#assets">assets</a>', '</div>', '<div id="CMS_panel_footer">&copy; momentum labs 2012</div>', '</div>', '</div>'].join '\n'
+                    html: (tag, params) =>
+                        sel = if document.selection then document.selection() else window.getSelection()
+                        if @util.is params
+                            document.execCommand 'insertHTML', false, '<'+tag+' '+params+'>'+sel+'</'+tag+'>'
+                        else
+                            document.execCommand 'insertHTML', false, '<'+tag+'>'+sel+'</'+tag+'>'
+
+                panel_html: ['<div id="CMS_wrap">','<div id="CMS_panel" class="fixed panel">','<div id="CMS_frame" class="nowrap">','<div class="cms_pane" id="editing">','<div class="cms_subpane">','<h1 class="cms_sp">editing</h1>','<p>','<button id="cms_undo" value="undo">undo</button>','<button id="cms_redo" value="redo">redo</button>','<button id="cms_cut" value="cut">cut</button>','<button id="cms_paste" value="paste">paste</button>','<br>','<button id="cms_clear" value="clear formatting">clear formatting</button>','</p>','</div>','<hr/>','<div class="cms_subpane">','<h1 class="cms_sp">typography</h1>','<p>','<select id="cms_headers" class="cms">','<option id="cms_h1" class="h1">Heading 1</option>','<option id="cms_h2" class="h2">Heading 2</option>','<option id="cms_h3" class="h3">Heading 3</option>','</select>','<button id="cms_b" value="bold">B</button>','<button id="cms_u" value="underline">U</button>','<button id="cms_i" value="italic">I</button>','<br>','<button id="cms_fontColor" value="font color">font color</button>','<button id="cms_fontSize" value="font size">font size</button>','</p>','</div>','<hr/>','<div class="cms_subpane">','<h1 class="cms_sp">alignment</h1>','<p>','<button id="cms_l" value="left">left</button>','<button id="cms_c" value="center">center</button>','<button id="cms_r" value="right">right</button>','<button id="cms_in" value="indent">&raquo;</button>','<button id="cms_out" value="outdent">&laquo;</button>','</p>','</div>','<hr>','<div class="cms_subpane">','<h1 class="cms_sp">lists</h1>','<p>','<button id="cms_bullet" value="unordered list">bulleted</button>','<button id="cms_number" value="ordered list">numbered</button>','<button class="cms_disabled" id="cms_outline" value="outline">outline</button>','</p>','</div>','<hr/>','<div class="cms_subpane">','<h1 class="cms_sp">interactive</h1>','<p>','<button id="cms_link" value="link">add link</button>','</p>','</div>','</div>','<div class="cms_pane" id="content">','<div class="cms_subpane">','<h1 class="cms_sp">pages</h1>','<div id="acco-page-manager-pane" class="acco-wrap">','<div id="acco-page-manager" class="accordion">','<a class="acco" href="#page-1">main page</a>','<div id="#acco-pages-page-1" class="acco-btf block">','<a class="pop" href="javascript:void(0)">subpage 1</a><br>','<a class="pop" href="javascript:void(0)">subpage 2</a>','</div>','<a class="acco" href="#page-2">second page</a>','<div id="#acco-pages-page-2" class="acco-btf block">','<a class="pop" href="javascript:void(0)">another subpage 1</a><br>','<a class="pop" href="javascript:void(0)">another subpage 2</a>','</div>','<a class="acco" href="#page-3">third page</a>','<div id="#acco-pages-page-3" class="acco-btf block">','<a class="pop" href="javascript:void(0)">yep, subpage 1</a><br>','<a class="pop" href="javascript:void(0)">yep, subpage 2</a>','</div>','</div>','</div>','</div>','</div>','<div class="cms_pane" id="assets">','<div class="cms_subpane">','<h1 class="cms_sp">drop files here</h1>','<div id="upload_wrap">','<div id="upload" class="dragdrop">','<span class="center-text" id="up_content">+</span>','</div>','</div>','</div>','<hr>','<div class="cms_subpane">','<h1 class="cms_sp">uploaded assets</h1>','<div id="upload-files-pane">','</div>','</div>','</div>','</div>','<div id="CMS_nav">','<a class="scroll" href="#editing">editing</a>','<a class="scroll" href="#content">content</a>','<a class="scroll" href="#assets">assets</a>','</div>','<div id="CMS_panel_footer">&copy; momentum labs 2012</div>','</div>','</div>'].join '\n'
                 status_html: '<div class="fixed panel bigger" id="cms_edit_on" style="vertical-align: middle; left: -305px;top: 50px;width: 300px;text-align: right;padding-right: 10px;opacity: 0;"><span id="cms_span" style="color: #222;cursor: pointer">content editing <span style="color: green;font-weight: bold;">ON</span></span></div>'
                 init: false
 
@@ -126,6 +124,14 @@ class ContentManagerAPI extends CoreAdminAPI
                 rounded: true
                 init: false
 
+            accordion:
+                animation:
+                    duration: 400
+                    easing: 'easeInOutExpo'
+                    complete: null
+
+                init: false
+
             overlay: '<div id="m-overlay" class="fixed" style="opacity: 0;"></div>'
             init: false
 
@@ -140,15 +146,31 @@ class ContentManagerAPI extends CoreAdminAPI
 
                 return obje.bind(rObj)
 
-            imgPreview: (eV) =>
+            calcModal: () =>
 
-                res = eV.target.result
+                rObj = {}
+                r = @config.modal.ratio
+                wW = window.innerWidth
+                wH = window.innerHeight
+                mW = Math.floor r.x*wW
+                mH = Math.floor r.y*wH
+                rObj.width = mW+'px'
+                rObj.height = mH+'px'
+                rObj.top = Math.floor (wH-mH)/2
+                rObj.left = Math.floor (wW-mW)/2
+                rObj
 
-                img = document.createElement 'img'
-                img.classList.add 'preview'
-                img.src = res
+            imagePreview: (_file) =>
 
-                document.getElementById('upload').appendChild img
+                appendImg = (_event) ->
+                    src = _event.target.result
+                    fN = _event.target.file.name.split('.')[0]
+                    $('#landing-'+fN).append '<img id="'+fN+'" src="'+src+'">'
+
+                _reader = new FileReader()
+                _reader.file = _file
+                _reader.addEventListener 'loadend', appendImg, false
+                _reader.readAsDataURL _file
 
             is: (thing) =>
 
@@ -158,21 +180,21 @@ class ContentManagerAPI extends CoreAdminAPI
                     return false
 
             isID: (str) =>
-                if String(str).split('')[0] is '#' or document.getElementById(str) != null
+                if String(str).split('')[0] is '#' or document.getElementById(str) isnt null
                     return true
                 else
                     return false
 
             handleDrag: (evE) =>
 
-                e.preventDefault()
-                e.stopPropagation()
+                evE.preventDefault()
+                evE.stopPropagation()
 
-                eT = e.target
+                eT = evE.target
 
-                if e.type is 'dragenter'
+                if evE.type is 'dragenter'
                     $(eT).addClass 'hover'
-                else if e.type != 'dragover'
+                else if evE.type != 'dragover'
                     $(eT).removeClass 'hover'
 
             makeDragDrop: (elem) =>
@@ -182,6 +204,9 @@ class ContentManagerAPI extends CoreAdminAPI
                 elem.addEventListener 'dragleave', @util.handleDrag, false
                 elem.addEventListener 'dragover', @util.handleDrag, false
                 elem.addEventListener 'drop', @uploadAsset, false
+
+            makeProgressBar: () =>
+                return false
 
             wrap: (func) =>
 
@@ -323,16 +348,84 @@ class ContentManagerAPI extends CoreAdminAPI
             e.preventDefault()
             e.stopPropagation()
 
-            $(e.target).removeClass('hover')
+            $(e.target).removeClass 'hover'
+
             files = e.dataTransfer.files
 
-            readFile = (f) ->
-                if f.type.match /image.*/
-                    reader = new FileReader()
-                    reader.onloadend = @util.imgPreview
-                    reader.readAsDataURL(f)
+            doUpload = (f) =>
 
-            readFile file for file in files
+                _fN = f.name.split('.')[0]
+                liID = 'li-'+_fN
+                spanID = 'upload-percentage-'+_fN
+                divID = 'upload-progress-'+_fN
+
+                if not @util.isID 'upload-files-list'
+                    $('#upload-files-pane').append '<ul id="upload-files-list"></ul>'
+
+                $('#upload-files-list').append '<li id="'+liID+'"></li>'
+                $('#'+liID).append('<div class="upload-preview-landing" id="landing-'+_fN+'"></div>')
+                    .append('<span class="upload-percentage" id="'+spanID+'">1%</span>')
+                    .append '<div class="upload-progress" id="'+divID+'">&nbsp;</div>'
+
+                @util.imagePreview f
+
+                $.apptools.api.assets.generate_upload_url().fulfill
+                    success: (response) =>
+
+                        sendFile = (_e) =>
+                            boundary = '-------m0m3n+umUPL04D3R-------'
+                            crlf = '\r\n'
+                            xhr = new XMLHttpRequest()
+                            body = '--' + boundary + crlf
+                            data = _e.target.result
+                            _f = _e.target.file
+
+                            body += 'Content-Disposition: form-data; filename="'+_f.name+'"'+crlf
+                            body += 'Content-type: '+_f.type+crlf+crlf
+                            body += data + crlf + boundary + '--'
+
+                            xhr.upload.addEventListener 'progress', (eVT) =>
+                                _fname = _f.name.split('.')[0]
+                                if eVT.lengthComputable
+                                    percentDone = Math.floor (eVT.loaded/eVT.total)*100
+                                    proW = Math.floor (eVT.loaded/eVT.total)*128
+
+                                    $('#upload-percentage-'+_fname).html percentDone+'%'
+                                    $('#upload-progress-'+_fname).css width: proW
+                            , false
+
+                            xhr.open 'POST', response.url, true
+                            xhr.setRequestHeader 'Content-type', 'multipart/form-data; boundary='+boundary
+
+                            xhr.onreadystatechange = () =>
+                                if xhr.readyState == 4
+                                    _fname = _f.name.split('.')[0]
+                                    $.apptools.dev.verbose 'UPLOAD', 'file name: '+_fname
+                                    $('#upload-progress-'+_fname).addClass('upload-done')
+                                        .removeClass 'upload-progress'
+
+                                    if xhr.status == 200
+                                        $.apptools.dev.verbose 'UPLOAD', 'Upload succeeded!'
+                                    else
+                                        $.apptools.dev.verbose 'UPLOAD', 'Upload completed but returned status '+xhr.status
+
+
+                            $.apptools.dev.verbose 'UPLOAD', 'Uploading '+_f.name+'...'
+                            xhr.send body
+
+                        reader = new FileReader()
+                        reader.file = f
+                        reader.addEventListener 'loadend', sendFile, false
+                        reader.readAsBinaryString f
+
+                    failure: (error) =>
+
+                        $.apptools.dev.error 'UPLOAD', 'UPLOAD FAILED WITH ERROR: '+error
+
+            doUpload file for file in files
+
+
+            # $.apptools.api.assets.generate_upload_url
 
         @placeAsset = (ev) =>
 
@@ -375,7 +468,19 @@ class ContentManagerAPI extends CoreAdminAPI
 
                     that.config.scroller.init = true
 
-                @scroller.classify(frame)
+                @scroller.classify frame
+
+                $('.acco').each () ->
+
+                    t = @
+                    $t = $(t)
+                    rel = String($t.attr 'href').slice 1
+                    $t.attr 'href', 'javascript:void(0);'
+                    $t.attr 'id', 'a-'+rel
+
+                    that.util.bind $t, 'click', that.util.wrap that.accordion.fold, rel
+
+                @accordion.fold 'page-1'
 
                 $('.pop').each () ->
 
@@ -447,9 +552,9 @@ class ContentManagerAPI extends CoreAdminAPI
 
             jump: (reL, cback, eVent) =>
 
-                if @util.is e
-                    e.preventDefault()
-                    e.stopPropagation()
+                if @util.is eVent
+                    eVent.preventDefault()
+                    eVent.stopPropagation()
 
                 $f = $('#'+@config.scroller.frame)
                 $d = $f.data('scroller')
@@ -586,6 +691,52 @@ class ContentManagerAPI extends CoreAdminAPI
                                 $('#m-overlay').remove()
                                 $('#modal_wrap').remove()
 
+        @accordion =
+
+            fold: (rEl) =>
+
+                rEl = if rEl != null and typeof rEl != 'undefined' then rEl else @config.accordion.home
+                nD = '#acco-pages-'+rEl
+                if $(nD).hasClass 'none'
+                    $(nD).css 'height': '0px'
+                    curr = if $('.current-fold').attr('id') then $('.current-fold').attr('id').slice(2) else false
+
+                    if curr isnt false
+                        $('.current-fold').removeClass 'current-fold'
+                        $('#'+curr).animate
+                            'height': '0px'
+                            'opacity': 0
+                        ,
+                            duration: 400
+                            easing: 'easeInOutExpo'
+                            complete: () ->
+                                if '#'+curr isnt nD
+                                    $('#'+curr).removeClass('block')
+                                        .addClass 'none'
+
+                        $(nD).removeClass('none')
+                            .addClass 'block'
+
+                        $('#a-'+rEl).addClass 'current-fold'
+                        $(nD).animate
+                            'height': '350px'
+                            'opacity': 1
+                        ,
+                            duration: 400
+                            easing: 'easeInOutExpo'
+
+                    else if $(nD).hasClass 'block'
+                        $('#a-'+rEl).removeClass 'current-fold'
+                        $(nD).animate
+                            'height': '0px'
+                            'opacity': 0
+                        ,
+                            duration: 400
+                            easing: 'easeInOutExpo'
+                            complete: () ->
+                                $(nD).removeClass('block')
+                                    .addClass 'none'
+
 
         apptools.dev.verbose 'CMS', 'Initializing Momentum extensible management system...'
         that = @
@@ -620,7 +771,6 @@ class ContentManagerAPI extends CoreAdminAPI
             var t = this;
             that.util.bind($(t), 'click', that.util.wrap(that.edit, t));
         });`
-
 
 @__apptools_preinit.abstract_base_classes.push ContentManagerAPI
 @__apptools_preinit.deferred_core_modules.push {module: ContentManagerAPI, package: 'admin'}

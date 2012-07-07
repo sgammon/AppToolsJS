@@ -53,10 +53,11 @@ class ModalAPI extends CoreWidgetAPI
         @_init = () =>
 
             modals = Util.get 'pre-modal'
-            @enable(@create(modal, Util.get('a-'+modal.getAttribute('id')))) for modal in modals
+            (_m = @create(modal, (_t = Util.get('a-'+modal.getAttribute('id'))))
+            @enable(_m)) for modal in modals
 
-            apptools.events.trigger 'MODAL_API_READY', @
-            return @_state.init = true
+            @_state.init = true
+            return @
 
 
 class Modal extends CoreWidget
@@ -148,8 +149,8 @@ class Modal extends CoreWidget
 
             # make & append document fragment from template string
             range = document.createRange()
-            range.selectNode(doc = document.getElementsByTagName('div').item(0))    # select document
-            d = range.createContextualFragment(template)                            # parse html string
+            range.selectNode(document.getElementsByTagName('div').item(0))  # select document body
+            d = range.createContextualFragment(template)                    # parse html string
             document.body.appendChild d
 
             # style & customize modal dialogue
@@ -199,15 +200,15 @@ class Modal extends CoreWidget
             @_state.active = true
 
             # overlay!
-            overlay = @_state.overlay or @prepare_overlay('modal')
-            @_state.overlay = overlay
-            if not overlay.parentNode?
-                document.body.appendChild(overlay)
+            #overlay = @_state.overlay or @prepare_overlay('modal')
+            #@_state.overlay = overlay
+            #if not overlay.parentNode?
+                #document.body.appendChild(overlay)
 
             # extend default animation params with callbacks
             fade_animation = @animation
             dialog_animation = @animation
-            overlay_animation = @animation
+            #overlay_animation = @animation
 
             dialog_animation.complete = () =>
                 @internal.classify(dialog, 'open')
@@ -219,12 +220,12 @@ class Modal extends CoreWidget
 
             # show & bind close()
             dialog.style.display = 'block'
-            overlay.style.display = 'block'
+            #overlay.style.display = 'block'
 
-            $(overlay).animate opacity: 0.5, overlay_animation
+            #$(overlay).animate opacity: 0.5, overlay_animation
             $(dialog).animate final, dialog_animation
 
-            Util.bind([close_x, overlay], 'mousedown', @close)
+            Util.bind(close_x, 'mousedown', @close)
 
             return @
 
@@ -232,11 +233,10 @@ class Modal extends CoreWidget
 
             id = @_state.cached_id
 
-            overlay = @_state.overlay
-            d_id = '#' + @_state.element_id
+            #overlay = @_state.overlay
             dialog = Util.get @_state.element_id
 
-            Util.unbind([Util.get(id+'-modal-close'), overlay], 'mousedown')
+            Util.unbind(Util.get(id+'-modal-close'), 'mousedown')
 
             midpoint = Util.extend({}, @_state.config.initial, opacity: 0.5)
 
@@ -247,21 +247,15 @@ class Modal extends CoreWidget
                 complete: () =>
                     @internal.classify(dialog, 'close')
 
-                    $(d_id).animate(midpoint, {
+                    $(dialog).animate(midpoint, {
                         duration: 200,
                         complete: () =>
-                            $(d_id).animate({opacity: 0}, {
+                            $(dialog).animate({opacity: 0}, {
                                 duration: 250,
                                 complete: () =>
                                     dialog.style.display = 'none'
                                     dialog.style[prop] = val for prop, val of @_state.config.initial
-                                    $(@_state.overlay).animate({opacity: 0}, {
-                                        duration: 300,
-                                        complete: () =>
-                                            @_state.overlay.style.display = 'none'
-                                            @_state.active = false
-                                        }
-                                    )
+                                    @_state.active = false
                                 }
                             )
                         }
@@ -277,7 +271,6 @@ class Modal extends CoreWidget
             Util.get(@_state.trigger_id).removeAttribute('href')
 
             @_state.init = true
-            apptools.events.trigger 'MODAL_READY', @
 
             return @
 

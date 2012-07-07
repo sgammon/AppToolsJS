@@ -4,28 +4,20 @@ class CoreWidgetAPI extends CoreAPI
     @mount = 'widget'
     @events = []
 
-    _init: (apptools) ->
-        apptools.sys.state.add_flag 'widgets'
-        apptools.dev.verbose 'CoreWidget', 'Widget functionality is currently stubbed.'
-        return
+    constructor: (apptools, window) ->
+
+        @_init = (apptools) =>
+            apptools.sys.state.add_flag 'widgets'
+            apptools.dev.verbose 'CoreWidget', 'Widget functionality is currently stubbed.'
+            return
 
 
 class CoreWidget extends CoreObject
 
-    animation:
-        duration: 400
-        easing: null
-        complete: null
+    constructor: () ->
 
-    prepare_overlay: (prefix='apptools') ->
-
-        overlay = document.createElement 'div'
-        overlay.className = 'fixed overlay'
-        overlay.setAttribute 'id', prefix+'-overlay-'+(id = Math.floor(Math.random()*1000))
-        overlay.setAttribute 'data-overlay-id', id
-        overlay.style.opacity = 0
-
-        return overlay
+        @_init = () =>
+            return
 
 
 if @__apptools_preinit?

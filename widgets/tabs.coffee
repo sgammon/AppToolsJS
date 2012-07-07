@@ -35,12 +35,12 @@ class TabsAPI extends CoreAPI
 
         @enable = (tabs) =>
 
-            Util.bind(Util.get(trigger), 'click', tabs.switch, false) for trigger of tabs._state.tabs
+            Util.bind(Util.get(trigger), 'mousedown', tabs.switch, false) for trigger of tabs._state.tabs
             return tabs
 
         @disable = (tabs) =>
 
-            Util.unbind(Util.get(trigger), 'click') for trigger of tabs._state.tabs
+            Util.unbind(Util.get(trigger), 'mousedown') for trigger of tabs._state.tabs
             return tabs
 
         @_init = () =>
@@ -48,7 +48,7 @@ class TabsAPI extends CoreAPI
             tabsets = Util.get 'pre-tabs'
             @enable(@create(tabs)) for tabs in tabsets
 
-            apptools.events.trigger 'TABS_API_READY', @
+            $.apptools.events.trigger 'TABS_API_READY', @
             return @_state.init = true
 
 
@@ -78,8 +78,10 @@ class Tabs extends CoreWidget
             classify: () =>
 
                 target = Util.get(@_state.element_id)
-                triggers = Util.get('a', target) # <a> --> actual 'tab'-looking element
-                tabs = Util.get('div', target) # the content divs
+                tabs = Util.filter(Util.get('div', target), (test=(el) ->       # content div elements
+                    return if el.parentNode is target then true else false
+                ))
+                triggers = Util.filter(Util.get('a', target), test)             # <a> --> actual 'tab'-looking element
 
                 target.style.width = @_state.config.width
                 target.classList.add(cls) for cls in ['relative', 'tabset']
@@ -115,41 +117,61 @@ class Tabs extends CoreWidget
 
         @switch = (e) =>
 
-            console.log('event target: '+e.target);
             @_state.active = true
 
             tabset = Util.get(@_state.element_id)
             currents = Util.get('tab-current', tabset)
-            current = if currents? then Util.get('tab-current', tabset)[0] else (if (_at=@_state.active_tab)? then Util.get(_at) else false)
-            target = Util.get(target_id=(trigger=e.target).getAttribute('id').split('-').splice(1).join('-'))
-            console.log('TARGET_ID: '+target_id+' AND TARGET: '+target)
+            current = if currents? then currents[0] else (if (_at=@_state.active_tab)? then Util.get(_at) else false)
+
+            if e?
+                if e.preventDefault
+                    e.preventDefault()
+                    e.stopPropagation()
+
+                    target = Util.get(target_id=(trigger=e.target).getAttribute('id').split('-').splice(1).join('-'))
+
+                else if e? and e.nodeType
+                    target = e
+                    target_id = e.getAttribute('id')
+
+                else       # assume it's a string ID
+                    target = Util.get(e)
+                    target_id = e
+
+            else
+                target = Util.get(target_id=(Util.get('a', tabset)[0]).getAttribute('id').split('-').splice(1).join('-'))
 
             return @ if current is target # return if current tab selected
 
+            console.log('Switching to tab: '+ target_id)
+
             if current is false    # if no tab selected (first click), select first tab
+                target.classList.add('tab-current')
+                $(target).animate opacity: 1,
+                    duration: 300
+                    complete: () =>
+                        @_state.active = false
 
-                current = Util.get('div', tabset)[0]
-                current.classList.add 'tab-current'
-
-            $(current).animate opacity: 0,
-                duration: 200
-                complete: () =>
-                    current.classList.remove('tab-current')
-                    target.classList.add('tab-current')
-                    @_state.active_tab = target_id
-                    $(target).animate opacity: 1,
-                        duration: 300
-                        complete: () =>
-                            @_state.active = false
+            else
+                $(current).animate opacity: 0,
+                    duration: 200
+                    complete: () =>
+                        current.classList.remove('tab-current')
+                        target.classList.add('tab-current')
+                        @_state.active_tab = target_id
+                        $(target).animate opacity: 1,
+                            duration: 300
+                            complete: () =>
+                                @_state.active = false
 
         @_init = () =>
 
             tabs = @make()
 
-            $(Util.get('a', Util.get(@_state.element_id))[0]).click()
+            @switch()
 
             @_state.init = true
-            apptools.events.trigger 'TABS_READY', @
+            $.apptools.events.trigger 'TABS_READY', @
 
             return @
 
