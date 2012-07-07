@@ -59,7 +59,7 @@ class RPCRequest extends CoreObject
 
         ## AJAX Settings
         @ajax =
-            accepts: 'application/json'
+            accept: 'application/json'
             async: true
             cache: true
             global: true
@@ -244,17 +244,6 @@ class CoreRPCAPI extends CoreAPI
 
                     "X-ServiceTransport": "AppTools/JSONRPC"
 
-        if apptools.sys.libraries.resolve('jQuery') != false
-            # Splice in our custom factory
-            $.ajaxSetup(
-
-                global: true
-                xhr: () =>
-                    return @internals.transports.xhr.factory()
-                headers: @internals.config.headers
-
-            )
-
         # Build internal API
         @rpc =
 
@@ -346,6 +335,20 @@ class CoreRPCAPI extends CoreAPI
             fulfillRPCRequest: (config, request, callbacks, transport='xhr') =>
 
                 apptools.dev.verbose('RPC', 'Fulfill', config, request, callbacks)
+
+                if apptools.sys.libraries.resolve('jQuery') != false
+                    # Splice in our custom factory
+                    $.ajaxSetup(
+
+                        type: 'POST'
+                        accepts: 'application/json'
+                        contentType: 'application/json'
+                        global: true
+                        xhr: () =>
+                            return @internals.transports.xhr.factory()
+                        headers: @internals.config.headers
+
+                    )
 
                 @rpc.lastRequest = request
 
