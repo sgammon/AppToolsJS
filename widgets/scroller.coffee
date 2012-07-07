@@ -62,13 +62,14 @@ class ScrollerAPI extends CoreWidgetAPI
         @_init = () =>
 
             scrollers = Util.get 'pre-scroller'
-            console.log 'SCROLLERS: ', scrollers
             if not Util.is_array scrollers
                 @internal.make(scrollers)
             else
                 @internal.make(scroller) for scroller in scrollers
 
-            return @_state.init = true
+            $.apptools.events.trigger 'SCROLLER_API_READY', @
+            @_state.init = true
+            return @
 
 
 class Scroller extends CoreWidget
@@ -149,7 +150,8 @@ class Scroller extends CoreWidget
             @classify()
 
             @_state.init = true
-            return $.apptools.events.trigger 'SCROLLER_READY', @
+            $.apptools.events.trigger 'SCROLLER_READY', @
+            return @
 
 
 

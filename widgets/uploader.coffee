@@ -51,7 +51,7 @@ class UploaderAPI extends CoreAPI
 
             return if (u = @_state.uploaders_by_id[element_id])? then @_state.uploaders[u] else false
 
-        @_init = () =>
+        @_init = (apptools) =>
 
             uploaders = Util.get('pre-uploader')
             @enable(@create(uploader)) for uploader in uploaders
@@ -239,7 +239,7 @@ class Uploader extends CoreWidget
 
             ) for file in files
 
-        @_init = () =>
+        @_init = (apptools) =>
 
             @_state.boundary = @internal.provision_boundary()
             @_state.init = true

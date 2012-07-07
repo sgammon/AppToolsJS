@@ -48,7 +48,7 @@ class TabsAPI extends CoreAPI
             tabsets = Util.get 'pre-tabs'
             @enable(@create(tabs)) for tabs in tabsets
 
-            apptools.events.trigger 'TABS_API_READY', @
+            $.apptools.events.trigger 'TABS_API_READY', @
             return @_state.init = true
 
 
@@ -171,7 +171,7 @@ class Tabs extends CoreWidget
             @switch()
 
             @_state.init = true
-            apptools.events.trigger 'TABS_READY', @
+            $.apptools.events.trigger 'TABS_READY', @
 
             return @
 

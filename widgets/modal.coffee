@@ -53,10 +53,11 @@ class ModalAPI extends CoreWidgetAPI
         @_init = () =>
 
             modals = Util.get 'pre-modal'
-            @enable(@create(modal, Util.get('a-'+modal.getAttribute('id')))) for modal in modals
+            (_m = @create(modal, (_t = Util.get('a-'+modal.getAttribute('id'))))
+            @enable(_m)) for modal in modals
 
-            apptools.events.trigger 'MODAL_API_READY', @
-            return @_state.init = true
+            @_state.init = true
+            return @
 
 
 class Modal extends CoreWidget
@@ -270,7 +271,6 @@ class Modal extends CoreWidget
             Util.get(@_state.trigger_id).removeAttribute('href')
 
             @_state.init = true
-            apptools.events.trigger 'MODAL_READY', @
 
             return @
 

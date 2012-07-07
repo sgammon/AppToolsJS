@@ -50,7 +50,7 @@ class EditorAPI extends CoreWidgetAPI
             editors = Util.get 'mini-editable'
             @enable(@create(editor)) for editor in editors
 
-            return apptools.events.trigger 'EDITOR_API_READY', @
+            return $.apptools.events.trigger 'EDITOR_API_READY', @
 
 
 class Editor extends CoreWidget

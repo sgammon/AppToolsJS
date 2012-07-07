@@ -401,7 +401,7 @@ class Util
 
                     return callback?.call(@, {queue: q, name: name})
 
-        @_init = () =>
+        @_init = (apptools) =>
             return
 
 

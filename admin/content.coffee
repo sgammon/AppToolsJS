@@ -1,4 +1,4 @@
-class ContentManagementAPI extends CoreAPI
+class ContentManagerAPI extends CoreAPI
 
     constructor: (apptools) ->
 
@@ -771,3 +771,6 @@ class ContentManagementAPI extends CoreAPI
             var t = this;
             that.util.bind($(t), 'click', that.util.wrap(that.edit, t));
         });`
+
+@__apptools_preinit.abstract_base_classes.push ContentManagerAPI
+@__apptools_preinit.deferred_core_modules.push {module: ContentManagerAPI, package: 'admin'}
