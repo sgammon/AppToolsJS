@@ -29,8 +29,7 @@ class ScrollerAPI extends CoreWidgetAPI
             id = scroller._state.element_id
             @_state.scrollers_by_id[id] = @_state.scrollers.push(scroller) - 1
 
-            scroller._init()
-            return scroller
+            return scroller._init()
 
         @destroy = (scroller) =>
 
@@ -61,11 +60,9 @@ class ScrollerAPI extends CoreWidgetAPI
 
         @_init = () =>
 
-            scrollers = Util.get 'pre-scroller'
-            if not Util.is_array scrollers
-                @internal.make(scrollers)
-            else
-                @internal.make(scroller) for scroller in scrollers
+            scrollers = Util.get('pre-scroller') or []
+
+            @create(@enable(scroller)) for scroller in scrollers
 
             $.apptools.events.trigger 'SCROLLER_API_READY', @
             @_state.init = true

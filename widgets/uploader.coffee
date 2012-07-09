@@ -11,12 +11,16 @@ class UploaderAPI extends CoreAPI
             uploaders_by_id: {}
             init: false
 
-        @create = (target) =>
+        @create = (options={}) =>
 
-            options = if target.hasAttribute('data-options') then JSON.parse(target.getAttribute('data-options')) else {}
+            uploader = new Uploader(options)
 
-            uploader = new Uploader(target, options)
-            id = uploader._state.element_id
+            if options.id?
+                id = options.id
+
+            else
+                uploader._state.boundary.match(/^-+(\w+)-+$/)
+                id = RegExp.$1
 
             @_state.uploaders_by_id[id] = @_state.uploaders.push(uploader) - 1
 
@@ -62,15 +66,19 @@ class UploaderAPI extends CoreAPI
 
 class Uploader extends CoreWidget
 
-    constructor: (target, options) ->
+    constructor: (options) ->
 
         @_state =
 
-            element_id: target.getAttribute 'id'
             boundary: null
-
             active: false
             init: false
+
+            uploads:
+                queued: 0
+                finished: 0
+
+            session: null
 
             config:
 
@@ -79,6 +87,10 @@ class Uploader extends CoreWidget
                 banned_extensions: ['.exe']
 
                 max_cache: 15
+
+                endpoints: []
+
+                finish: null
 
             cache:
 
@@ -99,10 +111,12 @@ class Uploader extends CoreWidget
                 return false if Util.in_array(type, @_state.config.banned_types)
                 return true
 
-            finish: @_state.config.finish or (file, xhr) =>
+            finish: (response) =>
 
-                # will eventually be default post-send callback
-                return true
+                if @_state.config.finish?
+                    return @_state.config.finish(response)
+
+                else return response
 
             prep_body: (file, data) =>
 
@@ -156,17 +170,15 @@ class Uploader extends CoreWidget
 
             ready: (file, xhr) =>
 
-                xhr.onreadystatechange = () =>
+                xhr.onreadystatechange = (e) =>
 
                     if xhr.readyState = 4
                         if xhr.status = 200
-                            @internal.update_cache file, xhr, (f, x) =>
-                                @internal.finish(f, x)
+                            @internal.update_cache(file, xhr)
+                            @internal.finish(xhr.response)
+
                         else
-
-                            # ideally we would handle all error cases - for now:
-
-                            return false
+                            return 'XHR finished with status '+xhr.status
 
             send: (file, data, url) =>
 
@@ -183,7 +195,7 @@ class Uploader extends CoreWidget
                 apptools.dev.verbose 'UPLOADER', 'About to upload file: ' + file.name
                 return if !!body then xhr.send body else false
 
-            update_cache: (file, xhr, callback) =>
+            update_cache: (file, xhr) =>
 
                 if (t = @_state.cache.uploads_by_type)[type=file.type]?
                     t[type]++
@@ -193,11 +205,8 @@ class Uploader extends CoreWidget
                 (u = @_state.cache.uploaded).push(name)
                 u = u.splice(l - mx) if (l=u.length) > (mx = @_state.config.max_cache) # eject stalest items from cache
 
-                return callback?.call(@, file, xhr)
 
         @handle = (e) =>
-
-            console.log('EVENT OF TYPE '+e.type+' CAPTURED')
 
             if e.preventDefault
                 e.preventDefault()
@@ -218,28 +227,42 @@ class Uploader extends CoreWidget
         @upload = (e) =>
 
             if e.preventDefault
-                e.preventDefault()
                 e.stopPropagation()
+                files = e.dataTransfer.files
 
-            files = e.dataTransfer.files or []
+            else if Util.is_array(e)
+                files = e
 
-            $.apptools.api.assets.generate_upload_url().fulfill(
+            else if e.type
+                files = [e]
 
-                success: (response) =>
-                    @internal.read file, (e) =>
-                        e.preventDefault()
-                        e.stopPropagation()
+            else files = []
 
-                        f = e.target.file
-                        data = e.target.result
-                        @internal.send(f, data, response.url)
+            process_upload = (f, url) =>
+                @_state.active = true
+                @internal.read f, (ev) =>
+                    ev.preventDefault()
+                    ev.stopPropagation()
 
-                failure: (error) =>
-                    apptools.dev.error 'UPLOADER', 'Upload failed with error: ' + error + ' :('
+                    _f = ev.target.file
+                    data = ev.target.result
+                    @internal.send(_f, data, url)
 
-            ) for file in files
+            $.apptools.api.media.generate_endpoint(
+                    session_id: @_state.session or null
+                    backend: 'blobstore'
+                    file_count: files.length
+                ).fulfill
+                    success: (response) =>
+                        endpoints = response.endpoints
+                        process_upload(file, endpoints[i]) for file, i in files
+                    failure: (error) =>
+                        alert 'Uploader endpoint generation failed.'
 
-        @_init = (apptools) =>
+
+            return @
+
+        @_init = () =>
 
             @_state.boundary = @internal.provision_boundary()
             @_state.init = true

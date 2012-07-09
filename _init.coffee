@@ -46,8 +46,8 @@ class AppTools
                 interfaces: {}      # Installed feature interfaces
                 integrations: []    # Installed library integrations
 
-                add_flag: (flagname) ->
-                    @sys.flags.push flagname
+                add_flag: (flagname) =>
+                    @sys.state.flags.push flagname
 
                 consider_preinit: (preinit) =>
 
@@ -109,14 +109,16 @@ class AppTools
                     ## Mount module
                     if not mountpoint[module_name]?
                         if pass_parent
-                            target_mod = mountpoint[module_name] = new module(@, mountpoint, window)
+                            target_mod = new module(@, mountpoint, window)
+                            mountpoint[module_name] = target_mod
                             @sys.state.modules[module_name] = {module: target_mod, classes: {}}
                         else
-                            target_mod = mountpoint[module_name] = new module(@, window)
+                            target_mod = new module(@, window)
+                            mountpoint[module_name] = target_mod
                             @sys.state.modules[module_name] = {module: target_mod, classes: {}}
 
                     ## Call module init callback, if there is one
-                    module._init?(@)
+                    mountpoint[module_name]._init?(@)
 
                     ## If dev is available, log this
                     if @dev? and @dev.verbose?
