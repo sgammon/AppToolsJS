@@ -64,7 +64,6 @@ class ScrollerAPI extends CoreWidgetAPI
 
             @create(@enable(scroller)) for scroller in scrollers
 
-            $.apptools.events.trigger 'SCROLLER_API_READY', @
             @_state.init = true
             return @
 
@@ -147,7 +146,6 @@ class Scroller extends CoreWidget
             @classify()
 
             @_state.init = true
-            $.apptools.events.trigger 'SCROLLER_READY', @
             return @
 
 

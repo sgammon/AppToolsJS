@@ -11,16 +11,21 @@ class UploaderAPI extends CoreAPI
             uploaders_by_id: {}
             init: false
 
-        @create = (options={}) =>
+        @create = (options) =>
+
+            if not options?
+                options = {}
 
             uploader = new Uploader(options)
 
-            if options.id?
+            if options?.id?
+                # if attached to an element, use element ID
                 id = options.id
 
             else
-                uploader._state.boundary.match(/^-+(\w+)-+$/)
-                id = RegExp.$1
+                # otherwise use unique boundary with '-' trimmed
+                (bound = uploader._state.boundary).match(/^-+(\w+)-+$/)
+                uploader._state.config.id = (id = RegExp.$1)
 
             @_state.uploaders_by_id[id] = @_state.uploaders.push(uploader) - 1
 
@@ -28,7 +33,7 @@ class UploaderAPI extends CoreAPI
 
         @destroy = (uploader) =>
 
-            id = uploader._state.element_id
+            id = uploader._state.config.id
 
             @_state.uploaders.splice(@_state.uploaders_by_id[id], 1)
             delete @_state.uploaders_by_id[id]
@@ -37,7 +42,7 @@ class UploaderAPI extends CoreAPI
 
         @enable = (uploader) =>
 
-            target = Util.get(uploader._state.element_id)
+            target = Util.get(uploader._state.config.id)
             Util.bind(target, ['dragenter', 'dragexit', 'dragleave'], uploader.handle)
             Util.bind(target, 'dragover', Util.debounce(uploader.handle, 200, true))
             Util.bind(target, 'drop', uploader.upload)
@@ -55,10 +60,10 @@ class UploaderAPI extends CoreAPI
 
             return if (u = @_state.uploaders_by_id[element_id])? then @_state.uploaders[u] else false
 
-        @_init = (apptools) =>
+        @_init = () =>
 
             uploaders = Util.get('pre-uploader')
-            @enable(@create(uploader)) for uploader in uploaders
+            @create(id: uploader.getAttribute('id')) for uploader in uploaders if uploaders?
 
             apptools.events.trigger 'UPLOADER_API_READY', @
             return @_state.init = true
@@ -97,7 +102,7 @@ class Uploader extends CoreWidget
                 uploads_by_type: {}         # @[filetype] returns count
                 uploaded: []                # max_cache is max length
 
-        @_state.config = Util.extend(true, @_state.config, options)
+        @_state.config = Util.extend(@_state.config, options)
 
         @internal =
 
@@ -205,6 +210,7 @@ class Uploader extends CoreWidget
                 (u = @_state.cache.uploaded).push(name)
                 u = u.splice(l - mx) if (l=u.length) > (mx = @_state.config.max_cache) # eject stalest items from cache
 
+        @_state.boundary = @internal.provision_boundary()
 
         @handle = (e) =>
 
@@ -227,6 +233,7 @@ class Uploader extends CoreWidget
         @upload = (e) =>
 
             if e.preventDefault
+                e.preventDefault()
                 e.stopPropagation()
                 files = e.dataTransfer.files
 
@@ -248,8 +255,15 @@ class Uploader extends CoreWidget
                     data = ev.target.result
                     @internal.send(_f, data, url)
 
+            $.apptools.api.assets.generate_upload_url().fulfill
+                success: (response) =>
+                    process_upload(files[0], response.url)
+                failure: (error) =>
+                    alert 'Uploader endpoint generation failed.'
+
+            ###
             $.apptools.api.media.generate_endpoint(
-                    session_id: @_state.session or null
+                    session_id: @_state.session
                     backend: 'blobstore'
                     file_count: files.length
                 ).fulfill
@@ -258,16 +272,13 @@ class Uploader extends CoreWidget
                         process_upload(file, endpoints[i]) for file, i in files
                     failure: (error) =>
                         alert 'Uploader endpoint generation failed.'
-
+            ###
 
             return @
 
         @_init = () =>
 
-            @_state.boundary = @internal.provision_boundary()
             @_state.init = true
-
-            apptools.events.trigger 'UPLOADER_READY', @
 
             return @
 

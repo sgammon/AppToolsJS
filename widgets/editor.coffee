@@ -48,10 +48,9 @@ class EditorAPI extends CoreWidgetAPI
         @_init = () =>
 
             editors = Util.get 'mini-editable'
-            @enable(@create(editor)) for editor in editors
+            @enable(@create(editor)) for editor in editors if editors?
 
-            return $.apptools.events.trigger 'EDITOR_API_READY', @
-
+            return @
 
 class Editor extends CoreWidget
 
@@ -182,7 +181,6 @@ class Editor extends CoreWidget
             document.body.appendChild pane
 
             @_state.init = true
-            $.apptools.events.trigger 'EDITOR_READY', @
             return @
 
 

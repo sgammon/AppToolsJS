@@ -108,6 +108,7 @@ class Util
         return node.parentNode.removeChild(node)
 
     get: (query, node=document) => # ID, class or tag
+        return null if not query?
         return query if query.nodeType
         return if (id = document.getElementById(query))? then id else (if (cls = node.getElementsByClassName(query)).length > 0 then @to_array(cls) else (if (tg = node.getElementsByTagName(query)).length > 0 then @to_array(tg) else null))
 
@@ -130,6 +131,7 @@ class Util
 
     # Events/timing/animation
     bind: (element, event, fn, prop=false) =>
+        return false if not element?
         if @is_array element # can accept multiple els for 1 event [el1, el2]
             @bind(el, event, fn, prop) for el in element
 
@@ -143,6 +145,7 @@ class Util
             return element.addEventListener event, fn, prop
 
     unbind: (element, event) =>
+        return false if not element?
         if @is_array element
             @unbind(el, event) for el in element
 
@@ -408,4 +411,4 @@ class Util
 @__apptools_preinit.abstract_base_classes.push Util
 @__apptools_preinit.deferred_core_modules.push {module: Util}
 
-Util = window.Util = new Util()
+window.Util = Util = new Util()

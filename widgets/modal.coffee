@@ -54,7 +54,7 @@ class ModalAPI extends CoreWidgetAPI
 
             modals = Util.get 'pre-modal'
             (_m = @create(modal, (_t = Util.get('a-'+modal.getAttribute('id'))))
-            @enable(_m)) for modal in modals
+            @enable(_m)) for modal in modals if modals?
 
             @_state.init = true
             return @

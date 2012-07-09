@@ -79,8 +79,7 @@ class Accordion extends CoreWidget
     _init: () ->
 
         @state.init = true
-        return $.apptools.events.trigger 'ACCORDION_READY', @
-
+        return @
 
 class AccordionAPI extends CoreWidgetAPI
 
@@ -132,8 +131,7 @@ class AccordionAPI extends CoreWidgetAPI
                 accordion = if axis? then @create accordion, axis: axis else @create accordion
                 accordion = @enable accordion
 
-        return apptools.events.trigger 'ACCORDION_API_READY', @
-
+        return @
 
 
 @__apptools_preinit.abstract_base_classes.push Accordion

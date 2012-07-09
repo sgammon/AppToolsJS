@@ -1,16 +1,6 @@
 ## AppTools Widget Core
 class CoreWidgetAPI extends CoreAPI
 
-    @mount = 'widget'
-    @events = []
-
-    constructor: (apptools, window) ->
-
-        @_init = (apptools) =>
-            apptools.sys.state.add_flag 'widgets'
-            apptools.dev.verbose 'CoreWidget', 'Widget functionality is currently stubbed.'
-            return
-
 
 class CoreWidget extends CoreObject
 
