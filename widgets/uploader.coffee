@@ -255,13 +255,7 @@ class Uploader extends CoreWidget
                     data = ev.target.result
                     @internal.send(_f, data, url)
 
-            $.apptools.api.assets.generate_upload_url().fulfill
-                success: (response) =>
-                    process_upload(files[0], response.url)
-                failure: (error) =>
-                    alert 'Uploader endpoint generation failed.'
 
-            ###
             $.apptools.api.media.generate_endpoint(
                     session_id: @_state.session
                     backend: 'blobstore'
@@ -272,7 +266,7 @@ class Uploader extends CoreWidget
                         process_upload(file, endpoints[i]) for file, i in files
                     failure: (error) =>
                         alert 'Uploader endpoint generation failed.'
-            ###
+
 
             return @
 
