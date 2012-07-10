@@ -240,7 +240,7 @@ class Uploader extends CoreWidget
             else if Util.is_array(e)
                 files = e
 
-            else if e.type
+            else if e.size
                 files = [e]
 
             else files = []
