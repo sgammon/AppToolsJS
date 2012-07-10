@@ -43,9 +43,7 @@ class UploaderAPI extends CoreAPI
         @enable = (uploader) =>
 
             target = Util.get(uploader._state.config.id)
-            Util.bind(target, ['dragenter', 'dragexit', 'dragleave'], uploader.handle)
-            Util.bind(target, 'dragover', Util.debounce(uploader.handle, 200, true))
-            Util.bind(target, 'drop', uploader.upload)
+            target.addEventListener('drop', uploader.upload, false)
 
             return uploader
 
@@ -63,7 +61,12 @@ class UploaderAPI extends CoreAPI
         @_init = () =>
 
             uploaders = Util.get('pre-uploader')
-            @create(id: uploader.getAttribute('id')) for uploader in uploaders if uploaders?
+            _i = (_u) =>
+                _u = @create(_u)
+                if Util.is_id(_u._state.config.id)
+                    _u = @enable(_u)
+
+            _i(id: uploader.getAttribute('id')) for uploader in uploaders if uploaders?
 
             apptools.events.trigger 'UPLOADER_API_READY', @
             return @_state.init = true

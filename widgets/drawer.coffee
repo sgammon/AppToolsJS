@@ -52,7 +52,7 @@ class Drawer extends CoreWidget
 
             if e.preventDefault
                 e.preventDefault()
-                e.stopPropagation()
+                e.stopPropagation
 
             el = Util.get(@_state.element_id)
             align = @_state.config.align
