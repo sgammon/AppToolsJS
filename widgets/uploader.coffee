@@ -260,16 +260,17 @@ class Uploader extends CoreWidget
 
             if not (e = @_state.config.endpoints)? or e.length < files.length
                 if not e?
-                    e = []
-                diff = files.length - e.length
+                    @_state.config.endpoints = []
+
+                diff = files.length - @_state.config.endpoints.length
 
                 $.apptools.api.media.generate_endpoint(
-                        session_id: @_state.session
-                        backend: 'blobstore'
-                        file_count: diff
+                    session_id: @_state.session
+                    backend: 'blobstore'
+                    file_count: diff
                 ).fulfill
                     success: (response) =>
-                        @_state.config.endpoints = response.endpoints
+                        @_state.config.endpoints.push(endpt) for endpt in response.endpoints
                     failure: (error) =>
                         alert 'Uploader endpoint generation failed.'
 
