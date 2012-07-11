@@ -20,7 +20,7 @@ class UploaderAPI extends CoreAPI
             if not options?
                 options = {}
 
-            uploader = if not kind? then new Uploader(options) else if kind is 'data' then new DataURLUploader(options) else if kind is 'array' then new ArrayBufferUploader(options)
+            uploader = if not kind? then new Uploader(options) else if kind is 'data' then new DataURLUploader(options) else if kind is 'array' then new ArrayBufferUploader(options) else new BinaryUploader(options)
 
             if options?.id?
                 # if attached to an element, use element ID
