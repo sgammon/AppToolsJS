@@ -258,18 +258,22 @@ class Uploader extends CoreWidget
                     data = ev.target.result
                     @internal.send(_f, data, url)
 
+            if not (e = @_state.config.endpoints)? or e.length < files.length
+                if not e?
+                    e = []
+                diff = files.length - e.length
 
-            $.apptools.api.media.generate_endpoint(
-                    session_id: @_state.session
-                    backend: 'blobstore'
-                    file_count: files.length
-                ).fulfill
-                    success: (response) =>
-                        endpoints = response.endpoints
-                        process_upload(file, endpoints[i]) for file, i in files
-                    failure: (error) =>
-                        alert 'Uploader endpoint generation failed.'
+                $.apptools.api.media.generate_endpoint(
+                        session_id: @_state.session
+                        backend: 'blobstore'
+                        file_count: diff
+                    ).fulfill
+                        success: (response) =>
+                            @_state.config.endpoints = response.endpoints
+                        failure: (error) =>
+                            alert 'Uploader endpoint generation failed.'
 
+            process_upload(file, @_state.config.endpoints[i]) for file, i in files
 
             return @
 
