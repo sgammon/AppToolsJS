@@ -125,9 +125,9 @@ class Util
         return element.classList?.contains?(cls) or element.className && new RegExp('\\s*'+cls+'\\s*').test element.className
 
     is_id: (str) =>
-        if str.charAt(0) is '#' or document.getElementById str isnt null
-            return true
-        else false
+        return true if str.charAt(0) is '#'
+        return true if document.getElementById(str) isnt null
+        return false
 
     # Events/timing/animation
     bind: (element, event, fn, prop=false) =>

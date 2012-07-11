@@ -33,7 +33,7 @@ class AccordionAPI extends CoreWidgetAPI
 
         @enable = (accordion) =>
 
-            (trigger.addEventListener('click', accordion.fold, false) if (trigger = Util.get('a-'+fold))? and trigger.nodeType) for fold in accordion._state.folds
+            (trigger.addEventListener('click', accordion.fold, false) if (trigger = Util.get('a-'+f))? and trigger.nodeType) for f in accordion._state.folds
             return accordion
 
         @disable = (accordion) =>
@@ -63,6 +63,7 @@ class Accordion extends CoreWidget
         @_state =
             element_id: target.getAttribute('id')
             folds: []
+            current_fold: null
             active: false
             init: false
 
@@ -70,22 +71,22 @@ class Accordion extends CoreWidget
 
                 axis: 'vertical'
 
-                horizontal:
+                vertical:
                     closed:
                         height: '0px'
                         opacity: 0
 
                     opened:
-                        height: '200px'
+                        height: '100px'
                         opacity: 1
 
-                vertical:
+                horizontal:
                     closed:
                         width: '0px'
                         opacity: 0
 
                     opened:
-                        width: '200px'
+                        width: '300px'
                         opacity: 1
 
         @_state.config = Util.extend(true, @_state.config, options)
@@ -107,6 +108,23 @@ class Accordion extends CoreWidget
 
                 @_state.folds.push(fold_id)
 
+            find_match: (element_array) =>
+
+                ## if more than 2 '.current-fold' els, find match & remove class from other els
+                base_matches = {}
+                matched = null
+
+                (base_matches[base = element.getAttribute('id').split('-').pop()] ?= []).push(element) for element in element_array
+
+                (delete base_matches[k] if v.length < 2) for k, v of base_matches
+
+                matched ?= match for key, match of base_matches     # first matched pair is the lucky one!
+
+                el.classList.remove('current-fold') for el in element_array
+                elem.classList.add('current-fold') for elem in matched
+
+                return matched
+
 
         @fold = (e) =>
 
@@ -115,13 +133,16 @@ class Accordion extends CoreWidget
                 e.stopPropagation()
 
             trigger = e.target
-            target_div = Util.get(trigger.getAttribute('id').split('-').splice(1).join('-'))
+            target_div = Util.get(target_id = trigger.getAttribute('id').split('-').splice(1).join('-'))
             current = false
+            same = false
 
             accordion = Util.get(@_state.element_id)
 
             if (c = Util.get('current-fold', accordion))?
+
                 c = Util.filter(c, test = (el) -> return el.parentNode is accordion)            # get only top-level divs/anchors marked 'current-fold'
+                c = @internal.find_match(c) if c.length > 2                                     # and only 1 pair
 
                 current_div = Util.filter(c, (x) -> return x.tagName.toLowerCase() is 'div')[0]
                 current_a = Util.filter(c, (x) -> return x.tagName.toLowerCase() is 'a')[0]
@@ -135,34 +156,39 @@ class Accordion extends CoreWidget
             open_anim = (close_anim = Util.prep_animation())
 
             if current
+                same = current_div is target_div
                 close_anim.complete = () =>
-                    closed = if current_div isnt target then current_div else target_div
-                    closed.className.replace(/block/, 'none')
-                    current_a.classList.remove('current-fold')
+                    closed_div = if current_div isnt target_div then current_div else target_div
+                    closed_div.classList.remove('block')
+                    closed_div.classList.add('none')
+                    closed_div.classList.remove('current-fold')
+                    Util.get('a-'+closed_div.getAttribute('id')).classList.remove('current-fold')
+
+                    @_state.active = false
+                    return @
+
+            open_anim.complete = () =>
                     trigger.classList.add('current-fold')
+                    target_div.classList.add('current-fold')
 
                     @_state.active = false
                     return @
 
-            else
-                open_anim.complete = () =>
-                    trigger.classList.add('current')
-
-                    @_state.active = false
-                    return @
+            target_div.style[prop] for prop of closed
 
             if Util.has_class(target_div, 'none')
+                target_div.classList.remove('none')
+                target_div.classList.add('block')
 
-                if current
-                    current_div.classList.remove('current-fold')
+            if current
                     $(current_div).animate(closed, close_anim)
 
-                target_div.style[prop] for prop in closed
-                target_div.className.replace(/none/, 'block')
+            if not same
+                $(target_div).animate(opened, open_anim)
 
-            $(target_div).animate(opened, open_anim)
+            @_state.current_fold = target_id
 
-            @_state.current_fold = target_div.getAttribute('id')
+            return @
 
 
         @_init = () =>
