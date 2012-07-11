@@ -267,11 +267,11 @@ class Uploader extends CoreWidget
                         session_id: @_state.session
                         backend: 'blobstore'
                         file_count: diff
-                    ).fulfill
-                        success: (response) =>
-                            @_state.config.endpoints = response.endpoints
-                        failure: (error) =>
-                            alert 'Uploader endpoint generation failed.'
+                ).fulfill
+                    success: (response) =>
+                        @_state.config.endpoints = response.endpoints
+                    failure: (error) =>
+                        alert 'Uploader endpoint generation failed.'
 
             process_upload(file, @_state.config.endpoints[i]) for file, i in files
 
