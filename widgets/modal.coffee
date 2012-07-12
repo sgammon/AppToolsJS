@@ -11,16 +11,16 @@ class ModalAPI extends CoreWidgetAPI
             modals_by_id: {}
             init: false
 
-        @create = (target, trigger) =>
+        @create = (target, trigger, callback, options) =>
 
-            options = if target.hasAttribute('data-options') then JSON.parse(target.getAttribute('data-options')) else {}
+            options ?= if target.hasAttribute('data-options') then JSON.parse(target.getAttribute('data-options')) else {}
 
             modal = new Modal(target, trigger, options)
-            id = modal._state.element_id
+            id = modal._state.cached_id
 
             @_state.modals_by_id[id] = @_state.modals.push(modal) - 1
 
-            return modal._init()
+            return if callback? then callback.call(@, modal._init()) else modal._init()
 
         @destroy = (modal) =>
 
@@ -48,7 +48,7 @@ class ModalAPI extends CoreWidgetAPI
 
         @get = (element_id) =>
 
-            return @_state.modals_by_id[element_id] or false
+            return if (index = @_state.modals_by_id[element_id])? then @_state.modals[index] else false
 
         @_init = () =>
 
@@ -100,28 +100,31 @@ class Modal extends CoreWidget
                 ].join('\n')
 
                 rounded: true
-
+                calc: null
                 padding: null
 
-        @_state.config = Util.extend(true, @_state.config, options)
+        @_state.config = Util.extend(@_state.config, options)
 
         @internal =
 
             calc: () =>
                 # returns prepared modal property object
-                css = {}
-                r = @_state.config.ratio
-                wW = window.innerWidth
-                wH = window.innerHeight
-                dW = Math.floor r.x*wW
-                dH = Math.floor r.y*wH
+                if @_state.config.calc?
+                    return @_state.config.calc()
+                else
+                    css = {}
+                    r = @_state.config.ratio
+                    wW = window.innerWidth
+                    wH = window.innerHeight
+                    dW = Math.floor r.x*wW
+                    dH = Math.floor r.y*wH
 
-                css.width = dW+'px'
-                css.height = dH+'px'
-                css.left = Math.floor (wW-dW)/2
-                css.top = Math.floor (wH-dH)/2
+                    css.width = dW+'px'
+                    css.height = dH+'px'
+                    css.left = Math.floor (wW-dW)/2
+                    css.top = Math.floor (wH-dH)/2
 
-                return css
+                    return css
 
             classify: (element, method) =>
 
@@ -161,6 +164,7 @@ class Modal extends CoreWidget
             close_x = Util.get 'modal-close'
             fade = Util.get 'modal-fade'
             id = @_state.cached_id
+            pre = Util.get(id)
 
             dialog.classList.add dialog.getAttribute 'id'
             dialog.setAttribute 'id', id+'-modal-dialog'
@@ -169,6 +173,8 @@ class Modal extends CoreWidget
 
             content.classList.add content.getAttribute 'id'
             content.setAttribute 'id', id+'-modal-content'
+            content.style[prop] = val for prop, val of pre.style
+            content.style.opacity = 1
             content.style.height = @internal.calc().height
             content.innerHTML = (t = Util.get(id)).innerHTML
 

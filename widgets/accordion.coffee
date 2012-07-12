@@ -50,7 +50,7 @@ class AccordionAPI extends CoreWidgetAPI
             accordions = Util.get 'pre-accordion'
             @enable(@create(accordion)) for accordion in accordions if accordions?
 
-            apptools.events.trigger 'ACCORDION_READY', @
+            apptools.events.trigger 'ACCORDION_API_READY', @
             @_state.init = true
 
             return @
@@ -77,7 +77,7 @@ class Accordion extends CoreWidget
                         opacity: 0
 
                     opened:
-                        height: 'auto'
+                        height: '150px'
                         opacity: 1
 
                 horizontal:
@@ -198,10 +198,10 @@ class Accordion extends CoreWidget
             @internal.register_fold(link) for link in links if links?
 
             current_fold = if (c = Util.filter(Util.filter(Util.get('current', accordion), (x)-> return x.tagName.toLowerCase() is 'a'), test))? then c[0] else null
-            if current_fold?
+            ###if current_fold?
                 e = {}
                 e.target = current_fold
-                @fold(e)
+                @fold(e)###
 
             @_state.init = true
             return @

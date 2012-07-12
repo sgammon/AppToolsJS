@@ -66,21 +66,21 @@ class Editor extends CoreWidget
             config:
                 bundles:
                     plain:
-                        save: () -> return @save()
+                        save: () => return @save()
                     basic:
-                        b: () -> document.execCommand 'bold'
-                        u: () -> document.execCommand 'underline'
-                        i: () -> document.execCommand 'italic'
-                        clear: () -> document.execCommand 'removeFormat'
-                        undo: () -> document.execCommand 'undo'
-                        redo: () -> document.execCommand 'redo'
-                        cut: () -> document.execCommand 'cut'
-                        paste: () -> document.execCommand 'paste'
+                        b: () => document.execCommand 'bold'
+                        u: () => document.execCommand 'underline'
+                        i: () => document.execCommand 'italic'
+                        clear: () => document.execCommand 'removeFormat'
+                        undo: () => document.execCommand 'undo'
+                        redo: () => document.execCommand 'redo'
+                        cut: () => document.execCommand 'cut'
+                        paste: () => document.execCommand 'paste'
 
                     rich:
-                        h1: () -> document.execCommand 'heading', false, 'h1'
-                        h2: () -> document.execCommand 'heading', false, 'h2'
-                        h3: () -> document.execCommand 'heading', false, 'h3'
+                        h1: () => document.execCommand 'heading', false, 'h1'
+                        h2: () => document.execCommand 'heading', false, 'h2'
+                        h3: () => document.execCommand 'heading', false, 'h3'
                         fontColor: () =>
                             c = Util.toHex prompt 'Please enter hex (#000000) or RGB (rgb(0,0,0)) values.'
                             sel = document.selection() or window.getSelection()
@@ -89,11 +89,11 @@ class Editor extends CoreWidget
                             s = prompt 'Please enter desired numerical pt size (i.e. 10)'
                             sel = document.selection() or window.getSelection()
                             document.execCommand 'insertHTML', false, '<span style="font-size: '+s+';">'+sel+'</span>'
-                        left: () -> document.execCommand 'justifyLeft'
-                        right: () -> document.execCommand 'justifyRight'
-                        center: () -> document.execCommand 'justifyCenter'
-                        indent: () -> document.execCommand 'indent'
-                        outdent: () -> document.execCommand 'outdent'
+                        left: () => document.execCommand 'justifyLeft'
+                        right: () => document.execCommand 'justifyRight'
+                        center: () => document.execCommand 'justifyCenter'
+                        indent: () => document.execCommand 'indent'
+                        outdent: () => document.execCommand 'outdent'
                         link: () =>
                             t = document.selection() or window.getSelection()
                             if t? and t.match ///^http|www///
@@ -105,7 +105,7 @@ class Editor extends CoreWidget
                             l = _t or prompt 'What URL do you want to link to? (http://www...)'
                             document.execCommand 'insertHTML', false, '<a href="'+Util.strip_script l+'">'+t+'</a>'
 
-                bundle: 'rich'
+                bundle: 'plain'
 
                 width: 150
 
@@ -152,18 +152,22 @@ class Editor extends CoreWidget
             $('#'+@_state.pane_id).animate opacity: 0, (Util.prep_animation())
             return @
 
-        @edit = () =>
+        @edit = (e) =>
+
+            if e.preventDefault
+                e.preventDefault()
+                e.stopPropagation()
 
             @show()
             (el = Util.get(@_state.element_id)).contentEditable = true
             @_state.active = true
 
-            Util.bind(el, 'dblclick', @save)
+            Util.bind(document.body, 'dblclick', @save)
             el.focus()
 
             return @
 
-        @save = () =>
+        @save = (e) =>
 
             console.log('Saving...')
 
@@ -171,7 +175,7 @@ class Editor extends CoreWidget
             (el = Util.get(@_state.element_id)).contentEditable = false
             @_state.active = false
 
-            Util.unbind(el, 'dblclick')
+            Util.unbind(document.body, 'dblclick')
 
             return @
 

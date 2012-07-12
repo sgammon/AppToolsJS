@@ -93,9 +93,7 @@ class Uploader extends CoreWidget
             active: false
             init: false
 
-            uploads:
-                queued: 0
-                finished: 0
+            queued: 0
 
             session: null
 
@@ -133,7 +131,7 @@ class Uploader extends CoreWidget
             finish: (response) =>
 
                 if @_state.config.finish?
-                    return @_state.config.finish(response)
+                    return @_state.config.finish.call(@, response)
 
                 else return response
 
@@ -166,7 +164,7 @@ class Uploader extends CoreWidget
                         percent = Math.floor (ev.loaded/ev.total)*100
 
                         # need upload UI before I know what goes here
-                        return percent
+                        console.log(percent)
 
             provision_boundary: () =>
 
@@ -189,15 +187,19 @@ class Uploader extends CoreWidget
 
             ready: (file, xhr) =>
 
-                xhr.onreadystatechange = (e) =>
+                xhr.onreadystatechange = () =>
 
-                    if xhr.readyState = 4
-                        if xhr.status = 200
-                            @internal.update_cache(file, xhr)
-                            @internal.finish(xhr.response)
+                    if xhr.readyState is 4 and xhr.status is 200
 
-                        else
-                            return 'XHR finished with status '+xhr.status
+                        response = xhr.responseText
+                        @internal.update_cache(file, xhr)
+                        return @internal.finish(JSON.parse(response))
+
+                    else if xhr.readyState is 4
+                        return 'XHR send finished with status '+xhr.status
+
+                    else
+                        return 'XHR send failed at readyState '+xhr.readyState
 
             send: (file, data, url) =>
 
@@ -215,6 +217,10 @@ class Uploader extends CoreWidget
                 return if !!body then xhr.send body else false
 
             update_cache: (file, xhr) =>
+
+                remaining = @_state.queued--
+
+                @_state.config.endpoints = [] if remaining is 0
 
                 if (t = @_state.cache.uploads_by_type)[type=file.type]?
                     t[type]++
@@ -304,6 +310,7 @@ class Uploader extends CoreWidget
                     failure: (error) =>
                         alert 'Uploader endpoint generation failed.'
 
+            @_state.queued = files.length
             process_upload(file, @_state.config.endpoints[i]) for file, i in files
 
             return @

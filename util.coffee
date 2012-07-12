@@ -63,14 +63,15 @@ class Util
     sort: null
 
     # DOM checks/manipulation
-    create_element_string: (tag, attrs) =>
+    create_element_string: (tag, attrs, separator='*') =>
+
         no_close = ['area', 'base', 'basefont', 'br', 'col', 'frame', 'hr', 'img', 'input', 'link']
         tag = tag.toLowerCase()
 
         el_str = '<' + tag
         el_str += ' ' + k + '="' + v + '"' for k, v of attrs
         el_str += '>'
-        el_str += '</' + tag + '>' if not @in_array(tag, no_close)
+        el_str += separator + '</' + tag + '>' if not @in_array(tag, no_close)
 
         return el_str
 

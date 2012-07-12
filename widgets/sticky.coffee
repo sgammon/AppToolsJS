@@ -7,14 +7,27 @@ class StickyAPI extends CoreAPI
 
     constructor: (apptools, widget, window) ->
 
-        @create = (sticky) =>
+        @_state =
+            stickies: []
+            stickies_by_id: {}
+            init: false
+
+        @create = (target) =>
+
+            options = if target.hasAttribute('data-options') then JSON.parse(target.getAttribute('data-options')) else {}
+
+            sticky = new Sticky(target, options)
+            id = sticky._state.element_id
+
+            @_state.stickies_by_id[id] = @_state.stickies.push(sticky) - 1
+
+            return sticky._init()
 
         @destroy = (sticky) =>
 
         @enable = (sticky) =>
 
-            element = Util.get(sticky._state.element_id)
-            Util.bind(window, 'scroll', Util.wrap(Util.throttle(sticky.refresh), element))
+            Util.bind(window, 'scroll', Util.debounce(sticky.refresh, 15, false))
 
             return sticky
 
@@ -24,7 +37,21 @@ class StickyAPI extends CoreAPI
 
             return sticky
 
+        @get = (element_id) =>
+
+            index = @stickies_by_id[element_id]
+
+            return @stickies[index]
+
         @_init = () =>
+
+            stickies = Util.get('pre-sticky')
+            @enable(@create(sticky)) for sticky in stickies if stickies?
+
+            apptools.events.trigger 'STICKY_API_READY', @
+            @_state.init = true
+
+            return @
 
 
 class Sticky extends CoreWidget
@@ -38,51 +65,86 @@ class Sticky extends CoreWidget
             init: false
 
             config:
-                axis: 'vertical'
-                target_offset: 0
+                side: 'top'
+
 
             cache:
-                original_offset: Util.get_offset(target)
+                original_offset: null
                 past_offset: null
                 classes: null
-                style: null
+                style: {}
 
         @_state.config = Util.extend(true, @_state.config, options)
 
-        @refresh = (el) =>
+        @refresh = () =>
 
-            offset_side = if @_state.config.axis is 'vertical' then 'top' else 'left'
+            el = document.getElementById(@_state.element_id)
+            console.log('[STICKY]', 'REFRESH METHOD HIT!')
 
-            current = (c=Util.get_offset(el))[offset_side]
-            past = @_state.cache.past_offset[offset_side] or (orig = @_state.cache.original_offset[offset_side]) or false
-            target = @_state.config.target_offset
+            offset_side = @_state.config.side
+            window_offset = if offset_side is 'top' then window.scrollY else window.scrollX
+            past_offset = @_state.cache.past_offset or 0
 
-            diff = if (_po = !!past) then current - past else false
+            @_state.cache.past_offset = window_offset
 
-            return false if (_d = +diff) is 0      # either no element or scrolled on the other axis
+            distance = @_state.cache.original_offset[offset_side] - 5
 
-            if _po and _d > 0                       # scrolled up or left
+            achieved = window_offset - distance
+            scroll = window_offset - past_offset
 
-                @unstick(el, offset_side) if current >= orig
+            if scroll > 0                   # we scrolled down
+                if @_state.active or achieved < 0
+                    return false
 
-            if _po and _d < 0                       # scrolled down or right
+                else if achieved > 0
+                    return @stick()
 
-                @stick(el, offset_side) if current <= 0
+            else if scroll < 0              # scrolled up
+                if not @_state.active or achieved > 0
+                    return false
 
-            @_state.cache.past_offset = c
+                else if achieved < 0
+                    return @unstick()
+
+            else return false
 
 
-        @stick = (el, side) =>
+        @stick = () =>
+
+            @_state.active = true
+
+            el = document.getElementById(@_state.element_id)
 
             @_state.cache.classes = el.className
-            @_state.cache.style = el.style
+            @_state.cache.style[prop] = val for prop, val of el.style
 
             el.classList.add 'fixed'
-            el.style[side] = @_state.config.target_offset
+            el.style.top = -5 + 'px'
+            el.style.left = @_state.cache.original_offset.left + 'px'
 
-        @unstick = (el) =>
+            return @
 
-            el.className = @_state.cache.classes
-            el.style = @_state.cache.style
+        @unstick = () =>
+
+            el = document.getElementById(@_state.element_id)
+
+            el.classList.remove 'fixed'
+            el.style.left = ''
+            el.style.top = '-170px'
+            el.style.right = '5%'
+
+            @_state.active = false
+            return @
 
         @_init = () =>
+
+            @_state.cache.original_offset = Util.get_offset(Util.get(@_state.element_id))
+
+            @_state.init = true
+            return @
+
+
+
+@__apptools_preinit.abstract_base_classes.push Sticky
+@__apptools_preinit.abstract_base_classes.push StickyAPI
+@__apptools_preinit.deferred_core_modules.push {module: StickyAPI, package: 'widgets'}
