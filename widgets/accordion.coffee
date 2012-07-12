@@ -108,23 +108,6 @@ class Accordion extends CoreWidget
 
                 @_state.folds.push(fold_id)
 
-            find_match: (element_array) =>
-
-                ## if more than 2 '.current-fold' els, find match & remove class from other els
-                base_matches = {}
-                matched = null
-
-                (base_matches[base = element.getAttribute('id').split('-').pop()] ?= []).push(element) for element in element_array
-
-                (delete base_matches[k] if v.length < 2) for k, v of base_matches
-
-                matched ?= match for key, match of base_matches     # first matched pair is the lucky one!
-
-                el.classList.remove('current-fold') for el in element_array
-                elem.classList.add('current-fold') for elem in matched
-
-                return matched
-
 
         @fold = (e) =>
 
@@ -134,19 +117,21 @@ class Accordion extends CoreWidget
 
             trigger = e.target
             target_div = Util.get(target_id = trigger.getAttribute('id').split('-').splice(1).join('-'))
+            current_fold = Util.get(@_state.current_fold) or false
             current = false
-            same = false
+            same = target_div is current_fold
 
             accordion = Util.get(@_state.element_id)
 
-            if (c = Util.get('current-fold', accordion))?
+            [curr_tabs, block_tabs] = [Util.get('current-fold', accordion), Util.get('block', accordion)]
 
-                c = Util.filter(c, test = (el) -> return el.parentNode is accordion)            # get only top-level divs/anchors marked 'current-fold'
-                c = @internal.find_match(c) if c.length > 2                                     # and only 1 pair
+            (if tabs?
+                tabs = Util.filter(tabs, (el) -> return el.parentNode is accordion)) for tabs in [curr_tabs, block_tabs]
 
-                current_div = Util.filter(c, (x) -> return x.tagName.toLowerCase() is 'div')[0]
-                current_a = Util.filter(c, (x) -> return x.tagName.toLowerCase() is 'a')[0]
+            unique_tabs = curr_tabs
+            (unique_tabs.push(tab) if not Util.in_array(tab, unique_tabs)) for tab in block_tabs if block_tabs
 
+            if unique_tabs?
                 current = true
 
             @_state.active = true
@@ -155,22 +140,15 @@ class Accordion extends CoreWidget
             closed = @_state.config[axis].closed
             open_anim = (close_anim = Util.prep_animation())
 
-            if current
-                same = current_div is target_div
-                close_anim.complete = () =>
-                    closed_div = if current_div isnt target_div then current_div else target_div
-                    closed_div.classList.remove('block')
-                    closed_div.classList.add('none')
-                    closed_div.classList.remove('current-fold')
-                    Util.get('a-'+closed_div.getAttribute('id')).classList.remove('current-fold')
-
-                    @_state.active = false
-                    return @
+            ($(open_tab).animate(closed,
+                duration: 400
+                complete: () =>
+                    open_tab.classList.remove(cls) for cls in ['current-fold', 'block']
+                    open_tab.classList.add('none')
+            )) for open_tab in unique_tabs if unique_tabs?
 
             open_anim.complete = () =>
-                    trigger.classList.add('current-fold')
                     target_div.classList.add('current-fold')
-
                     @_state.active = false
                     return @
 
@@ -179,9 +157,6 @@ class Accordion extends CoreWidget
             if Util.has_class(target_div, 'none')
                 target_div.classList.remove('none')
                 target_div.classList.add('block')
-
-            if current
-                    $(current_div).animate(closed, close_anim)
 
             if not same
                 $(target_div).animate(opened, open_anim)
@@ -194,14 +169,13 @@ class Accordion extends CoreWidget
         @_init = () =>
 
             accordion = Util.get(@_state.element_id)
-            links = Util.filter(Util.get('a', accordion), (test=(el) -> return if el.parentNode is accordion then true else false))
+            links = Util.filter(Util.get('a', accordion), (el) -> return el.parentNode is accordion)
             @internal.register_fold(link) for link in links if links?
 
-            current_fold = if (c = Util.filter(Util.filter(Util.get('current', accordion), (x)-> return x.tagName.toLowerCase() is 'a'), test))? then c[0] else null
-            ###if current_fold?
+            if current_fold?
                 e = {}
-                e.target = current_fold
-                @fold(e)###
+                e.target = links[0]
+                @fold(e)
 
             @_state.init = true
             return @

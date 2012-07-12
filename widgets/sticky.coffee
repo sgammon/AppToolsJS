@@ -87,7 +87,7 @@ class Sticky extends CoreWidget
 
             @_state.cache.past_offset = window_offset
 
-            distance = @_state.cache.original_offset[offset_side] - 5
+            distance = @_state.cache.original_offset[offset_side] - 8
 
             achieved = window_offset - distance
             scroll = window_offset - past_offset
@@ -119,7 +119,7 @@ class Sticky extends CoreWidget
             @_state.cache.style[prop] = val for prop, val of el.style
 
             el.classList.add 'fixed'
-            el.style.top = -5 + 'px'
+            el.style.top = -8 + 'px'
             el.style.left = @_state.cache.original_offset.left + 'px'
 
             return @

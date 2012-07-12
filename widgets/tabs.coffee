@@ -69,6 +69,7 @@ class Tabs extends CoreWidget
 
                 rounded: true
                 width: '500px'
+                div_string: null
 
         @_state.config = Util.extend(true, @_state.config, options)
 
@@ -76,8 +77,10 @@ class Tabs extends CoreWidget
 
             classify: () =>
 
+                div_string = @_state.config.div_string
                 target = Util.get(@_state.element_id)
-                tabs = Util.filter(Util.get('div', target), (test=(el) ->       # content div elements
+
+                tabs = Util.filter(Util.get(div_string, target), (test=(el) ->       # content div elements
                     return if el.parentNode is target then true else false
                 ))
                 triggers = Util.filter(Util.get('a', target), test)             # <a> --> actual 'tab'-looking element
@@ -117,6 +120,7 @@ class Tabs extends CoreWidget
         @switch = (e) =>
 
             tabset = Util.get(@_state.element_id)
+            div_string = @_state.config.div_string
             current = false
 
             if e?
@@ -142,7 +146,7 @@ class Tabs extends CoreWidget
                 c = Util.filter(c, test = (el) -> return el.parentNode is tabset)            # get only top-level divs/anchors marked 'current-fold'
                 c = @internal.find_match(c) if c.length > 2                                     # and only 1 pair
 
-                current_div = Util.filter(c, (x) -> return x.tagName.toLowerCase() is 'div')[0]
+                current_div = Util.filter(c, (x) -> return x.tagName.toLowerCase() is div_string)[0]
                 current_a = Util.filter(c, (x) -> return x.tagName.toLowerCase() is 'a')[0]
 
                 current = true
