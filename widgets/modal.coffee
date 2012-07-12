@@ -206,8 +206,8 @@ class Modal extends CoreWidget
                 #document.body.appendChild(overlay)
 
             # extend default animation params with callbacks
-            fade_animation = @animation
-            dialog_animation = @animation
+            fade_animation = Util.prep_animation()
+            dialog_animation = Util.prep_animation()
             #overlay_animation = @animation
 
             dialog_animation.complete = () =>
