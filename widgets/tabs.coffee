@@ -116,49 +116,68 @@ class Tabs extends CoreWidget
 
         @switch = (e) =>
 
-            @_state.active = true
-
             tabset = Util.get(@_state.element_id)
-            currents = Util.get('tab-current', tabset)
-            current = if currents? then currents[0] else (if (_at=@_state.active_tab)? then Util.get(_at) else false)
+            current = false
 
             if e?
                 if e.preventDefault
                     e.preventDefault()
                     e.stopPropagation()
 
-                    target = Util.get(target_id=(trigger=e.target).getAttribute('id').split('-').splice(1).join('-'))
+                    target_div = Util.get(target_id=(trigger=e.target).getAttribute('id').split('-').splice(1).join('-'))
 
                 else if e? and e.nodeType
-                    target = e
-                    target_id = e.getAttribute('id')
+                    target_div = e
+                    trigger = Util.get('a-'+(target_id = e.getAttribute('id')))
 
                 else       # assume it's a string ID
-                    target = Util.get(e)
-                    target_id = e
+                    target_div = Util.get(e)
+                    trigger = Util.get('a-'+(target_id = e))
 
             else
-                target = Util.get(target_id=(Util.get('a', tabset)[0]).getAttribute('id').split('-').splice(1).join('-'))
+                target_div = Util.get(target_id = (trigger = Util.get('a', tabset)[0]).getAttribute('id').split('-').splice(1).join('-'))
 
-            return @ if current is target # return if current tab selected
+            if (c = Util.get('current-tab', tabset))?
+
+                c = Util.filter(c, test = (el) -> return el.parentNode is tabset)            # get only top-level divs/anchors marked 'current-fold'
+                c = @internal.find_match(c) if c.length > 2                                     # and only 1 pair
+
+                current_div = Util.filter(c, (x) -> return x.tagName.toLowerCase() is 'div')[0]
+                current_a = Util.filter(c, (x) -> return x.tagName.toLowerCase() is 'a')[0]
+
+                current = true
+
+
+            return @ if current_div is target_div # return if current tab selected
+
+            @_state.active = true
 
             console.log('Switching to tab: '+ target_id)
 
-            if current is false    # if no tab selected (first click), select first tab
-                target.classList.add('tab-current')
-                $(target).animate opacity: 1,
+            if not current   # if no tab selected (first click), select first tab
+                target_div.classList.remove('none')
+                target_div.classList.add('current-tab')
+                target_div.classList.add('block')
+                trigger.classList.add('current-tab')
+                $(target_div).animate opacity: 1,
                     duration: 300
                     complete: () =>
                         @_state.active = false
 
             else
-                $(current).animate opacity: 0,
+                $(current_div).animate opacity: 0,
                     duration: 200
                     complete: () =>
-                        current.classList.remove('tab-current')
-                        target.classList.add('tab-current')
+                        current_a.classList.remove('current-tab')
+                        current_div.classList.remove('current-tab')
+                        current_div.classList.remove('block')
+                        target_div.classList.remove('none')
+                        current_div.classList.add('none')
+                        target_div.classList.add('block')
+                        target_div.classList.add('current-tab')
+                        trigger.classList.add('current-tab')
                         @_state.active_tab = target_id
-                        $(target).animate opacity: 1,
+                        $(target_div).animate opacity: 1,
                             duration: 300
                             complete: () =>
                                 @_state.active = false

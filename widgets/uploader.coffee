@@ -20,7 +20,7 @@ class UploaderAPI extends CoreAPI
             if not options?
                 options = {}
 
-            uploader = if not kind? then new Uploader(options) else if kind is 'data' then new DataURLUploader(options) else if kind is 'array' then new ArrayBufferUploader(options) else new BinaryUploader(options)
+            uploader = if not kind? then new DataURLUploader(options) else if kind is 'data' then new DataURLUploader(options) else if kind is 'array' then new ArrayBufferUploader(options) else if kind is 'binary' then new BinaryUploader(options) else new Uploader(options)
 
             if options?.id?
                 # if attached to an element, use element ID
@@ -145,9 +145,9 @@ class Uploader extends CoreWidget
                 crlf = '\r\n'
 
                 body = '--' +  boundary + crlf
-                body += 'Content-Disposition: form-data; filename="' + file.name + '"' + crlf
+                body += 'Content-Disposition: form-data; name="filename"; filename="' + file.name + '"' + crlf
                 body += 'Content-type: ' + file.type + crlf + crlf
-                body += data + crlf + boundary + '--'
+                body += data + crlf + crlf + '--' + boundary + '--'
 
                 return body
 

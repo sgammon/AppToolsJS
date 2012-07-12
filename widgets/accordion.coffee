@@ -77,7 +77,7 @@ class Accordion extends CoreWidget
                         opacity: 0
 
                     opened:
-                        height: '100px'
+                        height: 'auto'
                         opacity: 1
 
                 horizontal:
