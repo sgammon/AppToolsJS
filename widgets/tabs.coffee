@@ -94,7 +94,7 @@ class Tabs extends CoreWidget
         @make = () =>
 
             target = Util.get(@_state.element_id)
-            triggers = Util.filter(Util.get('a', target), (x) => return x.parentNode is target))
+            triggers = Util.filter(Util.get('a', target), (x) => return x.parentNode is target)
 
             for trigger in triggers
                 do (trigger) =>
