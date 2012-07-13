@@ -58,7 +58,7 @@ class Tabs extends CoreWidget
         @_state =
 
             element_id: target.getAttribute('id')
-            active_tab: null
+            current_tab: null
             tab_count: 0
             tabs: {}
 
@@ -69,7 +69,7 @@ class Tabs extends CoreWidget
 
                 rounded: true
                 width: '500px'
-                div_string: null
+                div_string: 'div'
 
         @_state.config = Util.extend(true, @_state.config, options)
 
@@ -81,7 +81,7 @@ class Tabs extends CoreWidget
                 target = Util.get(@_state.element_id)
 
                 tabs = Util.filter(Util.get(div_string, target), (test=(el) ->       # content div elements
-                    return if el.parentNode is target then true else false
+                    return el.parentNode is target
                 ))
                 triggers = Util.filter(Util.get('a', target), test)             # <a> --> actual 'tab'-looking element
 
@@ -121,6 +121,7 @@ class Tabs extends CoreWidget
 
             tabset = Util.get(@_state.element_id)
             div_string = @_state.config.div_string
+            current_tab = Util.get(@_state.current_tab) or (if (c = Util.get('current-tab', tabset))? then Util.filter(c, (x)->return (x.parentNode is tabset and x.tagName.toLowerCase() is div_string))[0] else null) or null
             current = false
 
             if e?
@@ -128,63 +129,61 @@ class Tabs extends CoreWidget
                     e.preventDefault()
                     e.stopPropagation()
 
-                    target_div = Util.get(target_id=(trigger=e.target).getAttribute('id').split('-').splice(1).join('-'))
+                    target_tab = Util.get(target_id=(trigger=e.target).getAttribute('id').split('-').splice(1).join('-'))
 
                 else if e? and e.nodeType
-                    target_div = e
+                    target_tab = e
                     trigger = Util.get('a-'+(target_id = e.getAttribute('id')))
 
                 else       # assume it's a string ID
-                    target_div = Util.get(e)
+                    target_tab = Util.get(e)
                     trigger = Util.get('a-'+(target_id = e))
 
             else
-                target_div = Util.get(target_id = (trigger = Util.get('a', tabset)[0]).getAttribute('id').split('-').splice(1).join('-'))
+                target_tab = Util.get(target_id = (trigger = Util.get('a', tabset)[0]).getAttribute('id').split('-').splice(1).join('-'))
 
-            if (c = Util.get('current-tab', tabset))?
-
-                c = Util.filter(c, test = (el) -> return el.parentNode is tabset)            # get only top-level divs/anchors marked 'current-fold'
-                c = @internal.find_match(c) if c.length > 2                                     # and only 1 pair
-
-                current_div = Util.filter(c, (x) -> return x.tagName.toLowerCase() is div_string)[0]
-                current_a = Util.filter(c, (x) -> return x.tagName.toLowerCase() is 'a')[0]
-
+            if current_tab?
+                current_a = Util.get('a-' + current_tab.getAttribute('id')) or Util.get('a-'+@_state.current_tab)
                 current = true
 
-
-            return @ if current_div is target_div # return if current tab selected
+            return @ if current_tab is target_tab # return if current tab selected
 
             @_state.active = true
 
             console.log('Switching to tab: '+ target_id)
 
             if not current   # if no tab selected (first click), select first tab
-                target_div.classList.remove('none')
-                target_div.classList.add('current-tab')
-                target_div.classList.add('block')
+                target_tab.classList.remove('none')
+                target_tab.classList.add('current-tab')
+                target_tab.classList.add('block')
                 trigger.classList.add('current-tab')
-                $(target_div).animate opacity: 1,
+                @_state.current_tab = target_tab.getAttribute('id')
+                $(target_tab).animate opacity: 1,
                     duration: 300
                     complete: () =>
                         @_state.active = false
 
             else
-                $(current_div).animate opacity: 0,
+                $(current_tab).animate opacity: 0,
                     duration: 200
                     complete: () =>
                         current_a.classList.remove('current-tab')
-                        current_div.classList.remove('current-tab')
-                        current_div.classList.remove('block')
-                        target_div.classList.remove('none')
-                        current_div.classList.add('none')
-                        target_div.classList.add('block')
-                        target_div.classList.add('current-tab')
+                        current_tab.classList.remove('current-tab')
+                        current_tab.classList.remove('block')
+                        target_tab.classList.remove('none')
+                        current_tab.classList.add('none')
+                        target_tab.classList.add('block')
+                        target_tab.classList.add('current-tab')
                         trigger.classList.add('current-tab')
-                        @_state.active_tab = target_id
-                        $(target_div).animate opacity: 1,
+                        @_state.current_tab = target_tab.getAttribute('id')
+                        $(target_tab).animate opacity: 1,
                             duration: 300
                             complete: () =>
                                 @_state.active = false
+
+
+
+            return @
 
         @_init = () =>
 

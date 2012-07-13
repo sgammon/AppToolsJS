@@ -123,15 +123,15 @@ class Accordion extends CoreWidget
 
             accordion = Util.get(@_state.element_id)
 
-            [curr_tabs, block_tabs] = [Util.get('current-fold', accordion), Util.get('block', accordion)]
+            [curr_folds, block_folds] = [Util.get('current-fold', accordion), Util.get('block', accordion)]
 
-            (if tabs?
-                tabs = Util.filter(tabs, (el) -> return el.parentNode is accordion)) for tabs in [curr_tabs, block_tabs]
+            (if folds?
+                folds = Util.filter(folds, (el) -> return el.parentNode is accordion)) for folds in [curr_folds, block_folds]
 
-            unique_tabs = curr_tabs
-            (unique_tabs.push(tab) if not Util.in_array(tab, unique_tabs)) for tab in block_tabs if block_tabs
+            unique_folds = curr_folds
+            (unique_folds.push(tab) if not Util.in_array(tab, unique_folds)) for tab in block_folds if block_folds
 
-            if unique_tabs?
+            if unique_folds?
                 current = true
 
             @_state.active = true
@@ -145,7 +145,7 @@ class Accordion extends CoreWidget
                 complete: () =>
                     open_tab.classList.remove(cls) for cls in ['current-fold', 'block']
                     open_tab.classList.add('none')
-            )) for open_tab in unique_tabs if unique_tabs?
+            )) for open_tab in unique_folds if unique_folds?
 
             open_anim.complete = () =>
                     target_div.classList.add('current-fold')
