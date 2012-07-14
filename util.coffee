@@ -63,13 +63,14 @@ class Util
     sort: null
 
     # DOM checks/manipulation
-    create_element_string: (tag, attrs, separator='*') =>
+    create_element_string: (tag, attrs, separator='*', ext) =>
 
         no_close = ['area', 'base', 'basefont', 'br', 'col', 'frame', 'hr', 'img', 'input', 'link']
         tag = tag.toLowerCase()
 
         el_str = '<' + tag
         el_str += ' ' + k + '="' + v + '"' for k, v of attrs
+        el_str += ' ' + ext if ext?
         el_str += '>'
         el_str += separator + '</' + tag + '>' if not @in_array(tag, no_close)
 
@@ -257,7 +258,7 @@ class Util
             do (arg) =>
                 options = arg
 
-                for option, value of options
+                for own option, value of options
                     continue if target is value # avoid crashing browsers thx
                     o = String option
                     clone = value
@@ -341,7 +342,7 @@ class Util
 
         else false
 
-    wrap: (e, fn) =>
+    wrap: (e, fn) ->
 
         i = 2
 

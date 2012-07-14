@@ -59,6 +59,7 @@ class Editor extends CoreWidget
         @_state =
 
             element_id: target.getAttribute('id')
+            snippet_keyname: target.getAttribute('data-snippet-keyname') or null
             pane_id: null
             active: false
             init: false
@@ -66,7 +67,9 @@ class Editor extends CoreWidget
             config:
                 bundles:
                     plain:
-                        save: () => return @save()
+                        save:
+                            char: '&#xf0053;'
+                            command: () => return @save()
                     basic:
                         b: () => document.execCommand 'bold'
                         u: () => document.execCommand 'underline'
@@ -107,7 +110,7 @@ class Editor extends CoreWidget
 
                 bundle: 'plain'
 
-                width: 150
+                width: 'auto'
 
         @_state.config = Util.extend true, @_state.config, options
 
@@ -119,23 +122,30 @@ class Editor extends CoreWidget
             pane = document.createElement 'div'
             pane.setAttribute 'id', (pane_id = 'editor-pane-'+t_id)
             pane.classList.add 'absolute'
+            pane.style.padding = 10 + 'px'
             pane.style.width = width + 'px'
-            pane.style.left = ((t_off = Util.get_offset(t)).left - width) + 'px'
-            pane.style.top = t_off.top + 'px'
-            pane.style.zIndex = '9990'
+            pane.style.zIndex = 1
             pane.style.opacity = 0
 
             features = @_state.config.bundles.plain
             if @_state.config.bundle is 'rich'
                 features[k] = v for k, v of @_state.config.bundles.rich
 
-            (button = document.createElement 'button'
-            button.value = button.innerHTML = feature
-            button.className = 'editorbutton'
-            Util.bind button, 'mousedown', command
-            pane.appendChild button) for feature, command of features
+            _button = (f, c) =>
+                button = document.createElement 'button'
+                button.innerHTML = command.char
+                button.className = 'editorbutton'
+                Util.bind button, 'mousedown', command.command
+                pane.appendChild button
+
+            _button(feature, command) for feature, command of features
+
+            _off = Util.get_offset(t)
+            _w = pane.offsetWidth
 
             document.body.appendChild pane
+            pane.style.left = _off.left - 50 + 'px'
+            pane.style.top = _off.top + 'px'
 
             # stash pane reference
             @_state.pane_id = pane_id
@@ -144,12 +154,15 @@ class Editor extends CoreWidget
 
         @show = () =>
 
-            $('#'+(p=@_state.pane_id)).animate opacity: 1, (Util.prep_animation())
+            (p=Util.get(@_state.pane_id)).style.zIndex = 9990
+            $(p).animate opacity: 1, (Util.prep_animation())
             return @
 
         @hide = () =>
 
-            $('#'+@_state.pane_id).animate opacity: 0, (Util.prep_animation())
+
+            (p=Util.get(@_state.pane_id)).style.zIndex = 1
+            $(p).animate opacity: 0, (Util.prep_animation())
             return @
 
         @edit = (e) =>
@@ -169,13 +182,34 @@ class Editor extends CoreWidget
 
         @save = (e) =>
 
-            console.log('Saving...')
+            if e? and e.preventDefault?
+                e.preventDefault
+                e.stopPropagation
 
-            @hide()
-            (el = Util.get(@_state.element_id)).contentEditable = false
-            @_state.active = false
+                clicked = e.target
 
-            Util.unbind(document.body, 'dblclick')
+            console.log('Saving snippet...')
+            html = Util.get(@_state.element_id).innerHTML
+
+            $.apptools.api.content.save_snippet(
+                snippet_keyname: @_state.snippet_keyname
+                inner_html: html
+            ).fulfill
+                success: (response) =>
+                    @hide()
+                    (el = Util.get(@_state.element_id)).contentEditable = false
+                    @_state.active = false
+
+                    Util.unbind(document.body, 'dblclick')
+                    clicked.classList.add('success') if clicked?
+                    alert 'save_snippet() via editor success'
+
+                failure: (error) =>
+                    clicked.classList.add('success')
+                    alert 'save_snippet() via editor failure'
+                    console.log(error)
+
+            
 
             return @
 

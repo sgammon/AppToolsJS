@@ -20,16 +20,20 @@ class ModalAPI extends CoreWidgetAPI
 
             @_state.modals_by_id[id] = @_state.modals.push(modal) - 1
 
-            return if callback? then callback.call(@, modal._init()) else modal._init()
+            return if callback? then callback?(modal._init()) else modal._init()
 
         @destroy = (modal) =>
 
+            modal = @disable(modal)
+
             id = modal._state.element_id
+            cached_id = modal_state.cached_id
 
             @_state.modals.splice(@_state.modals_by_id[id], 1)
             delete @_state.modals_by_id[id]
 
-            document.body.removeChild(Util.get(id))
+            (el = Util.get(id)).parentNode.removeChild(el)
+            (cached_el = Util.get(id)).parentNode.removeChild(cached_el)
 
             return modal
 
@@ -235,7 +239,7 @@ class Modal extends CoreWidget
 
             return @
 
-        @close = () =>
+        @close = (callback) =>
 
             id = @_state.cached_id
 
@@ -262,6 +266,8 @@ class Modal extends CoreWidget
                                     dialog.style.display = 'none'
                                     dialog.style[prop] = val for prop, val of @_state.config.initial
                                     @_state.active = false
+
+                                    return if callback? then callback?(@) else @
                                 }
                             )
                         }
@@ -269,7 +275,6 @@ class Modal extends CoreWidget
                 }
             )
 
-            return @
 
         @_init = () =>
 
