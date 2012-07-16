@@ -340,7 +340,7 @@ class DataURLUploader extends Uploader
             return reader.readAsDataURL file
 
 
-class ArrayBufferUploader extends DataURLUploader
+class ArrayBufferUploader extends BinaryUploader
 
     constructor: (options) ->
 
