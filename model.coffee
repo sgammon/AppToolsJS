@@ -57,19 +57,19 @@ class CoreModelAPI extends CoreAPI
 
 class Model
 
-    validate: (object, class=object::model, safe=false) =>
+    validate: (object, cls=object::model, safe=false) =>
 
         if object?
 
             if safe
                 results = {}
                 check = (k, v) =>
-                    results[k] = v if class[k] and v? is class[k]? and v.constructor.name is class[k].constructor.name
+                    results[k] = v if cls[k] and v? is cls[k]? and v.constructor.name is cls[k].constructor.name
 
             else
                 results = []
                 check = (k, v) =>
-                    results.push(k:v) if not class[k] or v? isnt class[k]? or v.constructor.name isnt class[k].constructor.name
+                    results.push(k:v) if not cls[k] or v? isnt cls[k]? or v.constructor.name isnt cls[k].constructor.name
 
             check(key, value) for own key, value of object
 
