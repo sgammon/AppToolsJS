@@ -21,17 +21,6 @@ class CoreModelAPI extends CoreAPI
 
                 return results                      # enjoy your lukewarm results, i guess
 
-            validate: (model, _model=model.constructor::) ->
-
-                invalid = []
-
-                for prop of model
-                    continue if not {}.hasOwnProperty.call(model, prop)
-                    continue if model[prop].constructor.name is _model[prop].constructor.name
-                    invalid.push prop
-
-                return invalid for item in invalid
-                return true
 
         # sync storage methods
         @put = (object) => @internal.block(@put_async, object)
@@ -68,24 +57,49 @@ class CoreModelAPI extends CoreAPI
 
 class Model
 
-    key: null
+    validate: (object, class=object::model, safe=false) =>
+
+        if object?
+
+            if safe
+                results = {}
+                check = (k, v) =>
+                    results[k] = v if class[k] and v? is class[k]? and v.constructor.name is class[k].constructor.name
+
+            else
+                results = []
+                check = (k, v) =>
+                    results.push(k:v) if not class[k] or v? isnt class[k]? or v.constructor.name isnt class[k].constructor.name
+
+            check(key, value) for own key, value of object
+
+            return results if safe
+            return true if results.length is 0
+            throw new ModelException(@constructor.name, 'Invalid model schema on '+object.constructor.name+' object.', results)
+
+        else throw new ModelException(@constructor.name, 'No object passed to validate().')
+
+
+    ###
 
     # methods are placeholders for now :)
     constructor: () ->
 
     # synchronous methods
-    put: (args...) => apptools.model.put(@, args...)
-    get: (args...) => apptools.model.get(@, args...)
-    delete: (args...) => apptools.model.delete(@, args...)
+    put: (args...) => $.apptools.model.put(@, args...)
+    get: (args...) => $.apptools.model.get(@, args...)
+    delete: (args...) => $.apptools.model.delete(@, args...)
 
     # asynchronous methods - tentative until params finalized
-    put_async: (args...) => apptools.model.put_async(@, args...)
-    get_async: (args...) => apptools.model.get_async(@, args...)
-    delete_async: (args...) => apptools.model.delete_async(@, args...)
+    put_async: (args...) => $.apptools.model.put_async(@, args...)
+    get_async: (args...) => $.apptools.model.get_async(@, args...)
+    delete_async: (args...) => $.apptools.model.delete_async(@, args...)
 
-    all: (args...) => apptools.model.all(@, args...)
+    all: (args...) => $.apptools.model.all(@, args...)
 
     render: (template) =>
+
+    ###
 
 
 

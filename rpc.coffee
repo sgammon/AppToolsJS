@@ -259,8 +259,20 @@ class CoreRPCAPI extends CoreAPI
             used_ids: []
 
             # Creates RPCAPIs
-            factory: (name, base_uri, methods, config) =>
-                apptools.api[name] = new RPCAPI(name, base_uri, methods, config)
+            factory: (name_or_apis, base_uri, methods, config) =>
+
+                if Util.is_array(name_or_apis)
+                    @rpc.factory(item.name, item.base_uri, item.methods, item.config) for item in name_or_apis
+
+                else
+                    apptools.api[(name = name_or_apis)] = new RPCAPI
+                        name: name
+                        base_uri: base_uri
+                        methods: methods
+                        config: config
+
+                return @
+
 
             # Assembles an RPC endpoint URL
             _assembleRPCURL: (method, api, prefix, base_uri) =>
