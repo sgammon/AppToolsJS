@@ -68,49 +68,87 @@ class Editor extends CoreWidget
                 bundles:
                     plain:
                         save:
-                            char: '&#xf0053;'
+                            char: '&#x21;'
                             command: () => return @save()
                     basic:
-                        b: () => document.execCommand 'bold'
-                        u: () => document.execCommand 'underline'
-                        i: () => document.execCommand 'italic'
-                        clear: () => document.execCommand 'removeFormat'
-                        undo: () => document.execCommand 'undo'
-                        redo: () => document.execCommand 'redo'
-                        cut: () => document.execCommand 'cut'
-                        paste: () => document.execCommand 'paste'
+                        b:
+                            char: 'B'
+                            command: () => document.execCommand 'bold'
+                        u:
+                            char: 'U'
+                            command: () => document.execCommand 'underline'
+                        i:
+                            char: 'I'
+                            command: () => document.execCommand 'italic'
+                        clear:
+                            char: '&#x22;'
+                            command: () => document.execCommand 'removeFormat'
+                        undo:
+                            char: '&#x23;'
+                            command: () => document.execCommand 'undo'
+                        redo:
+                            char: '&#x24;'
+                            command: () => document.execCommand 'redo'
+                        cut:
+                            char: '&#x25;'
+                            command: () => document.execCommand 'cut'
+                        paste:
+                            char: '&#x26;'
+                            command: () => document.execCommand 'paste'
 
                     rich:
-                        h1: () => document.execCommand 'heading', false, 'h1'
-                        h2: () => document.execCommand 'heading', false, 'h2'
-                        h3: () => document.execCommand 'heading', false, 'h3'
-                        fontColor: () =>
-                            c = Util.toHex prompt 'Please enter hex (#000000) or RGB (rgb(0,0,0)) values.'
-                            sel = document.selection() or window.getSelection()
-                            document.execCommand 'insertHTML', false, '<span style="color: '+c+';">'+sel+'</span>'
-                        fontSize: () =>
-                            s = prompt 'Please enter desired numerical pt size (i.e. 10)'
-                            sel = document.selection() or window.getSelection()
-                            document.execCommand 'insertHTML', false, '<span style="font-size: '+s+';">'+sel+'</span>'
-                        left: () => document.execCommand 'justifyLeft'
-                        right: () => document.execCommand 'justifyRight'
-                        center: () => document.execCommand 'justifyCenter'
-                        indent: () => document.execCommand 'indent'
-                        outdent: () => document.execCommand 'outdent'
-                        link: () =>
-                            t = document.selection() or window.getSelection()
-                            if t? and t.match ///^http|www///
-                                _t = t
-                                t = prompt 'What link text do you want to display?'
-                            else if not t?
-                                t = prompt 'What link text do you want to display?'
+                        h1:
+                            char: 'h1'
+                            command: () => document.execCommand 'heading', false, 'h1'
+                        h2:
+                            char: 'h2'
+                            command: () => document.execCommand 'heading', false, 'h2'
+                        h3:
+                            char: 'h3'
+                            command: () => document.execCommand 'heading', false, 'h3'
+                        fontColor:
+                            char: '&#x28;'
+                            command: () =>
+                                c = Util.to_hex prompt 'Please enter hex (#000000) or RGB (rgb(0,0,0)) values.'
+                                sel = if document.selection then document.selection() else window.getSelection()
+                                document.execCommand 'insertHTML', false, '<span style="color: '+c+';">'+sel+'</span>'
+                        fontSize:
+                            char: '&#x28;'
+                            command: () =>
+                                s = prompt 'Please enter desired numerical pt size (i.e. 10)'
+                                sel = if document.selection then document.selection() else window.getSelection()
+                                document.execCommand 'insertHTML', false, '<span style="font-size: '+s+';">'+sel+'</span>'
+                        left:
+                            char: '&#x29;'
+                            command: () => document.execCommand 'justifyLeft'
+                        right:
+                            char: '&#x2a;'
+                            command: () => document.execCommand 'justifyRight'
+                        center:
+                            char: '&#x2b;'
+                            command: () => document.execCommand 'justifyCenter'
+                        indent:
+                            char: '&#x2c;'
+                            command: () => document.execCommand 'indent'
+                        outdent:
+                            char: '&#x2d;'
+                            command: () => document.execCommand 'outdent'
+                        link:
+                            char: '&#x2e;'
+                            command: () =>
+                                t = document.selection() or window.getSelection()
+                                if t? and t.match ///^http|www///
+                                    _t = t
+                                    t = prompt 'What link text do you want to display?'
+                                else if not t?
+                                    t = prompt 'What link text do you want to display?'
 
-                            l = _t or prompt 'What URL do you want to link to? (http://www...)'
-                            document.execCommand 'insertHTML', false, '<a href="'+Util.strip_script l+'">'+t+'</a>'
+                                l = _t or prompt 'What URL do you want to link to? (http://www...)'
+                                document.execCommand 'insertHTML', false, '<a href="'+Util.strip_script l+'">'+t+'</a>'
 
                 bundle: 'plain'
 
-                width: 'auto'
+                width: 150
 
         @_state.config = Util.extend true, @_state.config, options
 
@@ -128,13 +166,15 @@ class Editor extends CoreWidget
             pane.style.opacity = 0
 
             features = @_state.config.bundles.plain
+            if @_state.config.bundle is 'rich' or 'basic'
+                features[ke] = va for ke, va of @_state.config.bundles.basic
             if @_state.config.bundle is 'rich'
                 features[k] = v for k, v of @_state.config.bundles.rich
 
             _button = (f, c) =>
                 button = document.createElement 'button'
                 button.innerHTML = command.char
-                button.className = 'editorbutton'
+                button.className = 'editorbutton XMS'
                 Util.bind button, 'mousedown', command.command
                 pane.appendChild button
 
@@ -144,7 +184,7 @@ class Editor extends CoreWidget
             _w = pane.offsetWidth
 
             document.body.appendChild pane
-            pane.style.left = _off.left - 50 + 'px'
+            pane.style.left = _off.left - width + 'px'
             pane.style.top = _off.top + 'px'
 
             # stash pane reference

@@ -105,7 +105,6 @@ class Modal extends CoreWidget
 
                 rounded: true
                 calc: null
-                padding: null
 
         @_state.config = Util.extend(@_state.config, options)
 

@@ -285,10 +285,10 @@ class Util
     to_hex: (color) =>
 
         if color.match ///
-            ^#?             # may start with '#'
-            [0-9A-F]{6} |   # match 6-digit hex or...
-            [0-9A-F]{3}     # 3-digit short hex
-            $/i             # match ending, ignoring case
+            ^#?                 # may start with '#'
+            [0-9a-fA-F]{6} |    # match 6-digit hex or...
+            [0-9a-fA-F]{3}      # 3-digit short hex
+            $/i                  # match ending, ignoring case
             ///
 
             return if color.charAt 0 is '#' then color else '#'+color # already hex, just normalize '#'
@@ -326,7 +326,7 @@ class Util
             return color
 
         else if color.match ///
-            ^#?([0-9A-F]{1,2})([0-9A-F]{1,2})([0-9A-F]{1,2})$/i
+            ^#?([0-9a-fA-F]{1,2})([0-9a-fA-F]{1,2})([0-9a-fA-F]{1,2})$/i
             ///
 
             c = [ # parse as hex
