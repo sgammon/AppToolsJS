@@ -346,6 +346,14 @@ class ArrayBufferUploader extends BinaryUploader
 
         super(options)
 
+        @internal.read = (file, callback) =>
+
+            reader = new FileReader()
+            reader.file = file
+            reader.onloadend = callback
+
+            return reader.readAsArrayBuffer file
+
         @internal.send = (file, data, url) =>
 
             if not ArrayBuffer?
@@ -354,19 +362,15 @@ class ArrayBufferUploader extends BinaryUploader
             xhr = new XMLHttpRequest()
             @internal.progress(file, xhr)
 
-            to_blob = (dataURL) =>
-                bytes = atob((d = dataURL.split(','))[1])
-                mime = d[0].split(':')[1].split(';')[0]
+            to_blob = (buff) =>
+                mime = file.type
 
-                abuff = new ArrayBuffer(l = bytes.length)
-
-                abuff_view = new Uint8Array(abuff)
-                abuff_view[i] = bytes.charCodeAt(i) for char, i in bytes
+                abuff_view = new Uint8Array(buff)
 
                 blobb = if window.BlobBuilder then new BlobBuilder() else if window.WebKitBlobBuilder then new WebKitBlobBuilder() else if window.MozBlobBuilder then new MozBlobBuilder() else null
 
                 if blobb?
-                    blobb.append(abuff)
+                    blobb.append(buff)
                     return blobb.getBlob(mime)
                 else
                     return null
