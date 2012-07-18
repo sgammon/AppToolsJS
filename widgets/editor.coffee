@@ -136,9 +136,9 @@ class Editor extends CoreWidget
                         link:
                             char: '&#x2e;'
                             command: () =>
-                                t = document.selection() or window.getSelection()
-                                if t? and t.match ///^http|www///
-                                    _t = t
+                                t = if document.selection then document.selection() else window.getSelection()
+                                if t? and t.toString().match ///^http|www///
+                                    _t = t.toString()
                                     t = prompt 'What link text do you want to display?'
                                 else if not t?
                                     t = prompt 'What link text do you want to display?'
@@ -226,7 +226,17 @@ class Editor extends CoreWidget
                 e.preventDefault
                 e.stopPropagation
 
-                clicked = e.target
+            pane = document.getElementById(@_state.pane_id)
+            $(pane).animate
+                opacity: 0
+            ,
+                duration: 200
+                complete: () =>
+                    pane.innerHTML = '<span class="loading spinner momentron">&#xf0045;</span>'
+                    $(pane).animate
+                        opacity: 1
+                    ,
+                        duration: 200
 
             console.log('Saving snippet...')
             html = Util.get(@_state.element_id).innerHTML
@@ -236,20 +246,44 @@ class Editor extends CoreWidget
                 inner_html: html
             ).fulfill
                 success: (response) =>
-                    @hide()
+                    $(pane).animate
+                        opacity: 0
+                    ,
+                        duration: 200
+                        complete: () =>
+                            pane.innerHTML = '<span class="momentron">&#xf0053;</span>'
+                            pane.style.color = '#bada55'
+                            $(pane).animate
+                                opacity: 1
+                            ,
+                                duration: 200
+                                complete: () =>
+                                    setTimeout(() =>
+                                        @hide()
+                                    , 400)
+
                     (el = Util.get(@_state.element_id)).contentEditable = false
                     @_state.active = false
 
                     Util.unbind(document.body, 'dblclick')
-                    clicked.classList.add('success') if clicked?
-                    alert 'save_snippet() via editor success'
 
                 failure: (error) =>
-                    clicked.classList.add('success')
-                    alert 'save_snippet() via editor failure'
-                    console.log(error)
-
-            
+                    $(pane).animate
+                        opacity: 0
+                    ,
+                        duration: 200
+                        complete: () =>
+                            pane.innerHTML = '<span class="momentron">&#xf0054;</span>'
+                            pane.style.color = '#f00'
+                            $(pane).animate
+                                opacity: 1
+                            ,
+                                duration: 200
+                                complete: () =>
+                                    setTimeout(() =>
+                                        pane.innerHTML = @make().innerHTML
+                                        @hide()
+                                    , 400)
 
             return @
 

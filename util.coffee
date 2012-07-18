@@ -342,6 +342,17 @@ class Util
 
         else false
 
+    strip_script: (link) =>
+
+        if link.match ///^javascript:(\w\W.)/// or link.match ///(\w\W.)\(\)///
+
+            script = RegExp.$1
+            console.log 'Script stripped from link: ', script
+
+            return 'javascript:void(0)'
+
+        else return link
+
     wrap: (e, fn) ->
 
         i = 2
