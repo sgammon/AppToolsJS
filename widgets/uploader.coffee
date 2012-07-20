@@ -20,7 +20,7 @@ class UploaderAPI extends CoreAPI
             if not options?
                 options = {}
 
-            uploader = if not kind? then new DataURLUploader(options) else if kind is 'data' then new DataURLUploader(options) else if kind is 'array' then new ArrayBufferUploader(options) else if kind is 'binary' then new BinaryUploader(options) else new Uploader(options)
+            uploader = new ArrayBufferUploader(options)
 
             if options?.id?
                 # if attached to an element, use element ID
@@ -370,7 +370,7 @@ class ArrayBufferUploader extends BinaryUploader
                 blobb = if window.BlobBuilder then new BlobBuilder() else if window.WebKitBlobBuilder then new WebKitBlobBuilder() else if window.MozBlobBuilder then new MozBlobBuilder() else null
 
                 if blobb?
-                    blobb.append(buff)
+                    blobb.append(abuff_view.buffer)
                     return blobb.getBlob(mime)
                 else
                     return null
