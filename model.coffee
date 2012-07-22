@@ -109,15 +109,15 @@ class Model
 
             cached_obj = object
 
-            @log('Validating model for RPC update...')
+            @log('Validating incoming RPC update...')
 
             if @validate(message, object.constructor::model)
                 object[prop] = val for own prop, val of message
-                @log('Valid model found, update from RPC succeeded! Returning updated object...')
+                @log('Valid model matched. Returning updated object...')
                 return object
 
             else
-                @log('Strict validation check failed.')
+                @log('Strict validation failed.')
 
                 if not strict
                     @log('Nonstrict validation allowed, trying modelsafe conversion...')
@@ -162,7 +162,6 @@ class Model
     ###
 
     # methods are placeholders for now :)
-    constructor: () ->
 
     # synchronous methods
     put: (args...) => $.apptools.model.put(@, args...)
