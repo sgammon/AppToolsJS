@@ -1,4 +1,11 @@
 # Model API
+class ModelException extends Error
+
+    constructor: (@source, @message) ->
+
+    toString: () ->
+        return '[' + @source + '] ModelException: ' + @message
+
 class CoreModelAPI extends CoreAPI
 
     @mount = 'model'
@@ -57,28 +64,100 @@ class CoreModelAPI extends CoreAPI
 
 class Model
 
-    validate: (object, cls=object::model, safe=false) =>
+    log: (source, message) =>
+
+        if message?
+            if $.apptools?
+                return $.apptools.dev.verbose(source, message)
+
+            else
+                return console.log('['+source+']', message)
+
+        else if source?
+            message = source
+            source = @constructor.name
+            
+            return @log(source, message)
+
+        else
+            return @log('Model', 'No message passed to log(). (You get a log message anyway <3)')
+
+    validate: (object, cls=object.constructor::model, safe=false) =>
 
         if object?
 
             if safe
                 results = {}
                 check = (k, v) =>
-                    results[k] = v if cls[k] and v? is cls[k]? and v.constructor.name is cls[k].constructor.name
+                    results[k] = v if cls[k]? and v? is cls[k]? and v.constructor.name is cls[k].constructor.name
 
             else
                 results = []
                 check = (k, v) =>
-                    results.push(k:v) if not cls[k] or v? isnt cls[k]? or v.constructor.name isnt cls[k].constructor.name
+                    results.push(k:v) if not cls[k]? or v? isnt cls[k]? or v.constructor.name isnt cls[k].constructor.name
 
             check(key, value) for own key, value of object
 
             return results if safe
-            return true if results.length is 0
-            throw new ModelException(@constructor.name, 'Invalid model schema on '+object.constructor.name+' object.', results)
+            return if results.length is 0 then true else false
 
         else throw new ModelException(@constructor.name, 'No object passed to validate().')
 
+    from_message: (object, message={}, strict=false) =>
+
+        if object?
+
+            cached_obj = object
+
+            @log('Validating model for RPC update...')
+
+            if @validate(message, object.constructor::model)
+                object[prop] = val for own prop, val of message
+                @log('Valid model found, update from RPC succeeded! Returning updated object...')
+                return object
+
+            else
+                @log('Strict validation check failed.')
+
+                if not strict
+                    @log('Nonstrict validation allowed, trying modelsafe conversion...')
+                    
+                    modsafe = @validate(message, object.constructor::model, true)
+                        
+                    if Util.is_empty_object(modsafe)
+                        @log('No modelsafe properties found, canceling update...')
+                        return cached_obj
+
+                    else
+                        object[p] = v for own p, v of modsafe
+                        @log('Modelsafe conversion succeeded! Returning updated object...')
+
+                        return object
+                        
+                else
+                    @log('Strict validation only, canceling update...')
+                    return cached_obj
+            
+        else throw new ModelException(@constructor.name, 'No object passed to from_message().')
+
+    to_message: (object) =>
+
+        if object?
+            message = {}
+            (message[prop] = val if object.constructor::model[prop]? and typeof val isnt 'function') for own prop, val of object
+            
+            return message
+
+        else throw new ModelException(@constructor.name, 'No object passed to to_message().')
+
+    constructor: (key) ->
+        
+        @key = key
+        @from_message = (message, strict) => return @constructor::from_message(@, message, strict)
+        @to_message = () => return @constructor::to_message(@)
+        @log = (message) => return @constructor::log(@constructor.name, message)
+
+            
 
     ###
 

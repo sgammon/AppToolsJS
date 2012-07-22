@@ -27,13 +27,15 @@ class ModalAPI extends CoreWidgetAPI
             modal = @disable(modal)
 
             id = modal._state.element_id
-            cached_id = modal_state.cached_id
+            el = Util.get(id)
+            cached_id = modal._state.cached_id
+            cached_el = Util.get(cached_id)
 
             @_state.modals.splice(@_state.modals_by_id[id], 1)
             delete @_state.modals_by_id[id]
 
-            (el = Util.get(id)).parentNode.removeChild(el)
-            (cached_el = Util.get(id)).parentNode.removeChild(cached_el)
+            el.parentNode.removeChild(el)
+            cached_el.parentNode.removeChild(cached_el)
 
             return modal
 

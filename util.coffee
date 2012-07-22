@@ -28,7 +28,7 @@ class Util
         return true
 
     is_empty_object: (object) =>
-        return false for key in object
+        return false for key of object
         return true
 
     is_body: (object) =>

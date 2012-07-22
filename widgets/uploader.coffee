@@ -233,14 +233,20 @@ class Uploader extends CoreWidget
 
         @_state.boundary = @internal.provision_boundary()
 
-        @add_endpoint = (endpoint) =>
+        @add_endpoint = (endpoint, clear_queue=false) =>
+
+            if clear_queue
+                @_state.config.endpoints = []
 
             if Util.is_array(endpoint)
-                @add_endpoint(endpt) for endpt in endpoint
+                @add_endpoint(endpt, false) for endpt in endpoint
 
             else @_state.config.endpoints.push(endpoint)
 
             return @
+
+        @set_endpoint = (endpoint) =>
+            return @add_endpoint(endpoint, true)
 
         @add_callback = (callback) =>
 
@@ -311,7 +317,7 @@ class Uploader extends CoreWidget
                         alert 'Uploader endpoint generation failed.'
 
             @_state.queued = files.length
-            process_upload(file, @_state.config.endpoints[i]) for file, i in files
+            process_upload(file, @_state.config.endpoints.shift()) for file in files
 
             return @
 
