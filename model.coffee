@@ -99,7 +99,7 @@ class Model
             check(key, value) for own key, value of object
 
             return results if safe
-            return if results.length is 0 then true else false
+            return results.length is 0
 
         else throw new ModelException(@constructor.name, 'No object passed to validate().')
 

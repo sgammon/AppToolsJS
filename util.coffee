@@ -136,12 +136,15 @@ class Util
         return false if not element?
         if @is_array element # can accept multiple els for 1 event [el1, el2]
             @bind(el, event, fn, prop) for el in element
+            return
 
         else if @is_array event #...multiple events for 1 handler on 1 element
             @bind(element, evt, fn, prop) for evt in event
+            return
 
         else if @is_raw_object event # ...or multiple event/handler pairs for 1 element {event: handler, event2: handler2}
             @bind(element, ev, func, prop) for ev, func of event
+            return
 
         else
             return element.addEventListener event, fn, prop
@@ -150,15 +153,18 @@ class Util
         return false if not element?
         if @is_array element
             @unbind(el, event) for el in element
+            return
 
         else if @is_array event
             @unbind(element, ev) for ev in event
+            return
 
         else if @is_raw_object(element)
             @unbind(el, ev) for el, ev of element
+            return
 
         else if element.constructor.name is 'NodeList' # handle nodelists from dom queries
-            @unbind(@to_array(element), event)
+            return @unbind(@to_array(element), event)
 
         else
             return element.removeEventListener event
