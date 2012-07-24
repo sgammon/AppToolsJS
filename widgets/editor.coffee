@@ -59,7 +59,8 @@ class Editor extends CoreWidget
         @_state =
 
             element_id: target.getAttribute('id')
-            snippet_keyname: target.getAttribute('data-snippet-keyname') or null
+            snippet_keyname: target.getAttribute('data-keyname') or null
+            snippet_namespace: target.getAttribute('data-namespace') or null
             pane_id: null
             active: false
             init: false
@@ -242,8 +243,9 @@ class Editor extends CoreWidget
             html = Util.get(@_state.element_id).innerHTML
 
             $.apptools.api.content.save_snippet(
-                snippet_keyname: @_state.snippet_keyname
-                inner_html: html
+                keyname: @_state.snippet_keyname
+                namespace: @_state.snippet_namespace
+                html: html
             ).fulfill
                 success: (response) =>
                     $(pane).animate
