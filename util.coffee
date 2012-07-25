@@ -241,6 +241,24 @@ class Util
         return @throttle(fn, buffer, prefire)
 
     # useful helpers
+    currency: (num) =>
+        len = (nums = String(num).split('').reverse()).length
+
+        new_nums = []
+
+        process = (c, i) =>
+            if (i+1) % 3 is 0 and len - i > 1
+                sym = ','
+            else if i is len - 1
+                sym = '$'
+            else
+                sym = ''
+            new_nums.unshift(sym + c)
+
+        process(char, index) for char, index in nums
+        return new_nums.join('')
+
+
     extend: () =>
 
         target = arguments[0] or {}

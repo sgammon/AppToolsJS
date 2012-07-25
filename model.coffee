@@ -152,7 +152,10 @@ class Model
 
     constructor: (key) ->
         
-        @key = key
+        if Util.is_raw_object(key)
+            @[prop] = val for prop, val of key
+        else
+            @key = key
         @from_message = (message, strict) => return @constructor::from_message(@, message, strict)
         @to_message = () => return @constructor::to_message(@)
         @log = (message) => return @constructor::log(@constructor.name, message)
