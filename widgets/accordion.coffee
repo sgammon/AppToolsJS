@@ -77,7 +77,7 @@ class Accordion extends CoreWidget
                         opacity: 0
 
                     opened:
-                        height: '150px'
+                        height: '75px'
                         opacity: 1
 
                 horizontal:
@@ -137,6 +137,7 @@ class Accordion extends CoreWidget
             @_state.active = true
 
             opened = @_state.config[axis = @_state.config.axis].opened
+            opened.height = target_div.scrollHeight + 'px'
             closed = @_state.config[axis].closed
             open_anim = (close_anim = Util.prep_animation())
 

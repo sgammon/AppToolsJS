@@ -162,7 +162,7 @@ class Editor extends CoreWidget
             pane.setAttribute 'id', (pane_id = 'editor-pane-'+t_id)
             pane.classList.add 'absolute'
             pane.style.padding = 10 + 'px'
-            pane.style.width = width + 'px'
+            pane.style.width = t.offsetWidth + 'px'
             pane.style.zIndex = 1
             pane.style.opacity = 0
 
@@ -182,11 +182,11 @@ class Editor extends CoreWidget
             _button(feature, command) for feature, command of features
 
             _off = Util.get_offset(t)
-            _w = pane.offsetWidth
+            _h = pane.scrollHeight
 
             document.body.appendChild pane
-            pane.style.left = _off.left - width + 'px'
-            pane.style.top = _off.top + 'px'
+            pane.style.right = window.innerWidth - (_off.left + t.scrollWidth) + 'px'
+            pane.style.top = _off.top - _h + 'px'
 
             # stash pane reference
             @_state.pane_id = pane_id

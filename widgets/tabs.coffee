@@ -68,7 +68,6 @@ class Tabs extends CoreWidget
             config:
 
                 rounded: true
-                width: '500px'
                 div_string: 'div'
 
         @_state.config = Util.extend(true, @_state.config, options)
@@ -85,12 +84,11 @@ class Tabs extends CoreWidget
                 ))
                 triggers = Util.filter(Util.get('a', target), test)             # <a> --> actual 'tab'-looking element
 
-                target.style.width = @_state.config.width
                 target.classList.add(cls) for cls in ['relative', 'tabset']
 
                 (if @_state.config.rounded then trigger.classList.add('tab-rounded') else trigger.classList.add('tab-link')) for trigger in triggers
 
-                tab.classList.add(_cls) for _cls in ['absolute', 'tab'] for tab in tabs
+                tab.classList.add(_cls) for _cls in ['tab'] for tab in tabs
 
                 return @
 
