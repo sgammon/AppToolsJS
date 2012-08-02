@@ -27,9 +27,9 @@ class ModalAPI extends CoreWidgetAPI
             modal = @disable(modal)
 
             id = modal._state.element_id
-            el = Util.get(id)
+            el = _.get(id)
             cached_id = modal._state.cached_id
-            cached_el = Util.get(cached_id)
+            cached_el = _.get(cached_id)
 
             @_state.modals.splice(@_state.modals_by_id[id], 1)
             delete @_state.modals_by_id[id]
@@ -41,14 +41,14 @@ class ModalAPI extends CoreWidgetAPI
 
         @enable = (modal) =>
 
-            trigger = Util.get(modal._state.trigger_id)
-            Util.bind(trigger, 'mousedown', modal.open, false)
+            trigger = _.get(modal._state.trigger_id)
+            _.bind(trigger, 'mousedown', modal.open, false)
 
             return modal
 
         @disable = (modal) =>
 
-            Util.unbind(Util.get(modal._state.trigger_id))
+            _.unbind(_.get(modal._state.trigger_id))
 
             return modal
 
@@ -58,8 +58,8 @@ class ModalAPI extends CoreWidgetAPI
 
         @_init = () =>
 
-            modals = Util.get 'pre-modal'
-            (_m = @create(modal, (_t = Util.get('a-'+modal.getAttribute('id'))))
+            modals = _.get 'pre-modal'
+            (_m = @create(modal, (_t = _.get('a-'+modal.getAttribute('id'))))
             @enable(_m)) for modal in modals if modals?
 
             @_state.init = true
@@ -108,7 +108,7 @@ class Modal extends CoreWidget
                 rounded: true
                 calc: null
 
-        @_state.config = Util.extend(@_state.config, options)
+        @_state.config = _.extend(@_state.config, options)
 
         @internal =
 
@@ -135,15 +135,15 @@ class Modal extends CoreWidget
 
                 if method is 'close' or not method?
 
-                    ecl.remove('dropshadow') if Util.in_array((ecl=element.classList), 'dropshadow')
-                    ecl.remove('rounded') if Util.in_array(ecl, 'rounded')
+                    ecl.remove('dropshadow') if _.in_array((ecl=element.classList), 'dropshadow')
+                    ecl.remove('rounded') if _.in_array(ecl, 'rounded')
                     element.style.padding = '0px'
                     return element
 
                 else if method is 'open'
 
-                    ecl.add('dropshadow') if not Util.in_array((ecl=element.classList), 'dropshadow')
-                    ecl.add('rounded') if not Util.in_array(ecl, 'rounded') and @_state.config.rounded
+                    ecl.add('dropshadow') if not _.in_array((ecl=element.classList), 'dropshadow')
+                    ecl.add('rounded') if not _.in_array(ecl, 'rounded') and @_state.config.rounded
                     element.style.padding = '10px'
                     return element
 
@@ -162,14 +162,14 @@ class Modal extends CoreWidget
             document.body.appendChild d
 
             # style & customize modal dialogue
-            dialog = Util.get 'modal-dialog'
-            title = Util.get 'modal-title'
-            content = Util.get 'modal-content'
-            ui = Util.get 'modal-ui'
-            close_x = Util.get 'modal-close'
-            fade = Util.get 'modal-fade'
+            dialog = _.get 'modal-dialog'
+            title = _.get 'modal-title'
+            content = _.get 'modal-content'
+            ui = _.get 'modal-ui'
+            close_x = _.get 'modal-close'
+            fade = _.get 'modal-fade'
             id = @_state.cached_id
-            pre = Util.get(id)
+            pre = _.get(id)
 
             dialog.classList.add dialog.getAttribute 'id'
             dialog.setAttribute 'id', id+'-modal-dialog'
@@ -181,7 +181,7 @@ class Modal extends CoreWidget
             content.style[prop] = val for prop, val of pre.style
             content.style.opacity = 1
             content.style.height = @internal.calc().height
-            content.innerHTML = (t = Util.get(id)).innerHTML
+            content.innerHTML = (t = _.get(id)).innerHTML
 
             title.classList.add title.getAttribute 'id'
             title.setAttribute 'id', id+'-modal-title'
@@ -206,8 +206,8 @@ class Modal extends CoreWidget
         @open = () =>
 
             id = @_state.cached_id
-            dialog = Util.get(@_state.element_id)
-            close_x = Util.get(id+'-modal-close')
+            dialog = _.get(@_state.element_id)
+            close_x = _.get(id+'-modal-close')
             @_state.active = true
 
             # overlay!
@@ -217,8 +217,8 @@ class Modal extends CoreWidget
                 #document.body.appendChild(overlay)
 
             # extend default animation params with callbacks
-            fade_animation = Util.prep_animation()
-            dialog_animation = Util.prep_animation()
+            fade_animation = _.prep_animation()
+            dialog_animation = _.prep_animation()
             #overlay_animation = @animation
 
             dialog_animation.complete = () =>
@@ -236,7 +236,7 @@ class Modal extends CoreWidget
             #$(overlay).animate opacity: 0.5, overlay_animation
             $(dialog).animate final, dialog_animation
 
-            Util.bind(close_x, 'mousedown', @close)
+            _.bind(close_x, 'mousedown', @close)
 
             return @
 
@@ -245,14 +245,14 @@ class Modal extends CoreWidget
             id = @_state.cached_id
 
             #overlay = @_state.overlay
-            dialog = Util.get @_state.element_id
+            dialog = _.get @_state.element_id
 
-            Util.unbind(Util.get(id+'-modal-close'), 'mousedown')
+            _.unbind(_.get(id+'-modal-close'), 'mousedown')
 
-            midpoint = Util.extend({}, @_state.config.initial, opacity: 0.5)
+            midpoint = _.extend({}, @_state.config.initial, opacity: 0.5)
 
 
-            Util.get(id+'-modal-content').style.overflow = 'hidden' # disable scroll during animation
+            _.get(id+'-modal-content').style.overflow = 'hidden' # disable scroll during animation
             $('#'+id+'-modal-fade').animate({opacity: 0}, {
                 duration: 300,
                 complete: () =>
@@ -280,7 +280,7 @@ class Modal extends CoreWidget
         @_init = () =>
 
             dialog = @make()
-            Util.get(@_state.trigger_id).removeAttribute('href')
+            _.get(@_state.trigger_id).removeAttribute('href')
 
             @_state.init = true
 

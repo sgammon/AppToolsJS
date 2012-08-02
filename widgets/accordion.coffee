@@ -33,12 +33,12 @@ class AccordionAPI extends CoreWidgetAPI
 
         @enable = (accordion) =>
 
-            (trigger.addEventListener('click', accordion.fold, false) if (trigger = Util.get('a-'+f))? and trigger.nodeType) for f in accordion._state.folds
+            (trigger.addEventListener('click', accordion.fold, false) if (trigger = _.get('a-'+f))? and trigger.nodeType) for f in accordion._state.folds
             return accordion
 
         @disable = (accordion) =>
 
-            (trigger.removeEventListener('click') if (trigger = Util.get('a-'+fold))? and trigger.nodeType) for fold in accordion._state.folds
+            (trigger.removeEventListener('click') if (trigger = _.get('a-'+fold))? and trigger.nodeType) for fold in accordion._state.folds
             return accordion
 
         @get = (element_id) =>
@@ -47,7 +47,7 @@ class AccordionAPI extends CoreWidgetAPI
 
         @_init = () =>
 
-            accordions = Util.get 'pre-accordion'
+            accordions = _.get 'pre-accordion'
             @enable(@create(accordion)) for accordion in accordions if accordions?
 
             apptools.events.trigger 'ACCORDION_API_READY', @
@@ -89,14 +89,14 @@ class Accordion extends CoreWidget
                         width: '300px'
                         opacity: 1
 
-        @_state.config = Util.extend(true, @_state.config, options)
+        @_state.config = _.extend(true, @_state.config, options)
 
         @internal =
 
             register_fold: (anchor) =>
 
                 fold_id = if (f = anchor.getAttribute('href')).charAt(0) isnt '#' then f else f.slice(1)
-                fold = Util.get(fold_id)
+                fold = _.get(fold_id)
                 anchor_id = 'a-' + fold_id
 
                 fold.classList.add('accordion-fold')
@@ -116,20 +116,20 @@ class Accordion extends CoreWidget
                 e.stopPropagation()
 
             trigger = e.target
-            target_div = Util.get(target_id = trigger.getAttribute('id').split('-').splice(1).join('-'))
-            current_fold = Util.get(@_state.current_fold) or false
+            target_div = _.get(target_id = trigger.getAttribute('id').split('-').splice(1).join('-'))
+            current_fold = _.get(@_state.current_fold) or false
             current = false
             same = target_div is current_fold
 
-            accordion = Util.get(@_state.element_id)
+            accordion = _.get(@_state.element_id)
 
-            [curr_folds, block_folds] = [Util.get('current-fold', accordion), Util.get('block', accordion)]
+            [curr_folds, block_folds] = [_.get('current-fold', accordion), _.get('block', accordion)]
 
             (if folds?
-                folds = Util.filter(folds, (el) -> return el.parentNode is accordion)) for folds in [curr_folds, block_folds]
+                folds = _.filter(folds, (el) -> return el.parentNode is accordion)) for folds in [curr_folds, block_folds]
 
             unique_folds = curr_folds
-            (unique_folds.push(tab) if not Util.in_array(unique_folds, tab)) for tab in block_folds if block_folds
+            (unique_folds.push(tab) if not _.in_array(unique_folds, tab)) for tab in block_folds if block_folds
 
             if unique_folds?
                 current = true
@@ -139,7 +139,7 @@ class Accordion extends CoreWidget
             opened = @_state.config[axis = @_state.config.axis].opened
             opened.height = target_div.scrollHeight + 'px'
             closed = @_state.config[axis].closed
-            open_anim = (close_anim = Util.prep_animation())
+            open_anim = (close_anim = _.prep_animation())
 
             ($(open_tab).animate(closed,
                 duration: 400
@@ -155,7 +155,7 @@ class Accordion extends CoreWidget
 
             target_div.style[prop] for prop of closed
 
-            if Util.has_class(target_div, 'none')
+            if _.has_class(target_div, 'none')
                 target_div.classList.remove('none')
                 target_div.classList.add('block')
 
@@ -169,8 +169,8 @@ class Accordion extends CoreWidget
 
         @_init = () =>
 
-            accordion = Util.get(@_state.element_id)
-            links = Util.filter(Util.get('a', accordion), (el) -> return el.parentNode is accordion)
+            accordion = _.get(@_state.element_id)
+            links = _.filter(_.get('a', accordion), (el) -> return el.parentNode is accordion)
             @internal.register_fold(link) for link in links if links?
 
             if current_fold?

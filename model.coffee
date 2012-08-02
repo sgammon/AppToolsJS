@@ -124,7 +124,7 @@ class Model
                     
                     modsafe = @validate(message, object.constructor::model, true)
                         
-                    if Util.is_empty_object(modsafe)
+                    if _.is_empty_object(modsafe)
                         @log('No modelsafe properties found, canceling update...')
                         return cached_obj
 
@@ -152,7 +152,7 @@ class Model
 
     constructor: (key) ->
         
-        if Util.is_raw_object(key)
+        if _.is_raw_object(key)
             @[prop] = val for prop, val of key
         else
             @key = key

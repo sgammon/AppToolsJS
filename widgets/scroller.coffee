@@ -38,7 +38,7 @@ class ScrollerAPI extends CoreWidgetAPI
             @_state.scrollers.splice @_state.scrollers_by_id[id], 1
             delete @_state.scrollers_by_id[id]
 
-            document.body.removeChild(Util.get(id))
+            document.body.removeChild(_.get(id))
 
             return scroller
 
@@ -48,19 +48,19 @@ class ScrollerAPI extends CoreWidgetAPI
                 do (k, v) =>
                     console.log '[Scroller]', 'K: ', k
                     console.log '[Scroller]', 'V: ', v
-                    Util.bind(Util.get(k), 'mousedown', scroller.jump(v))
+                    _.bind(_.get(k), 'mousedown', scroller.jump(v))
 
             return scroller
 
         @disable = (scroller) =>
 
-            Util.unbind(k, 'mousedown') for k in scroller._state.panes
+            _.unbind(k, 'mousedown') for k in scroller._state.panes
             return scroller
 
 
         @_init = () =>
 
-            scrollers = Util.get('pre-scroller') or []
+            scrollers = _.get('pre-scroller') or []
 
             @create(@enable(scroller)) for scroller in scrollers
 
@@ -85,15 +85,15 @@ class Scroller extends CoreWidget
 
                 axis: 'horizontal'
 
-        @_state.config = Util.extend(true, @_state.config, options)
+        @_state.config = _.extend(true, @_state.config, options)
 
         @classify = () =>
 
-            target = Util.get(@_state.frame_id)
-            if Util.in_array(target.classList, 'pre-scroller')
+            target = _.get(@_state.frame_id)
+            if _.in_array(target.classList, 'pre-scroller')
                 target.classList.remove 'pre-scroller'
 
-            panes = Util.get 'scroller-pane', target
+            panes = _.get 'scroller-pane', target
 
             for pane in panes
                 do (pane) =>
@@ -127,8 +127,8 @@ class Scroller extends CoreWidget
 
             @_state.current_pane = pane.getAttribute 'id'
 
-            frameO = Util.get_offset target
-            paneO = Util.get_offset pane
+            frameO = _.get_offset target
+            paneO = _.get_offset pane
 
             if @_state.config.axis is 'horizontal'
 

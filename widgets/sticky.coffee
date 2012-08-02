@@ -27,13 +27,13 @@ class StickyAPI extends CoreAPI
 
         @enable = (sticky) =>
 
-            Util.bind(window, 'scroll', Util.debounce(sticky.refresh, 15, false))
+            _.bind(window, 'scroll', _.debounce(sticky.refresh, 15, false))
 
             return sticky
 
         @disable = (sticky) =>
 
-            Util.unbind(window, 'scroll')
+            _.unbind(window, 'scroll')
 
             return sticky
 
@@ -45,7 +45,7 @@ class StickyAPI extends CoreAPI
 
         @_init = () =>
 
-            stickies = Util.get('pre-sticky')
+            stickies = _.get('pre-sticky')
             @enable(@create(sticky)) for sticky in stickies if stickies?
 
             apptools.events.trigger 'STICKY_API_READY', @
@@ -74,7 +74,7 @@ class Sticky extends CoreWidget
                 classes: null
                 style: {}
 
-        @_state.config = Util.extend(true, @_state.config, options)
+        @_state.config = _.extend(true, @_state.config, options)
 
         @refresh = () =>
 
@@ -138,7 +138,7 @@ class Sticky extends CoreWidget
 
         @_init = () =>
 
-            @_state.cache.original_offset = Util.get_offset(Util.get(@_state.element_id))
+            @_state.cache.original_offset = _.get_offset(_.get(@_state.element_id))
 
             @_state.init = true
             return @

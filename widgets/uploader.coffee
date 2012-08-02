@@ -13,7 +13,7 @@ class UploaderAPI extends CoreAPI
 
         @create = (kind, options) =>
 
-            if Util.is_raw_object(kind)
+            if _.is_raw_object(kind)
                 options = kind
                 kind = null
 
@@ -25,7 +25,7 @@ class UploaderAPI extends CoreAPI
             if options?.id?
                 # if attached to an element, use element ID
                 id = options.id
-                uploader = @enable(uploader) if Util.is_id(id)
+                uploader = @enable(uploader) if _.is_id(id)
 
             else
                 # otherwise use unique boundary with '-' trimmed
@@ -47,7 +47,7 @@ class UploaderAPI extends CoreAPI
 
         @enable = (uploader) =>
 
-            target = Util.get(id = uploader._state.config.id)
+            target = _.get(id = uploader._state.config.id)
 
             console.log('[UPLOADER:INIT]', 'Enabling drop zone on #'+id)
             target.addEventListener('drop', uploader.upload, false) if target?
@@ -56,8 +56,8 @@ class UploaderAPI extends CoreAPI
 
         @disable = (uploader) =>
 
-            target = Util.get(uploader._state.config.id)
-            Util.unbind(target, 'drop') if target?
+            target = _.get(uploader._state.config.id)
+            _.unbind(target, 'drop') if target?
 
             return uploader
 
@@ -67,9 +67,9 @@ class UploaderAPI extends CoreAPI
 
         @_init = () =>
 
-            uploaders = Util.get('pre-uploader')
+            uploaders = _.get('pre-uploader')
             _i = (_u) =>
-                options = Util.extend(true, (if _u.hasAttribute('data-options') then JSON.parse(_u.getAttribute('data-options')) else {}), id: _u.getAttribute('id'))
+                options = _.extend(true, (if _u.hasAttribute('data-options') then JSON.parse(_u.getAttribute('data-options')) else {}), id: _u.getAttribute('id'))
 
                 _u.classList.remove('pre-uploader')
                 _u.classList.add('uploader')
@@ -114,7 +114,7 @@ class Uploader extends CoreWidget
                 uploads_by_type: {}         # @[filetype] returns count
                 uploaded: []                # max_cache is max length
 
-        @_state.config = Util.extend(@_state.config, options)
+        @_state.config = _.extend(@_state.config, options)
 
         @internal =
 
@@ -124,8 +124,8 @@ class Uploader extends CoreWidget
 
                 type = file.type
 
-                return false if Util.in_array(@_state.config.banned_extensions, extension)
-                return false if Util.in_array(@_state.config.banned_types, type)
+                return false if _.in_array(@_state.config.banned_extensions, extension)
+                return false if _.in_array(@_state.config.banned_types, type)
                 return true
 
             finish: (response) =>
@@ -238,7 +238,7 @@ class Uploader extends CoreWidget
             if clear_queue
                 @_state.config.endpoints = []
 
-            if Util.is_array(endpoint)
+            if _.is_array(endpoint)
                 @add_endpoint(endpt, false) for endpt in endpoint
 
             else @_state.config.endpoints.push(endpoint)
@@ -250,7 +250,7 @@ class Uploader extends CoreWidget
 
         @add_callback = (callback) =>
 
-            if Util.is_function(callback)
+            if _.is_function(callback)
                 @_state.config.finish = callback
 
             return @
@@ -283,7 +283,7 @@ class Uploader extends CoreWidget
                 e.stopPropagation()
                 files = e.dataTransfer.files
 
-            else if Util.is_array(e)
+            else if _.is_array(e)
                 files = e
 
             else if e.size

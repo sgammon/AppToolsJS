@@ -111,7 +111,7 @@ class Util
             return typeof object is 'object'
 
         @is_raw_object = (object) =>
-            if not object or typeof object isnt 'object' or object.nodeType or (typeof object is 'object' and !!~@indexOf(obj, 'setInterval'))
+            if not object or typeof object isnt 'object' or object.nodeType or (typeof object is 'object' and !!~@indexOf(object, 'setInterval'))
                 return false    # check if it exists, is type object, and is not DOM obj or window
 
             if object.constructor? and not object.hasOwnProperty('constructor') and not object.constructor::hasOwnProperty 'isPrototypeOf'
@@ -338,7 +338,7 @@ class Util
             return node.parentNode.removeChild(node)
 
         @get = (query, node=document) => # ID, class or tag
-            return query if query.nodeType or not query?
+            return query if not query? or query.nodeType
             return if (id = document.getElementById(query))? then id else (if (cls = node.getElementsByClassName(query)).length > 0 then @to_array(cls) else (if (tg = node.getElementsByTagName(query)).length > 0 then @to_array(tg) else null))
 
         @get_offset = (elem) =>

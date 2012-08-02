@@ -261,7 +261,7 @@ class CoreRPCAPI extends CoreAPI
             # Creates RPCAPIs
             factory: (name_or_apis, base_uri, methods, config) =>
 
-                if Util.is_array(name_or_apis)
+                if _.is_array(name_or_apis)
                     (apptools.api[(name = item.name)] = new RPCAPI(name, item.base_uri, item.methods, item.config)) for item in name_or_apis if name_or_apis?
 
                 else

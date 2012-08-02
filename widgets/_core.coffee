@@ -1,6 +1,43 @@
 ## AppTools Widget Core
 class CoreWidgetAPI extends CoreAPI
 
+    constructor: () ->
+
+        @handle = (e) =>
+
+            if e.preventDefault
+                e.preventDefault()
+                e.stopPropagation()
+
+                trigger = e.target
+                target_ids = trigger.getAttribute('data-href').split('#')
+                touched_targets = []
+
+                if target_ids?
+                    for target_id in target_ids
+                        target = document.getElementById(target_id)
+                        is_curr = target.classList.contains('active')
+
+                        touched_targets.push(target)
+
+                        if _.has_class(target.parentNode, 'widget')
+                            widget = target.parentNode
+                            other.classList.remove('active') for other in others if (others = _.filter(_.get(target.tagName), (o) => return o.parentNode is widget and o isnt target and not _.in_array(touched_targets, o)))?
+
+                        return if is_curr then target.classList.remove('active') else target.classList.add('active')
+                
+                else touched_targets = false
+                return touched_targets
+
+            else if e?
+                throw 'Unparseable event object passed to default handle()'
+            else
+                throw 'Default handle() can only be called via event binding'
+
+        @_init = () =>
+
+            link.addEventListener('click', @handle , false) for link in target_links if (target_links = _.get('target-link'))?
+
 
 class CoreWidget extends CoreObject
 

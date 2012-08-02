@@ -33,21 +33,21 @@ class EditorAPI extends CoreWidgetAPI
 
         @enable = (editor) =>
 
-            target = Util.get(editor._state.element_id)
-            Util.bind(target, 'dblclick', editor.edit, false)
+            target = _.get(editor._state.element_id)
+            _.bind(target, 'dblclick', editor.edit, false)
 
             return editor
 
         @disable = (editor) =>
 
-            Util.unbind(Util.get(editor._state.element_id), 'dblclick')
+            _.unbind(_.get(editor._state.element_id), 'dblclick')
 
             return editor
 
 
         @_init = () =>
 
-            editors = Util.get 'mini-editable'
+            editors = _.get 'mini-editable'
             @enable(@create(editor)) for editor in editors if editors?
 
             return @
@@ -110,7 +110,7 @@ class Editor extends CoreWidget
                         fontColor:
                             char: '&#x28;'
                             command: () =>
-                                c = Util.to_hex prompt 'Please enter hex (#000000) or RGB (rgb(0,0,0)) values.'
+                                c = _.to_hex prompt 'Please enter hex (#000000) or RGB (rgb(0,0,0)) values.'
                                 sel = if document.selection then document.selection() else window.getSelection()
                                 document.execCommand 'insertHTML', false, '<span style="color: '+c+';">'+sel+'</span>'
                         fontSize:
@@ -145,17 +145,17 @@ class Editor extends CoreWidget
                                     t = prompt 'What link text do you want to display?'
 
                                 l = _t or prompt 'What URL do you want to link to? (http://www...)'
-                                document.execCommand 'insertHTML', false, '<a href="'+Util.strip_script l+'">'+t+'</a>'
+                                document.execCommand 'insertHTML', false, '<a href="'+_.strip_script l+'">'+t+'</a>'
 
                 bundle: 'plain'
 
                 width: 150
 
-        @_state.config = Util.extend true, @_state.config, options
+        @_state.config = _.extend true, @_state.config, options
 
         @make = () =>
 
-            t = Util.get(t_id = @_state.element_id)
+            t = _.get(t_id = @_state.element_id)
             width = @_state.config.width
 
             pane = document.createElement 'div'
@@ -176,12 +176,12 @@ class Editor extends CoreWidget
                 button = document.createElement 'button'
                 button.innerHTML = command.char
                 button.className = 'editorbutton XMS'
-                Util.bind button, 'mousedown', command.command
+                _.bind button, 'mousedown', command.command
                 pane.appendChild button
 
             _button(feature, command) for feature, command of features
 
-            _off = Util.get_offset(t)
+            _off = _.get_offset(t)
             _h = pane.scrollHeight
 
             document.body.appendChild pane
@@ -195,15 +195,15 @@ class Editor extends CoreWidget
 
         @show = () =>
 
-            (p=Util.get(@_state.pane_id)).style.zIndex = 9990
-            $(p).animate opacity: 1, (Util.prep_animation())
+            (p=_.get(@_state.pane_id)).style.zIndex = 9990
+            $(p).animate opacity: 1, (_.prep_animation())
             return @
 
         @hide = () =>
 
 
-            (p=Util.get(@_state.pane_id)).style.zIndex = 1
-            $(p).animate opacity: 0, (Util.prep_animation())
+            (p=_.get(@_state.pane_id)).style.zIndex = 1
+            $(p).animate opacity: 0, (_.prep_animation())
             return @
 
         @edit = (e) =>
@@ -213,10 +213,10 @@ class Editor extends CoreWidget
                 e.stopPropagation()
 
             @show()
-            (el = Util.get(@_state.element_id)).contentEditable = true
+            (el = _.get(@_state.element_id)).contentEditable = true
             @_state.active = true
 
-            Util.bind(document.body, 'dblclick', @save)
+            _.bind(document.body, 'dblclick', @save)
             el.focus()
 
             return @
@@ -240,7 +240,7 @@ class Editor extends CoreWidget
                         duration: 200
 
             console.log('Saving snippet...')
-            html = Util.get(@_state.element_id).innerHTML
+            html = _.get(@_state.element_id).innerHTML
 
             $.apptools.api.content.save_snippet(
                 keyname: @_state.snippet_keyname
@@ -264,10 +264,10 @@ class Editor extends CoreWidget
                                         @hide()
                                     , 400)
 
-                    (el = Util.get(@_state.element_id)).contentEditable = false
+                    (el = _.get(@_state.element_id)).contentEditable = false
                     @_state.active = false
 
-                    Util.unbind(document.body, 'dblclick')
+                    _.unbind(document.body, 'dblclick')
 
                 failure: (error) =>
                     $(pane).animate

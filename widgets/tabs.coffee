@@ -29,23 +29,23 @@ class TabsAPI extends CoreAPI
             @_state.tabs.splice(@_state.tabs_by_id, 1)
             delete @_state.tabs_by_id[id]
 
-            document.body.removeChild(Util.get(id))
+            document.body.removeChild(_.get(id))
 
             return tabs
 
         @enable = (tabs) =>
 
-            Util.bind(Util.get(trigger), 'mousedown', tabs.switch, false) for trigger of tabs._state.tabs
+            _.bind(_.get(trigger), 'mousedown', tabs.switch, false) for trigger of tabs._state.tabs
             return tabs
 
         @disable = (tabs) =>
 
-            Util.unbind(Util.get(trigger), 'mousedown') for trigger of tabs._state.tabs
+            _.unbind(_.get(trigger), 'mousedown') for trigger of tabs._state.tabs
             return tabs
 
         @_init = () =>
 
-            tabsets = Util.get 'pre-tabs'
+            tabsets = _.get 'pre-tabs'
             @enable(@create(tabs)) for tabs in tabsets if tabsets?
 
             return @_state.init = true
@@ -70,19 +70,19 @@ class Tabs extends CoreWidget
                 rounded: true
                 div_string: 'div'
 
-        @_state.config = Util.extend(true, @_state.config, options)
+        @_state.config = _.extend(true, @_state.config, options)
 
         @internal =
 
             classify: () =>
 
                 div_string = @_state.config.div_string
-                target = Util.get(@_state.element_id)
+                target = _.get(@_state.element_id)
 
-                tabs = Util.filter(Util.get(div_string, target), (test=(el) ->       # content div elements
+                tabs = _.filter(_.get(div_string, target), (test=(el) ->       # content div elements
                     return el.parentNode is target
                 ))
-                triggers = Util.filter(Util.get('a', target), test)             # <a> --> actual 'tab'-looking element
+                triggers = _.filter(_.get('a', target), test)             # <a> --> actual 'tab'-looking element
 
                 target.classList.add(cls) for cls in ['relative', 'tabset']
 
@@ -94,12 +94,12 @@ class Tabs extends CoreWidget
 
         @make = () =>
 
-            target = Util.get(@_state.element_id)
-            triggers = Util.filter(Util.get('a', target), (x) => return x.parentNode is target)
+            target = _.get(@_state.element_id)
+            triggers = _.filter(_.get('a', target), (x) => return x.parentNode is target)
 
             for trigger in triggers
                 do (trigger) =>
-                    content_div = Util.get(content_id=trigger.getAttribute('href').slice(1))
+                    content_div = _.get(content_id=trigger.getAttribute('href').slice(1))
                     trigger.setAttribute('id', (trigger_id = 'a-'+content_id))
 
                     if not content_div?
@@ -117,9 +117,9 @@ class Tabs extends CoreWidget
 
         @switch = (e) =>
 
-            tabset = Util.get(@_state.element_id)
+            tabset = _.get(@_state.element_id)
             div_string = @_state.config.div_string
-            current_tab = Util.get(@_state.current_tab) or (if (c = Util.get('current-tab', tabset))? then Util.filter(c, (x)->return (x.parentNode is tabset and x.tagName.toLowerCase() is div_string))[0] else null) or null
+            current_tab = _.get(@_state.current_tab) or (if (c = _.get('current-tab', tabset))? then _.filter(c, (x)->return (x.parentNode is tabset and x.tagName.toLowerCase() is div_string))[0] else null) or null
             current = false
 
             if e?
@@ -127,21 +127,21 @@ class Tabs extends CoreWidget
                     e.preventDefault()
                     e.stopPropagation()
 
-                    target_tab = Util.get(target_id=(trigger=e.target).getAttribute('id').split('-').splice(1).join('-'))
+                    target_tab = _.get(target_id=(trigger=e.target).getAttribute('id').split('-').splice(1).join('-'))
 
                 else if e? and e.nodeType
                     target_tab = e
-                    trigger = Util.get('a-'+(target_id = e.getAttribute('id')))
+                    trigger = _.get('a-'+(target_id = e.getAttribute('id')))
 
                 else       # assume it's a string ID
-                    target_tab = Util.get(e)
-                    trigger = Util.get('a-'+(target_id = e))
+                    target_tab = _.get(e)
+                    trigger = _.get('a-'+(target_id = e))
 
             else
-                target_tab = Util.get(target_id = (trigger = Util.get('a', tabset)[0]).getAttribute('id').split('-').splice(1).join('-'))
+                target_tab = _.get(target_id = (trigger = _.get('a', tabset)[0]).getAttribute('id').split('-').splice(1).join('-'))
 
             if current_tab?
-                current_a = Util.get('a-' + current_tab.getAttribute('id')) or Util.get('a-'+@_state.current_tab)
+                current_a = _.get('a-' + current_tab.getAttribute('id')) or _.get('a-'+@_state.current_tab)
                 current = true
 
             return @ if current_tab is target_tab # return if current tab selected
