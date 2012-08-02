@@ -28,31 +28,31 @@ class CoreEventsAPI extends CoreAPI
                 touched_events.push(event)
 
                 # Consider all callchain directives
-                for callback_directive in @callchain[event].hooks
+                for hook in @callchain[event].hooks
                     try
                         # If it's a run-once and it's already run, continue as fast as possible...
-                        if callback_directive.once == true and callback_directive.has_run == true
+                        if hook.once == true and hook.has_run == true
                             continue
 
                         # If it's not an event bridge, execute the hook
-                        else if callback_directive.bridge? == false
+                        else if hook.bridge == false
 
                             # Execute callback with context, add to history/exec count
-                            result = callback_directive.fn(args...)
+                            result = hook.fn(args...)
                             hook_exec_count++
-                            @history.push event: event, callback: callback_directive, args: args, result: result
+                            @history.push event: event, callback: hook, args: args, result: result
 
                             # Mark as run
-                            callback_directive.has_run = true
+                            hook.has_run = true
 
                         # If we encounter a bridge, defer it (after all hooks are executed for this event)...
-                        else if callback_directive.bridge == true
-                            event_bridges.push(event: callback_directive.event, args: args)
+                        else if hook.bridge == true
+                            event_bridges.push(event: hook.event, args: args)
 
                     catch error
                         ## Increment error count and add to runtime history
                         hook_error_count++
-                        @history.push event: event, callback: callback_directive, args: args, error: error
+                        @history.push event: event, callback: hook, args: args, error: error
 
                 # Execute deferred event bridges
                 for bridge in event_bridges
@@ -84,7 +84,7 @@ class CoreEventsAPI extends CoreAPI
         @on = @upon = @when = @hook = (event, callback, once=false) =>
 
             if event not in @registry
-                apptools.dev.warning 'Events', ''
+                apptools.dev.warning 'Events', 'Tried to hook to unrecognized event. Registering...'
                 @register(event)
             @callchain[event].hooks.push(fn: callback, once: once, has_run: false, bridge: false)
             apptools.dev.verbose 'Events', 'Hook registered on event.', event

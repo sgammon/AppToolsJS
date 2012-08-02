@@ -129,7 +129,7 @@ class Accordion extends CoreWidget
                 folds = Util.filter(folds, (el) -> return el.parentNode is accordion)) for folds in [curr_folds, block_folds]
 
             unique_folds = curr_folds
-            (unique_folds.push(tab) if not Util.in_array(tab, unique_folds)) for tab in block_folds if block_folds
+            (unique_folds.push(tab) if not Util.in_array(unique_folds, tab)) for tab in block_folds if block_folds
 
             if unique_folds?
                 current = true

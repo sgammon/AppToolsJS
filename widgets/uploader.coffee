@@ -124,8 +124,8 @@ class Uploader extends CoreWidget
 
                 type = file.type
 
-                return false if Util.in_array(extension, @_state.config.banned_extensions)
-                return false if Util.in_array(type, @_state.config.banned_types)
+                return false if Util.in_array(@_state.config.banned_extensions, extension)
+                return false if Util.in_array(@_state.config.banned_types, type)
                 return true
 
             finish: (response) =>

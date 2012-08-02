@@ -135,15 +135,15 @@ class Modal extends CoreWidget
 
                 if method is 'close' or not method?
 
-                    ecl.remove('dropshadow') if Util.in_array('dropshadow', (ecl=element.classList))
-                    ecl.remove('rounded') if Util.in_array('rounded', ecl)
+                    ecl.remove('dropshadow') if Util.in_array((ecl=element.classList), 'dropshadow')
+                    ecl.remove('rounded') if Util.in_array(ecl, 'rounded')
                     element.style.padding = '0px'
                     return element
 
                 else if method is 'open'
 
-                    ecl.add('dropshadow') if not Util.in_array('dropshadow', (ecl=element.classList))
-                    ecl.add('rounded') if not Util.in_array('rounded', ecl) and @_state.config.rounded
+                    ecl.add('dropshadow') if not Util.in_array((ecl=element.classList), 'dropshadow')
+                    ecl.add('rounded') if not Util.in_array(ecl, 'rounded') and @_state.config.rounded
                     element.style.padding = '10px'
                     return element
 
