@@ -375,9 +375,7 @@ class Util
 
             return result
 
-        @resolve_common_ancestor = (elem1, elem2, bound_elem) =>
-            
-            bound_elem ?= document.body
+        @resolve_common_ancestor = (elem1, elem2, bound_elem=document.body) =>
             if not @is_child(bound_elem, [elem1, elem2])
                 throw 'Bounding node must contain both search elements'
             else
