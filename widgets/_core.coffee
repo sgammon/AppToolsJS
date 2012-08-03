@@ -20,9 +20,10 @@ class CoreWidgetAPI extends CoreAPI
 
                         touched_targets.push(target)
 
-                        if _.has_class(target.parentNode, 'widget')
-                            widget = target.parentNode
-                            other.classList.remove('active') for other in others if (others = _.filter(_.get(target.tagName), (o) => return o.parentNode is widget and o isnt target and not _.in_array(touched_targets, o)))?
+                        _w = _.resolve_common_ancestor(trigger, target)
+                        if _w? and _.has_class(_w, 'widget')
+                            widget = _w
+                            other.classList.remove('active') for other in others if (others = _.filter(_.get(target.tagName), (o) => return @is_child(widget, o) and (o isnt target) and not _.in_array(touched_targets, o)))?
 
                         return if is_curr then target.classList.remove('active') else target.classList.add('active')
                 

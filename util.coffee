@@ -361,6 +361,50 @@ class Util
             return true if document.getElementById(str) isnt null
             return false
 
+        @is_child = (parent, child) =>
+            result = false
+            if @is_array(child)
+                results = []
+                results.push(@is_child(parent, ch)) for ch in child
+                result = @filter(results, (r) => return r).length is results.length
+
+            else
+                while child = child.parentNode
+                    continue if child isnt parent
+                    result = true
+                    break
+
+            return result
+
+        @resolve_common_ancestor = (elem1, elem2, bound_elem) =>
+            
+            bound_elem ?= document.body
+            if not @is_child(bound_elem, [elem1, elem2])
+                throw 'Bounding node must contain both search elements'
+            else
+                searched_elems = []
+                match = null
+                go1 = true
+                go2 = true
+                while go1 or go2
+                    if go1
+                        if @in_array(searched_elems, elem1)
+                            match = elem1
+                            break
+                        else
+                            searched_elems.push(elem1)
+                            go1 = (elem1 isnt bound_elem) and (elem1 = elem1.parentNode) and elem1?
+                    if go2
+                        if @in_array(searched_elems, elem2)
+                            match = elem2
+                            break
+                        else
+                            searched_elems.push(elem2)
+                            go2 = (elem2 isnt bound_elem) and (elem2 = elem2.parentNode) and elem2?
+                    continue
+
+                return match
+
         # Events/timing/animation
         @bind = (element, event, fn, prop=false) =>
             return false if not element?
