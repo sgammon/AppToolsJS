@@ -364,9 +364,8 @@ class Util
         @is_child = (parent, child) =>
             result = false
             if @is_array(child)
-                results = []
-                results.push(@is_child(parent, ch)) for ch in child
-                result = @filter(results, (r) => return r).length is results.length
+                results = _.filter(_.map(child, (ch)=> return @is_child(parent, ch)), (r) => return r)
+                result = child.length is results.length
 
             else
                 while child = child.parentNode
