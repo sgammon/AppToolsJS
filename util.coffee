@@ -111,7 +111,7 @@ class Util
             return typeof object is 'object'
 
         @is_raw_object = (object) =>
-            if not object or typeof object isnt 'object' or object.nodeType or (typeof object is 'object' and !!~@indexOf(object, 'setInterval'))
+            if not object or typeof object isnt 'object' or object.nodeType or @is_window(object)
                 return false    # check if it exists, is type object, and is not DOM obj or window
 
             if object.constructor? and not object.hasOwnProperty('constructor') and not object.constructor::hasOwnProperty 'isPrototypeOf'
@@ -122,6 +122,9 @@ class Util
         @is_empty_object = (object) =>
             return false for key of object
             return true
+
+        @is_window = (object) =>
+            return typeof object is 'object' and (object instanceof Window or !!~@indexOf(object, 'setInterval'))
 
         @is_body = (object) =>
             return @is_object(object) and (Object.prototype.toString.call(object) is '[object HTMLBodyElement]' or object.constructor.name is 'HTMLBodyElement')
@@ -378,7 +381,7 @@ class Util
                 @bind(element, ev, func, prop) for ev, func of event
                 return
 
-            else if element.nodeType
+            else if @is_window(element) or element.nodeType
                 return element.addEventListener event, fn, prop
 
             else throw 'bind() requires at least an event name and function to bind.'

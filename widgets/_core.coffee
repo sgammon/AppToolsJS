@@ -10,7 +10,7 @@ class CoreWidgetAPI extends CoreAPI
                 e.stopPropagation()
 
                 trigger = e.target
-                target_ids = trigger.getAttribute('data-href').split('#')
+                target_ids = _.filter(trigger.getAttribute('data-href').split('#'), (it) -> return it isnt '' and it isnt String())
                 touched_targets = []
 
                 if target_ids?
