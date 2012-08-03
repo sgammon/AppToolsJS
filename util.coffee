@@ -124,7 +124,7 @@ class Util
             return true
 
         @is_window = (object) =>
-            return typeof object is 'object' and (object.self = object or !!~@indexOf(object, 'setInterval'))
+            return typeof object is 'object' and (!!~@indexOf(object.constructor::, 'setInterval') or (object.self? and object.self is object) or (Window? and object instanceof Window))
 
         @is_body = (object) =>
             return @is_object(object) and (Object.prototype.toString.call(object) is '[object HTMLBodyElement]' or object.constructor.name is 'HTMLBodyElement')
