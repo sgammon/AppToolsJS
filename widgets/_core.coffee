@@ -33,7 +33,7 @@ class CoreWidgetAPI extends CoreAPI
                             target.classList.remove('active')
                             trigger.classList.remove('active')
                             if trigger.classList.contains('autoclose')
-                                trigger.removeEventListener('mouseout', @handle, false)
+                                target.removeEventListener('mouseout', @handle, false)
 
                         else
                             target.classList.add('active')
