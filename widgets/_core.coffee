@@ -10,6 +10,9 @@ class CoreWidgetAPI extends CoreAPI
                 e.stopPropagation()
 
                 trigger = e.target
+                if trigger.classList.contains('autoclose')
+                    if 
+                    trigger.mouse
                 target_ids = _.filter(trigger.getAttribute('data-href').split('#'), (it) -> return it isnt '' and it isnt String())
                 touched_targets = []
 
@@ -29,10 +32,14 @@ class CoreWidgetAPI extends CoreAPI
                         if is_curr 
                             target.classList.remove('active')
                             trigger.classList.remove('active')
+                            if trigger.classList.contains('autoclose')
+                                trigger.removeEventListener('mouseout', @handle, false)
 
                         else
                             target.classList.add('active')
                             trigger.classList.add('active')
+                            if trigger.classList.contains('autoclose')
+                                target.addEventListener('mouseout', @handle, false)
 
                         return
                 
