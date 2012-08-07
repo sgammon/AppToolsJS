@@ -292,6 +292,21 @@ class Util
                 console.log('non-native sort() currently stubbed.')
                 return false
 
+        @defaults = (obj, def_obj) =>
+            new_obj = obj
+            if @is_array(obj)
+                for o, i in obj
+                    if not o?
+                        new_obj[i] = def_obj[i]
+
+            else if @is_object(obj)
+                for k, v of obj
+                    if not v?
+                        new_obj[k] = def_obj[k]
+
+            else throw 'Defaults requires an iterable as the first param.'
+            return new_obj
+
         # DOM checks/manipulation
         @create_element_string = (tag, attrs, separator='*', ext) =>
             no_close = ['area', 'base', 'basefont', 'br', 'col', 'frame', 'hr', 'img', 'input', 'link']
