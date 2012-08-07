@@ -16,16 +16,25 @@ class CoreWidgetAPI extends CoreAPI
                 if target_ids?
                     for target_id in target_ids
                         target = document.getElementById(target_id)
-                        is_curr = target.classList.contains('active')
+                        is_curr = target.classList.contains('active') or trigger.classList.contains('active')
 
                         touched_targets.push(target)
 
                         _w = _.resolve_common_ancestor(trigger, target)
                         if _w? and _.has_class(_w, 'widget')
                             widget = _w
-                            other.classList.remove('active') for other in others if (others = _.filter(_.get(target.tagName), (o) => return _.is_child(widget, o) and (o isnt target) and not _.in_array(touched_targets, o)))?
+                            other_targ.classList.remove('active') for other_targ in other_targs if (other_targs = _.filter(_.get(target.tagName), (o) => return _.is_child(widget, o) and (o isnt target) and not _.in_array(touched_targets, o)))?
+                            other_trig.classList.remove('active') for other_trig in other_trigs if (other_trigs = _.filter(_.get(trigger.tagName), (o) => return _.is_child(widget, o) and (o isnt trigger)))?
 
-                        return if is_curr then target.classList.remove('active') else target.classList.add('active')
+                        if is_curr 
+                            target.classList.remove('active')
+                            trigger.classList.remove('active')
+
+                        else
+                            target.classList.add('active')
+                            trigger.classList.add('active')
+
+                        return
                 
                 else touched_targets = false
                 return touched_targets
