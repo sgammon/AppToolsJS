@@ -160,6 +160,8 @@ class Model
         @to_message = () => return @constructor::to_message(@)
         @log = (message) => return @constructor::log(@constructor.name, message)
 
+        return @
+
             
 
     ###

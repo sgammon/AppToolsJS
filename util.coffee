@@ -716,7 +716,6 @@ window._ = new Util()
 
 if window.$?
     $.extend _: window._
-
 else
     window.$ = (x) => return window._.get(x)
     window.$._ = window._

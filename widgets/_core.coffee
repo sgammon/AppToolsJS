@@ -10,9 +10,6 @@ class CoreWidgetAPI extends CoreAPI
                 e.stopPropagation()
 
                 trigger = e.target
-                if trigger.classList.contains('autoclose')
-                    if 
-                    trigger.mouse
                 target_ids = _.filter(trigger.getAttribute('data-href').split('#'), (it) -> return it isnt '' and it isnt String())
                 touched_targets = []
 
