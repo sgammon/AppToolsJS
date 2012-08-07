@@ -1,7 +1,9 @@
-# Handy CS utility functions.
-# You're welcome.
-#
-# david@momentum.io
+### 
+Handy utility functions.
+You're welcome.
+
+david@momentum.io
+###
 
 class Util
 
@@ -36,12 +38,13 @@ class Util
 
                 ready: (e) =>
                     # DOM ready event handler
-                    document.removeEventListener('DOMContentLoaded', @_state.handlers.ready, false)
+                    if document.readyState = 'complete'
+                        document.removeEventListener('DOMContentLoaded', @_state.handlers.ready, false)
 
-                    @_state.dom_ready = true
-                    @_state.dom_status = 'READY'
-                                       
-                    return $.apptools.events.trigger('DOM_READY')
+                        @_state.dom_ready = true
+                        @_state.dom_status = 'READY'
+                                           
+                        return $.apptools.events.trigger('DOM_READY')
 
             callbacks:                  # applied to each item in queue - accepts queued item as param
                 default: null
@@ -364,9 +367,8 @@ class Util
         @is_child = (parent, child) =>
             result = false
             if @is_array(child)
-                results = _.filter(_.map(child, (ch)=> return @is_child(parent, ch)), (r) => return r)
-                result = child.length is results.length
-
+                results = _.reject(_.map(child, (ch)=> return @is_child(parent, ch)), (r) => return r)
+                result = results.length is 0
             else
                 while child = child.parentNode
                     continue if child isnt parent
@@ -451,7 +453,7 @@ class Util
             return $.apptools.events.trigger(event)
 
         @block = (async_method, object={}) =>
-            console.log '[Util] Enforcing blocking at user request... :('
+            console.log '[Util]', 'Enforcing blocking at user request... :('
 
             _done = false
             result = null
@@ -511,15 +513,14 @@ class Util
             ].join ' '
 
         @prep_animation = (t,e,c) => # time (ms), easing (jQuery easing), callback
-            options = if not t? then duration: 400 else (if t? and @is_object t then @extend({}, t)else
-                complete: c or (not c and e) or (is_function t and t)
+            options = if not t? then duration: 400 else if t? and @is_object t then @extend({}, t) else
+                complete: c or (not c and e) or (_this.is_function(t) and t)
                 duration: t
                 easing: (c and e) or (e and not is_function e)
-            )
 
             return options
 
-        @throttle = (fn, buffer, prefire) =>
+        @throttle = (fn, buffer, prefire=false) =>
             # Throttles a rapidly-firing event (i.e. mouse or scroll)
             timer_id = null
             last = 0
@@ -541,10 +542,10 @@ class Util
 
                 clearTimeout(timer_id) if !!timer_id
 
-                if not prefire? and elapsed >= buffer
+                if not prefire and elapsed >= buffer
                     go()
                 else
-                    timer_id = setTimeout((if prefire then clear else go), if not prefire? then buffer - elapsed else buffer)
+                    timer_id = setTimeout((if prefire then clear else go), if not prefire then buffer - elapsed else buffer)
 
         @debounce = (fn, buffer=200, prefire=false) ->
             return @throttle(fn, buffer, prefire)

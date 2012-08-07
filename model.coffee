@@ -67,8 +67,8 @@ class Model
     log: (source, message) =>
 
         if message?
-            if $.apptools?
-                return $.apptools.dev.verbose(source, message)
+            if (a = $.apptools or window.apptools)?
+                return a.dev.verbose(source, message)
 
             else
                 return console.log('['+source+']', message)
