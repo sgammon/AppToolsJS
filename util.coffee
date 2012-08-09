@@ -292,7 +292,7 @@ class Util
                 console.log('non-native sort() currently stubbed.')
                 return false
 
-        @defaults = (obj, def_obj) =>
+        @defaults = (obj, def_obj={}) =>
             new_obj = obj
             if @is_array(obj)
                 for o, i in obj
@@ -306,6 +306,14 @@ class Util
 
             else throw 'Defaults requires an iterable as the first param.'
             return new_obj
+
+        @first = (array) =>
+            arr = array
+            return arr.shift()
+
+        @last = (array) =>
+            arr = array
+            return arr.pop()
 
         # DOM checks/manipulation
         @create_element_string = (tag, attrs, separator='*', ext) =>
@@ -326,6 +334,14 @@ class Util
             frag = range.createContextualFragment(html_string)
 
             return frag
+
+        @to_doc_frag = (node) =>
+
+            frag = document.createDocumentFragment()
+            frag.appendChild(node)
+
+            return frag
+
 
         @add = (element_type, attrs, parent_node=document.body) =>
             # tag name, attr hash, doc node to insert into (defaults to body)
