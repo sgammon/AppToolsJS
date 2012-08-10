@@ -103,7 +103,7 @@ class Model
 
         else throw new ModelException(@constructor.name, 'No object passed to validate().')
 
-    from_message: (object, message={}, strict=false) =>
+    from_message: (object, message={}, strict=false, exclude=[]) =>
 
         if object?
 
@@ -112,7 +112,7 @@ class Model
             @log('Validating incoming RPC update...')
 
             if @validate(message, object.constructor::model)
-                object[prop] = val for own prop, val of message
+                object[prop] = val for own prop, val of message if not !!~_.indexOf(exclude, prop)
                 @log('Valid model matched. Returning updated object...')
                 return object
 
@@ -129,7 +129,7 @@ class Model
                         return cached_obj
 
                     else
-                        object[p] = v for own p, v of modsafe
+                        object[p] = v for own p, v of modsafe if not !!~_.indexOf(exclude, prop)
                         @log('Modelsafe conversion succeeded! Returning updated object...')
 
                         return object
@@ -140,7 +140,7 @@ class Model
             
         else throw new ModelException(@constructor.name, 'No object passed to from_message().')
 
-    to_message: (object) =>
+    to_message: (object, exclude=[]) =>
 
         if object?
             message = {}
