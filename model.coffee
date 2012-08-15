@@ -142,6 +142,9 @@ class Model
 
     to_message: (object, exclude=[]) =>
 
+        # TO DO:
+        #   - finish recursive kind validation
+
         if object?
             message = {}
             (message[prop] = val if object.constructor::model[prop]? and typeof val isnt 'function') for own prop, val of object
@@ -152,10 +155,9 @@ class Model
 
     constructor: (key) ->
         
-        if _.is_raw_object(key)
+        if _.is_raw_object(key) and arguments.length is 1
             @[prop] = val for prop, val of key
-        else
-            @key = key
+
         @from_message = (message, strict) => return @constructor::from_message(@, message, strict)
         @to_message = () => return @constructor::to_message(@)
         @log = (message) => return @constructor::log(@constructor.name, message)

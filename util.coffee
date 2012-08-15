@@ -443,6 +443,12 @@ class Util
                 if @is_function(event) and @is_string(element)
                     return $.apptools.events.hook(element, event, fn)
 
+                else if @is_function(element) and @is_object(event)
+                    return () ->
+                        return element.apply(event, arguments)
+
+                else throw 'Unrecognized params passed to bind()'
+
             else if @is_array element # can accept multiple els for 1 event [el1, el2]
                 @bind(el, event, fn, prop) for el in element
                 return

@@ -1,5 +1,3 @@
-@.__apptools_preinit = {}
-
 # Milk is a simple, fast way to get more Mustache into your CoffeeScript and
 # Javascript.
 #
@@ -28,10 +26,10 @@ Find = (name, stack, value = null) ->
   # If we find a function in the stack, we'll treat it as a method, and call it
   # with `this` bound to the element it came from. If a method returns a
   # function, we treat it as a lambda, which doesn't have a bound `this`.
-  if value instanceof Function
+  if typeof value is 'function'
     value = do (value) -> ->
       val = value.apply(ctx, arguments)
-      return (val instanceof Function) and val.apply(null, arguments) or val
+      return (typeof value is 'function') and val.apply(null, arguments) or val
 
   # Null values will be coerced to the empty string.
   return value
@@ -130,7 +128,7 @@ Parse = (template, delimiters = ['{{','}}'], section = null) ->
       when '', '&', '{'
         buildInterpolationTag = (name, is_unescaped) ->
           return (context) ->
-            if (value = Find(name, context) ? '') instanceof Function
+            if typeof (value = Find(name, context) ? '') is 'function'
               value = Expand(this, Parse("#{value()}"), arguments...)
             value = @escape("#{value}") unless is_unescaped
             return "#{value}"
@@ -164,8 +162,8 @@ Parse = (template, delimiters = ['{{','}}'], section = null) ->
         sectionInfo['#'] = buildSectionTag = (name, delims, raw) ->
           return (context) ->
             value = Find(name, context) || []
-            tmpl  = if value instanceof Function then value(raw) else raw
-            value = [value] unless value instanceof Array
+            tmpl  = if typeof value is 'function' then value(raw) else raw
+            value = [value] unless typeof value is 'array'
             parsed = Parse(tmpl || '', delims)
 
             context.push(value)
@@ -182,7 +180,7 @@ Parse = (template, delimiters = ['{{','}}'], section = null) ->
         sectionInfo['^'] = buildInvertedSectionTag = (name, delims, raw) ->
           return (context) ->
             value = Find(name, context) || []
-            value = [1] unless value instanceof Array
+            value = [1] unless typeof value is 'array'
             value = if value.length is 0 then Parse(raw, delims) else []
             return Expand(this, value, arguments...)
 
@@ -247,10 +245,16 @@ Milk =
   # template. If your template uses Partial Tags, you may also supply a hash or
   # a function, or simply override `Milk.partials`. There is no Step Three.
   render: (template, data, partials = null) ->
-    unless (partials ||= @partials || {}) instanceof Function
+    unless typeof (partials ||= @partials || {}) is 'function'
       partials = do (partials) -> (name) ->
         throw "Unknown partial '#{name}'!" unless name of partials
         return Find(name, [partials])
 
-    context = if @helpers instanceof Array then @helpers else [@helpers]
+    context = if typeof @helpers is 'array' then @helpers else [@helpers]
     return Expand(this, Parse(template), context.concat([data]), partials)
+
+# Happy hacking!
+if exports?
+  exports[key] = Milk[key] for key of Milk
+else
+  this.Milk = Milk
