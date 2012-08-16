@@ -286,11 +286,11 @@ class AppTools
                 @sys.drivers.register 'transport', 'amplify', @sys.state.classes.RPCDriver, @lib.amplify, true, 500, null
                 @sys.drivers.register 'storage', 'amplify', @sys.state.classes.StorageDriver, @lib.amplify, true, 100, null
 
-        # Milk (mustache for coffeescript)
-        if window?.Milk?
-            @sys.libraries.install 'Milk', window.Milk, (library) =>
-                @sys.drivers.install 'render', 'milk', @sys.state.classes.RenderDriver, @lib.milk, true, 100, (milk) =>
-                    @dev.verbose 'Milk', 'Render support is currently stubbed. Come back later.'
+        # t.coffee (template rendering)
+        if window?.t?
+            @sys.libraries.install 't', window.t, (library) =>
+                @sys.drivers.install 'render', 't', @sys.state.classes.RenderDriver, @lib.t, true, 100, (t) =>
+                    @dev.verbose 't', 'Native template render driver "t" loaded.'
 
         # Mustache
         if window?.Mustache?

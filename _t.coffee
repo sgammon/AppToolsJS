@@ -9,15 +9,18 @@
 
   @author  David Rekow <david at davidrekow.com>
   @license MIT
-  @version 0.1.0
+  @version 0.1.1
 ###
 
 class t
 
+  blockregex = /\{\{\s*?(([@!>]?)(.+?))\s*?\}\}(([\s\S]+?)(\{\{\s*?:\1\s*?\}\}([\s\S]+?))?)\{\{\s*?\/(?:\1|\s*?\3\s*?)\s*?\}\}/g
+  valregex = /\{\{\s*?([=%])\s*?(.+?)\s*?\}\}/g
+
   constructor: (template) ->
 
     @scrub = (val) =>
-      return new Option(val).innerHTML.replace(/"/g, '&quot;')
+      return new Option(val).innerHTML.replace(/["']/g, '&quot;')
 
     @get_value = (vars, key) =>
       parts = key.split('.')
@@ -25,14 +28,12 @@ class t
         return false if parts[0] not of vars
         vars = vars[parts.shift()]
 
-        return (if typeof vars is 'function' then vars() else vars)
+      return (if typeof vars is 'function' then vars() else vars)
 
     @t = template
     return @
 
   render: (fragment, vars) =>
-    blockregex = /\{\{(([@!]?)(.+?))\}\}(([\s\S]+?)(\{\{:\1\}\}([\s\S]+?))?)\{\{\/\1\}\}/g
-    valregex = /\{\{([=%])(.+?)\}\}/g
 
     if not vars?
       vars = fragment
@@ -49,18 +50,20 @@ class t
         return @render(`has_else ? if_true : inner, vars`)
 
       if meta is '@'
-        for i, v of val
-          if {}.hasOwnProperty.call(val, i)
-            vars._key = i
-            vars._val = v
-            temp += @render(inner, vars)
+        if Array.isArray(val)
+          temp += @render(inner, item) for item in val
+        else
+          for k, v of val
+            if val.hasOwnProperty(k)
+              temp += @render(inner, {_key: k, _val: v})
 
-        delete vars._key
-        delete vars._val
-        return temp
+      if meta is '>'
+        temp += @render(inner, val)
+       
+      return temp
     ).replace(valregex, (_, meta, key) =>
       val = @get_value(vars, key)
-      return (if val? then (if meta is '%' then scrub(val) else val) else '')
+      return (if val? then (if meta is '%' then @scrub(val) else val) else '')
     )
 
 window.t = t

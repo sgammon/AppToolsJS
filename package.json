@@ -46,7 +46,7 @@
           "join": true,
           "uglify": true,
           "order": [
-              "_milk.coffee",
+              "_t.coffee",
               "_core.coffee",
               "dev.coffee",
               "events.coffee",
@@ -69,7 +69,7 @@
           "join": true,
           "uglify": true,
           "order": [
-              "_milk.coffee",
+              "_t.coffee",
               "_core.coffee",
               "dev.coffee",
               "events.coffee",
