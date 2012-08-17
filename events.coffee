@@ -10,6 +10,7 @@ class CoreEventsAPI extends CoreAPI
         @registry = [] # Global registry of all named events
         @callchain = {} # Event callbacks attached to named events
         @history = [] # Runtime event history
+        @mutators = [] # Mutate functions registered by `bridge`
 
         ## Trigger a named event, optionally with context
         @fire = @trigger = (event, args...) =>
@@ -57,7 +58,10 @@ class CoreEventsAPI extends CoreAPI
                 # Execute deferred event bridges
                 for bridge in event_bridges
                     touched_events.push(bridge.event)
-                    @trigger(bridge.event, bridge.args...)
+                    if bridge.mutator != false
+                        @trigger(bridge.event, (@mutators[bridge.mutator](bridge.args, event, bridge.event))...)
+                    else
+                        @trigger(bridge.event, bridge.args...)
 
                 return events: touched_events, executed: hook_exec_count, errors: hook_error_count
             else
@@ -91,7 +95,7 @@ class CoreEventsAPI extends CoreAPI
             return true
 
         ## Delegate one event to another, to be triggered after all hooks on the original event
-        @delegate = @bridge = (from_events, to_events) =>
+        @delegate = @bridge = (from_events, to_events, context_mutator_fn=null) =>
 
             if typeof(to_events) == 'string'
                 to_events = [to_events]
@@ -104,10 +108,18 @@ class CoreEventsAPI extends CoreAPI
                     if not @callchain[source_ev]?
                         apptools.dev.warn('Events', 'Bridging from undefined source event:', source_ev)
                         @register(source_ev)
-                    @callchain[source_ev].hooks.push(
-                        event: target_ev,
-                        bridge: true
-                    )
-
+                    if context_mutator_fn?
+                        nl = @mutators.push context_mutator_fn
+                        @callchain[source_ev].hooks.push(
+                            event: target_ev,
+                            bridge: true,
+                            mutator: nl - 1
+                        )
+                    else
+                        @callchain[source_ev].hooks.push(
+                            event: target_ev,
+                            bridge: true,
+                            mutator: false
+                        )
 
 @__apptools_preinit.abstract_base_classes.push CoreEventsAPI
