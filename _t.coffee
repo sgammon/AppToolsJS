@@ -1,16 +1,3 @@
-###
-     _             __  __         
-    | |_   __ ___ / _|/ _|___ ___ 
-    |  _|_/ _/ _ \  _|  _/ -_) -_)
-     \__(_)__\___/_| |_| \___\___|
-
-  t.coffee - CoffeeScript port of t.js (Jason Mooberry <jasonmoo@me.com>),
-    a micro-templating framework in ~400 bytes gzipped
-
-  @author  David Rekow <david at davidrekow.com>
-  @license MIT
-  @version 0.1.1
-###
 
 class t
 
@@ -50,15 +37,14 @@ class t
         return @render(`has_else ? if_true : inner, vars`)
 
       if meta is '@'
-        if Array.isArray(val)
-          temp += @render(inner, item) for item in val
-        else
-          for k, v of val
-            if val.hasOwnProperty(k)
-              temp += @render(inner, {_key: k, _val: v})
+        for k, v of val
+          if val.hasOwnProperty(k)
+            temp += @render(inner, {_key: k, _val: v})
 
       if meta is '>'
-        temp += @render(inner, val)
+        if Array.isArray(val)
+          temp += @render(inner, item) for item in val
+        else temp += @render(inner, val)
        
       return temp
     ).replace(valregex, (_, meta, key) =>
