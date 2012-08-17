@@ -440,8 +440,9 @@ class Util
             return false if not element?
             if not fn? or typeof fn is 'boolean' # either means custom event binding
                 fn ?= false
-                if @is_function(event) and @is_string(element)
-                    return $.apptools.events.hook(element, event, fn)
+                if @is_string(element)
+                    if @is_function(event)
+                        return $.apptools.events.hook(element, event, fn)
 
                 else if @is_function(element) and @is_object(event)
                     return () ->
@@ -450,7 +451,12 @@ class Util
                 else throw 'Unrecognized params passed to bind()'
 
             else if @is_array element # can accept multiple els for 1 event [el1, el2]
-                @bind(el, event, fn, prop) for el in element
+                if @is_string(event)    # apptools event bridge to single event
+                    return @bind(element, [event], fn)
+                else if @is_array(event)    # event bridge from/to multiple
+                    return $.apptools.events.bridge(element, event, fn)
+                else
+                    @bind(el, event, fn, prop) for el in element
                 return
 
             else if @is_array event #...multiple events for 1 handler on 1 element
@@ -465,6 +471,9 @@ class Util
                 return element.addEventListener event, fn, prop
 
             else throw 'bind() requires at least an event name and function to bind.'
+
+        @bridge = () =>
+            return @bind.apply(@, arguments)
 
         @unbind = (element, event) =>
             return false if not element?
