@@ -475,6 +475,9 @@ class Util
         @bridge = () =>
             return @bind.apply(@, arguments)
 
+        @trigger = () =>
+            return $.apptools.events.trigger.apply($.apptools.events.trigger, arguments)
+
         @unbind = (element, event) =>
             return false if not element?
             if @is_array element
