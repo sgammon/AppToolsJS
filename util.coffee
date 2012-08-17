@@ -476,7 +476,7 @@ class Util
             return @bind.apply(@, arguments)
 
         @trigger = () =>
-            return $.apptools.events.trigger.apply($.apptools.events.trigger, arguments)
+            return $.apptools.events.trigger.apply($.apptools.events, arguments)
 
         @unbind = (element, event) =>
             return false if not element?
