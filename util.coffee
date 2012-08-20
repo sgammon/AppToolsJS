@@ -93,7 +93,7 @@ class Util
                     else if @_state.callbacks[name]
                         item = q_or_item
                         return @_state.callbacks[name](item)
-                    else return if @is_function(q_or_item) then q_or_item(window) else q_or_item
+                    else return if @is_function(q_or_item) then q_or_item.call(window, window) else q_or_item
                     
                 process: (name) =>
                     q = @_state.queues[name]

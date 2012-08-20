@@ -43,24 +43,3 @@ class AppToolsException extends CoreException
 
 @__apptools_preinit.abstract_base_classes.push AppException
 @__apptools_preinit.abstract_base_classes.push AppToolsException
-
-## Check for Backbone.JS
-if @Backbone?
-  # Create Backbone.JS base classes
-  class AppToolsView extends Backbone.View
-  class AppToolsModel extends Backbone.Model
-  class AppToolsRouter extends Backbone.Router
-  class AppToolsCollection extends Backbone.Collection
-
-else
-  # Still export the classes...
-  class AppToolsView
-  class AppToolsModel
-  class AppToolsRouter
-  class AppToolsCollection
-
-# Export to base classes
-@__apptools_preinit.abstract_base_classes.push AppToolsView
-@__apptools_preinit.abstract_base_classes.push AppToolsModel
-@__apptools_preinit.abstract_base_classes.push AppToolsRouter
-@__apptools_preinit.abstract_base_classes.push AppToolsCollection
