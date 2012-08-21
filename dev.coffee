@@ -13,6 +13,7 @@ class CoreDevAPI extends CoreAPI
         @environment = {}
         @performance = {}
         @debug =
+            strict: false
             logging: true
             eventlog: true
             verbose: true
@@ -25,6 +26,9 @@ class CoreDevAPI extends CoreAPI
 
         @_sendLog = (args...) =>
             console.log(args...)
+
+        @_sendError = (args...) =>
+            console.error(args...)
 
         @log = (module, message, context...) =>
             # Log something to the console, even when verbose is off (but not when logging is off)
@@ -45,7 +49,7 @@ class CoreDevAPI extends CoreAPI
         @error = (module, message, context...) =>
             # Log an error to the console (always ignores verbose flag)
             if @debug.logging is true
-                @_sendLog "["+module+"] ERROR: "+message, context...
+                @_sendError "["+module+"] ERROR: "+message, context...
             return
 
         @verbose = (module, message, context...) =>
