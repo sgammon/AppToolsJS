@@ -77,16 +77,20 @@ class CoreEventsAPI extends CoreAPI
         ## Register a named, global event so it can be triggered later.
         @create = @register = (names) =>
 
-            if names not instanceof Array
+            if not _.is_array(names)
+                if _.is_string(names) and names == ''
+                    return
                 names = [names]
-
-            for name in names
-                # Add to event registry, create a slot in the callchain...
-                @registry.push.apply(@registry, names)
-                @callchain[name] =
-                    hooks: []
+            else
+                if names.length == 0
+                    return
 
             apptools.dev.verbose 'Events', 'Registered events:', {count: names.length, events: names}
+            for name in names
+                # Add to event registry, create a slot in the callchain...
+                @registry.push(name)
+                @callchain[name] =
+                    hooks: []
 
             return true
 
@@ -97,7 +101,7 @@ class CoreEventsAPI extends CoreAPI
                 apptools.dev.warning 'Events', 'Tried to hook to unrecognized event. Registering...'
                 @register(event)
             @callchain[event].hooks.push(fn: callback, once: once, has_run: false, bridge: false)
-            apptools.dev.verbose 'Events', 'Hook registered on event.', event
+            apptools.dev.verbose 'Events', 'Hook registered on event:', event
             return true
 
         ## Delegate one event to another, to be triggered after all hooks on the original event
@@ -108,9 +112,9 @@ class CoreEventsAPI extends CoreAPI
             if typeof(from_events) == 'string'
                 from_events = [from_events]
 
+            apptools.dev.verbose('Events', 'Bridging events:', {from: from_events}, '->', {to: to_events})
             for source_ev in from_events
                 for target_ev in to_events
-                    apptools.dev.verbose('Events', 'Bridging events:', source_ev, '->', target_ev)
                     if not @callchain[source_ev]?
                         apptools.dev.warn('Events', 'Bridging from undefined source event:', source_ev)
                         @register(source_ev)

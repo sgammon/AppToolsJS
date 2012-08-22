@@ -161,6 +161,7 @@ class AppTools
                             continue
                         else
                             return @lib[name.toLowerCase()]
+                    return false
 
             ## Interface management
             interfaces:
@@ -246,57 +247,66 @@ class AppTools
 
 
         ##### ===== 2: Library Detection ===== #####
-        # Modernizr
-        if window?.Modernizr?
+
+        ## Round 1) Feature Detection/Loader Libraries
+
+        # 1.1 - Modernizr
+        if window.Modernizr?
             @sys.libraries.install 'Modernizr', window.Modernizr, (lib, name) =>
                 @load = (fragments...) =>
                     return @lib.modernizr.load fragments...
 
-        # jQuery
-        if window?.jQuery?
+
+        ## Round 2) Selection (Query) Engine Libraries
+
+        # 2.1 - jQuery
+        if window.jQuery?
             @sys.libraries.install 'jQuery', window.jQuery, (lib, name) =>
                 @sys.drivers.install 'query', 'jquery', @sys.state.classes.QueryDriver, @lib.jquery, true, 100, null
                 @sys.drivers.install 'transport', 'jquery', @sys.state.classes.RPCDriver, @lib.jquery, true, 100, null
+                @sys.drivers.install 'animation', 'jquery', @sys.state.classes.AnimationDriver, @lib.jquery, true, 100, null
 
-        # Zepto
-        if window?.Zepto?
+        # 2.2 - Zepto
+        if window.Zepto?
             @sys.libraries.install 'Zepto', window.Zepto, (lib, name) =>
                 @sys.drivers.install 'query', 'zepto', @sys.state.classes.QueryDriver, @lib.zepto, true, 500, null
                 @sys.drivers.install 'transport', 'zepto', @sys.state.classes.RPCDriver, @lib.zepto, true, 500, null
+                @sys.drivers.install 'animation', 'zepto', @sys.state.classes.AnimationDriver, @lib.zepto, true, 500, null
 
-        # UnderscoreJS
-        if window?._?
-            @sys.libraries.install 'Underscore', window._, (lib, name) =>
-                @sys.drivers.install 'query', 'underscore', @sys.state.classes.QueryDriver, @lib.underscore, true, 50, null
-                @sys.drivers.install 'render', 'underscore', @sys.state.classes.RenderDriver, @lib.underscore, true, 50, null
+        # 2.3 - d3
+        if window.d3?
+            @sys.libraries.install 'd3', window.d3, (lib, name) =>
+                @sys.drivers.install 'query', 'd3', @sys.state.classes.QueryDriver, @lib.d3, true, 800, null
+                @sys.drivers.install 'transport', 'd3', @sys.state.classes.RPCDriver, @lib.d3, true, 500, null
 
-        # BackboneJS
-        if window?.Backbone?
-            @sys.libraries.install 'Backbone', window.Backbone
 
-        # Lawnchair
-        if window?.Lawnchair?
-            @sys.libraries.install 'Lawnchair', window.Lawnchair, (library) =>
-                @sys.drivers.install 'storage', 'lawnchair', @sys.state.classes.StorageDriver, @lib.lawnchair, true, 500, (lawnchair) =>
-                    @dev.verbose 'Lawnchair', 'Storage is currently stubbed. Come back later.'
+        ## Round 3) Render/ Animation Libraries
 
-        # AmplifyJS
-        if window?.amplify?
-            @sys.libraries.install 'Amplify', window.amplify, (library) =>
-                @sys.drivers.register 'transport', 'amplify', @sys.state.classes.RPCDriver, @lib.amplify, true, 500, null
-                @sys.drivers.register 'storage', 'amplify', @sys.state.classes.StorageDriver, @lib.amplify, true, 100, null
+        # 3.1 - Jacked
+        if window.Jacked?
+            @sys.libraries.install 'Jacked', window.Jacked, (lib, name) =>
+                @sys.drivers.install 'animation', 'jacked', @sys.state.classes.AnimationDriver, @lib.jacked, true, 800, null
 
-        # t.coffee (template rendering)
-        if window?.t?
+        # 3.2 - t.coffee (template rendering)
+        if window.t?
             @sys.libraries.install 't', window.t, (library) =>
                 @sys.drivers.install 'render', 't', @sys.state.classes.RenderDriver, @lib.t, true, 100, (t) =>
                     @dev.verbose 't', 'Native template render driver "t" loaded.'
 
-        # Mustache
-        if window?.Mustache?
+        # 3.3 - Mustache
+        if window.Mustache?
             @sys.libraries.install 'Mustache', window.Mustache, (library) =>
                 @sys.drivers.register 'render', 'mustache', @sys.state.classes.RenderDriver, @lib.mustache, true, 500, (mustache) =>
                     @dev.verbose 'Mustache', 'Render support is currently stubbed. Come back later.'
+
+
+        ## Round 4) Transport Libraries
+
+        # 4.1 - AmplifyJS
+        if window.amplify?
+            @sys.libraries.install 'Amplify', window.amplify, (library) =>
+                @sys.drivers.register 'transport', 'amplify', @sys.state.classes.RPCDriver, @lib.amplify, true, 500, null
+                @sys.drivers.register 'storage', 'amplify', @sys.state.classes.StorageDriver, @lib.amplify, true, 100, null
 
 
         ##### ===== 3: Install Core Modules ===== #####

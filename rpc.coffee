@@ -196,7 +196,7 @@ class CoreRPCAPI extends CoreAPI
             original_xhr = $.ajaxSettings.xhr
 
         else
-            original_xhr = new XMLHTTPRequest()
+            original_xhr = new XMLHttpRequest()
 
         @internals =
 

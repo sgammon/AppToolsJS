@@ -1,4 +1,4 @@
-### 
+###
 Handy utility functions.
 You're welcome.
 
@@ -31,7 +31,7 @@ class Util
                 ready: 0
                 default: 0
 
-            handlers:                   # batch queue handler - accepts queue as param 
+            handlers:                   # batch queue handler - accepts queue as param
                 default: (q) =>
                     console.log('Default queue handler called on Util, returning queue: ', q)
                     return q
@@ -43,7 +43,7 @@ class Util
 
                         @_state.dom_ready = true
                         @_state.dom_status = 'READY'
-                                           
+
                         return $.apptools.events.trigger('DOM_READY')
 
             callbacks:                  # applied to each item in queue - accepts queued item as param
@@ -94,7 +94,7 @@ class Util
                         item = q_or_item
                         return @_state.callbacks[name](item)
                     else return if @is_function(q_or_item) then q_or_item.call(window, window) else q_or_item
-                    
+
                 process: (name) =>
                     q = @_state.queues[name]
                     @_state.queues[name] = []
@@ -534,7 +534,7 @@ class Util
 
             else if @is_function(fn)
                 @internal.queues.add('ready', fn)
-                
+
                 if document.readyState is 'complete' and @_state.dom_ready is true
                     return @defer(@ready, 1)
 
@@ -763,5 +763,4 @@ window._ = new Util()
 if window.$?
     $.extend _: window._
 else
-    window.$ = (x) => return window._.get(x)
-    window.$._ = window._
+    window.$ = window._
