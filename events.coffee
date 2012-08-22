@@ -48,12 +48,18 @@ class CoreEventsAPI extends CoreAPI
 
                         # If we encounter a bridge, defer it (after all hooks are executed for this event)...
                         else if hook.bridge == true
-                            event_bridges.push(event: hook.event, args: args)
+                            event_bridges.push(event: hook.event, args: args, mutator: hook.mutator)
 
                     catch error
                         ## Increment error count and add to runtime history
                         hook_error_count++
-                        @history.push event: event, callback: hook, args: args, error: error
+                        nl = @history.push event: event, callback: hook, args: args, error: error
+
+                        $.apptools.dev.verbose 'Events', 'Encountered unhandled exception when dispatching event hook for "' + event + '".', @history[nl - 1]
+                        if $.apptools.dev.debug.eventlog and $.apptools.dev.debug.verbose
+                            $.apptools.dev.error 'Events', 'Unhandled event hook exception.', error
+                        if $.apptools.dev.debug.strict
+                            throw error
 
                 # Execute deferred event bridges
                 for bridge in event_bridges
