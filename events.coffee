@@ -15,7 +15,7 @@ class CoreEventsAPI extends CoreAPI
         ## Trigger a named event, optionally with context
         @fire = @trigger = (event, args...) =>
 
-            apptools.dev.verbose 'Events', 'Triggered event:', event, args, @callchain[event]
+            apptools.dev.eventlog 'Trigger', 'Triggered event.', event, args, @callchain[event]
 
             # Have we seen this event before?
             if event in @registry
@@ -55,7 +55,7 @@ class CoreEventsAPI extends CoreAPI
                         hook_error_count++
                         nl = @history.push event: event, callback: hook, args: args, error: error
 
-                        $.apptools.dev.verbose 'Events', 'Encountered unhandled exception when dispatching event hook for "' + event + '".', @history[nl - 1]
+                        $.apptools.dev.eventlog 'exception', 'Encountered unhandled exception when dispatching event hook for "' + event + '".', @history[nl - 1]
                         if $.apptools.dev.debug.eventlog and $.apptools.dev.debug.verbose
                             $.apptools.dev.error 'Events', 'Unhandled event hook exception.', error
                         if $.apptools.dev.debug.strict
@@ -85,7 +85,7 @@ class CoreEventsAPI extends CoreAPI
                 if names.length == 0
                     return
 
-            apptools.dev.verbose 'Events', 'Registered events:', {count: names.length, events: names}
+            apptools.dev.eventlog 'Register', 'Registered events.', {count: names.length, events: names}
             for name in names
                 # Add to event registry, create a slot in the callchain...
                 @registry.push(name)
@@ -98,10 +98,10 @@ class CoreEventsAPI extends CoreAPI
         @on = @upon = @when = @hook = (event, callback, once=false) =>
 
             if event not in @registry
-                apptools.dev.warning 'Events', 'Tried to hook to unrecognized event. Registering...'
+                apptools.dev.warning 'warn', 'Tried to hook to unrecognized event. Registering...'
                 @register(event)
             @callchain[event].hooks.push(fn: callback, once: once, has_run: false, bridge: false)
-            apptools.dev.verbose 'Events', 'Hook registered on event:', event
+            apptools.dev.eventlog 'Hook', 'Hook registered on event.', event
             return true
 
         ## Delegate one event to another, to be triggered after all hooks on the original event
@@ -112,7 +112,7 @@ class CoreEventsAPI extends CoreAPI
             if typeof(from_events) == 'string'
                 from_events = [from_events]
 
-            apptools.dev.verbose('Events', 'Bridging events:', {from: from_events}, '->', {to: to_events})
+            apptools.dev.eventlog 'Bridge', 'Bridging events.', {from: from_events}, '->', {to: to_events}
             for source_ev in from_events
                 for target_ev in to_events
                     if not @callchain[source_ev]?

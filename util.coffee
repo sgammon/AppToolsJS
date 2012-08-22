@@ -375,6 +375,8 @@ class Util
             return node.parentNode.removeChild(node)
 
         @get = (query, node=document) => # ID, class or tag
+            if @is_window node
+                node = document
             return query if not query? or query.nodeType
             return if (id = document.getElementById(query))? then id else (if (cls = node.getElementsByClassName(query)).length > 0 then @to_array(cls) else (if (tg = node.getElementsByTagName(query)).length > 0 then @to_array(tg) else null))
 

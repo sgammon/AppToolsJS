@@ -4,10 +4,10 @@ class AppTools
     @version =
         major: 0
         minor: 1
-        micro: 4
-        build: 4282012 # m/d/y
+        micro: 5
+        build: 8222012 # m/d/y
         release: "BETA"
-        get: () -> [[[@major.toString(), @minor.toString(), @micro.toString()].join('.'), @build.toString()].join('-'), @release].join(' ')
+        get: () -> [[[x.toString() for x in [@major, @minor, @micro]].join('.'), @build.toString()].join('-'), @release].join(' ')
 
     constructor: (window)  ->
 
@@ -23,6 +23,10 @@ class AppTools
             sockets:
                 host: null
                 enabled: false
+
+            devtools:
+                debug: true
+                strict: false
 
         ## Library shortcuts
         @lib = {}
@@ -80,9 +84,10 @@ class AppTools
                 install: (module_or_modules, mountpoint_or_callback=null, callback=null) =>
 
                     ## If we're handed an array of modules, call self with each module
-                    if _.is_array(module_or_modules)
-                        for module in module_or_modules
-                            @sys.modules.install(module)
+                    if not _.is_array(module_or_modules) or (mountpoint_or_callback? or callback?)
+                        modules = [module_or_modules]
+                    else
+                        modules = module_or_modules
 
                     ## Figure out whether our second arg is a mountpoint or a callback
                     if mountpoint_or_callback?
@@ -102,43 +107,46 @@ class AppTools
                         mountpoint = @
                         pass_parent = false
 
-                    ## Resolve module name
-                    if module.mount?
-                        module_name = module.mount
-                    else
-                        module_name = module.name.toLowerCase()
+                    finished_modules = []
+                    for module in modules
 
-                    ## Register any module events
-                    if module.events? and @events?
-                        @events.register(module.events)
-
-                    ## Mount module
-                    if not mountpoint[module_name]?
-                        if pass_parent
-                            target_mod = new module(@, mountpoint, window)
-                            mountpoint[module_name] = target_mod
-                            @sys.state.modules[module_name] = {module: target_mod, classes: {}}
+                        ## Resolve module name
+                        if module.mount?
+                            module_name = module.mount
                         else
-                            target_mod = new module(@, window)
-                            mountpoint[module_name] = target_mod
-                            @sys.state.modules[module_name] = {module: target_mod, classes: {}}
+                            module_name = module.name.toLowerCase()
 
-                    ## Call module init callback, if there is one
-                    mountpoint[module_name]._init?(@)
+                        ## Register any module events
+                        if module.events? and @events?
+                            @events.register(module.events)
 
-                    ## If dev is available, log this
-                    if @dev? and @dev.verbose?
-                        @dev.verbose 'ModuleLoader', 'Installed module:', target_mod, ' at mountpoint: ', mountpoint, ' under the name: ', module_name
+                        ## Mount module
+                        if not mountpoint[module_name]?
+                            if pass_parent
+                                target_mod = new module(@, mountpoint, window)
+                                mountpoint[module_name] = target_mod
+                                @sys.state.modules[module_name] = {module: target_mod, classes: {}}
+                            else
+                                target_mod = new module(@, window)
+                                mountpoint[module_name] = target_mod
+                                @sys.state.modules[module_name] = {module: target_mod, classes: {}}
 
-                    ## If events are available, trigger SYS_MODULE_LOADED
-                    if @events?
-                        @events.trigger('SYS_MODULE_LOADED', module: target_mod, mountpoint: mountpoint)
+                        ## Call module init callback, if there is one
+                        mountpoint[module_name]._init?(@)
 
-                    ## Call our install callback, if we have one
-                    if callback?
-                        callback(target_mod)
+                        ## If dev is available, log this
+                        if @dev? and @dev.verbose?
+                            @dev.verbose 'ModuleLoader', 'Installed module:', target_mod, ' at mountpoint: ', mountpoint, ' under the name: ', module_name
 
-                    return target_mod ## done!
+                        ## If events are available, trigger SYS_MODULE_LOADED
+                        if @events?
+                            @events.trigger('SYS_MODULE_LOADED', module: target_mod, mountpoint: mountpoint)
+
+                        ## Call our install callback, if we have one
+                        if callback?
+                            callback(target_mod)
+                        finished_modules.push target_mod
+                    return finished_modules ## done!
 
             ## Library management
             libraries:
@@ -192,11 +200,13 @@ class AppTools
 
             ## Driver management
             drivers:
-                query: {}     ## drivers that can query the dom
-                loader: {}    ## drivers that can load files/modules
-                transport: {} ## drivers that can fulfill RPCs
-                storage: {}   ## drivers that can store data
-                render: {}    ## drivers that can render data into the DOM
+                push: {}       ## drivers that can receive pushed data from the server
+                query: {}      ## drivers that can query the dom
+                loader: {}     ## drivers that can load files/modules
+                transport: {}  ## drivers that can fulfill RPCs
+                storage: {}    ## drivers that can store data
+                render: {}     ## drivers that can render data into the DOM
+                animation: {}  ## drivers that can animate or tween animations
 
                 ## Register a driver with AppToolsJS
                 install: (type, name, adapter, mountpoint, enabled, priority, callback=null) =>
@@ -240,7 +250,7 @@ class AppTools
             go: (apptools) =>
                 apptools.dev.log('Core', 'All systems go.')
                 apptools.sys.state.status = 'READY'
-                apptolls.events.trigger 'PLATFORM_READY', apptools
+                apptools.events.trigger 'PLATFORM_READY', apptools
                 return @
 
         ## Dev/Events API (for logging/debugging - only two modules instantiated manually, so we can log stuff + trigger events during init)
@@ -289,40 +299,38 @@ class AppTools
                 @sys.drivers.install 'transport', 'zepto', @sys.state.classes.RPCDriver, @lib.zepto, true, 500, null
                 @sys.drivers.install 'animation', 'zepto', @sys.state.classes.AnimationDriver, @lib.zepto, true, 500, null
 
-        # 2.3 - d3
+
+        ## Round 3) Render/ Animation Libraries
+
+        # 3.1 - d3
         if window.d3?
             @sys.libraries.install 'd3', window.d3, (lib, name) =>
                 @sys.drivers.install 'query', 'd3', @sys.state.classes.QueryDriver, @lib.d3, true, 800, null
                 @sys.drivers.install 'transport', 'd3', @sys.state.classes.RPCDriver, @lib.d3, true, 500, null
 
-
-        ## Round 3) Render/ Animation Libraries
-
-        # 3.1 - Jacked
+        # 3.2 - Jacked
         if window.Jacked?
             @sys.libraries.install 'Jacked', window.Jacked, (lib, name) =>
-                @sys.drivers.install 'animation', 'jacked', @sys.state.classes.AnimationDriver, @lib.jacked, true, 800, null
+                @sys.drivers.install 'animation', 'jacked', @sys.state.classes.AnimationDriver, @lib.jacked, true, 800, (jacked) =>
+                    @dev.verbose 'Jacked', 'JackedJS detected. Installing animation support.', jacked
 
-        # 3.2 - t.coffee (template rendering)
+                    @animate = (args...) ->
+                        return jacked.tween args...
+
+                    window.HTMLElement::animate = (to, sets) ->
+                        return @jacked(to, sets)
+
+        # 3.3 - t.coffee (template rendering)
         if window.t?
             @sys.libraries.install 't', window.t, (library) =>
-                @sys.drivers.install 'render', 't', @sys.state.classes.RenderDriver, @lib.t, true, 100, (t) =>
+                @sys.drivers.install 'render', 't', @sys.state.classes.RenderDriver, @lib.t, true, 1000, (t) =>
                     @dev.verbose 't', 'Native template render driver "t" loaded.'
 
-        # 3.3 - Mustache
+        # 3.4 - Mustache
         if window.Mustache?
             @sys.libraries.install 'Mustache', window.Mustache, (library) =>
                 @sys.drivers.register 'render', 'mustache', @sys.state.classes.RenderDriver, @lib.mustache, true, 500, (mustache) =>
                     @dev.verbose 'Mustache', 'Render support is currently stubbed. Come back later.'
-
-
-        ## Round 4) Transport Libraries
-
-        # 4.1 - AmplifyJS
-        if window.amplify?
-            @sys.libraries.install 'Amplify', window.amplify, (library) =>
-                @sys.drivers.register 'transport', 'amplify', @sys.state.classes.RPCDriver, @lib.amplify, true, 500, null
-                @sys.drivers.register 'storage', 'amplify', @sys.state.classes.StorageDriver, @lib.amplify, true, 100, null
 
 
         ##### ===== 3: Install Core Modules ===== #####
