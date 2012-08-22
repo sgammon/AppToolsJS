@@ -1,3 +1,29 @@
+## CoreAPI: Holds a piece of AppTools core functionality.
+class CoreAPI
+
+## CoreObject: Holds an interactive object that is usually attached to a CoreAPI in some way.
+class CoreObject
+
+## CoreInterface: Specifies an interface, usually used to adapt multiple libraries/modules to one task.
+class CoreInterface
+
+## CoreException: Abstract exception class
+class CoreException extends Error
+
+  constructor: (@module, @message, @context) ->
+  toString: () ->
+    return '[' + @module + '] CoreException: ' + @message
+
+
+# AppTools/App errors
+class AppException extends CoreException
+  toString: () ->
+    return '[' + @module + '] AppException: ' + @message
+
+class AppToolsException extends CoreException
+  toString: () ->
+    return '[' + @module + '] AppToolsException: ' + @message
+
 ## Setup preinit container (picked up in _init.coffee on AppTools init)
 if @__apptools_preinit?
   @__apptools_preinit.abstract_base_classes = []
@@ -11,35 +37,4 @@ else
     abstract_feature_interfaces: [] # Holds interfaces that wrap drivers and libraries
     deferred_library_integrations: [] # Holds libraries detected before init.
 
-## CoreAPI: Holds a piece of AppTools core functionality.
-class CoreAPI
-@__apptools_preinit.abstract_base_classes.push CoreAPI
-
-## CoreObject: Holds an interactive object that is usually attached to a CoreAPI in some way.
-class CoreObject
-@__apptools_preinit.abstract_base_classes.push CoreObject
-
-## CoreInterface: Specifies an interface, usually used to adapt multiple libraries/modules to one task.
-class CoreInterface
-@__apptools_preinit.abstract_base_classes.push CoreInterface
-
-## CoreException: Abstract exception class
-class CoreException extends Error
-
-  constructor: (@module, @message, @context) ->
-  toString: () ->
-    return '[' + @module + '] CoreException: ' + @message
-
-@__apptools_preinit.abstract_base_classes.push CoreException
-
-# AppTools/App errors
-class AppException extends CoreException
-  toString: () ->
-    return '[' + @module + '] AppException: ' + @message
-
-class AppToolsException extends CoreException
-  toString: () ->
-    return '[' + @module + '] AppToolsException: ' + @message
-
-@__apptools_preinit.abstract_base_classes.push AppException
-@__apptools_preinit.abstract_base_classes.push AppToolsException
+@__apptools_preinit.abstract_base_classes.push CoreAPI, CoreObject, CoreInterface, CoreException, AppException, AppToolsException

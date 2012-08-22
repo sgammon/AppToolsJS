@@ -45,7 +45,7 @@ class t
         if Array.isArray(val)
           temp += @render(inner, item) for item in val
         else temp += @render(inner, val)
-       
+
       return temp
     ).replace(valregex, (_, meta, key) =>
       val = @get_value(vars, key)

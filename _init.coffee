@@ -34,10 +34,11 @@ class AppTools
             version: @version  # Version info
 
             ## Core events to be registered immediately
-            core_events: ['SYS_MODULE_LOADED', 'SYS_LIB_LOADED', 'SYS_DRIVER_LOADED']
+            core_events: ['SYS_MODULE_LOADED', 'SYS_LIB_LOADED', 'SYS_DRIVER_LOADED', 'PLATFORM_READY']
 
             ## System state
             state:
+                core: []            # System core modules
                 status: 'NOT_READY' # System status
                 flags: ['base']     # System flags
                 preinit: {}         # System preinit
@@ -76,7 +77,12 @@ class AppTools
 
             ## Module management
             modules:
-                install: (module, mountpoint_or_callback=null, callback=null) =>
+                install: (module_or_modules, mountpoint_or_callback=null, callback=null) =>
+
+                    ## If we're handed an array of modules, call self with each module
+                    if _.is_array(module_or_modules)
+                        for module in module_or_modules
+                            @sys.modules.install(module)
 
                     ## Figure out whether our second arg is a mountpoint or a callback
                     if mountpoint_or_callback?
@@ -231,14 +237,18 @@ class AppTools
                     return selected_driver
 
             ## All systems go!
-            go: () =>
-                @dev.log('Core', 'All systems go.')
-                @sys.state.status = 'READY'
+            go: (apptools) =>
+                apptools.dev.log('Core', 'All systems go.')
+                apptools.sys.state.status = 'READY'
+                apptolls.events.trigger 'PLATFORM_READY', apptools
                 return @
 
         ## Dev/Events API (for logging/debugging - only two modules instantiated manually, so we can log stuff + trigger events during init)
-        @sys.modules.install(CoreDevAPI, (dev) -> dev.verbose('CORE', 'CoreDevAPI is up and running.'))
-        @sys.modules.install(CoreEventsAPI, (events) => events.register(@sys.core_events))
+        @sys.modules.install CoreDevAPI, (dev) ->
+            dev.verbose('CORE', 'CoreDevAPI is up and running.')
+
+        @sys.modules.install CoreEventsAPI, (events) =>
+            events.register(@sys.core_events)
 
         ## Consider preinit: export/catalog preinit classes & libraries
         if window.__apptools_preinit?
@@ -255,6 +265,12 @@ class AppTools
             @sys.libraries.install 'Modernizr', window.Modernizr, (lib, name) =>
                 @load = (fragments...) =>
                     return @lib.modernizr.load fragments...
+
+        # 1.2 - YepNope
+        if window.yepnope?
+            @sys.libraries.install 'YepNope', window.yepnope, (lib, name) =>
+                @load = (fragments...) =>
+                    return @lib.yepnope.load fragments...
 
 
         ## Round 2) Selection (Query) Engine Libraries
@@ -310,14 +326,18 @@ class AppTools
 
 
         ##### ===== 3: Install Core Modules ===== #####
-        @sys.modules.install(CoreModelAPI)     # Model API
-        @sys.modules.install(CoreAgentAPI)     # Agent API
-        @sys.modules.install(CoreDispatchAPI)  # Dispatch API
-        @sys.modules.install(CoreRPCAPI)       # RPC API
-        @sys.modules.install(CorePushAPI)      # Push API
-        @sys.modules.install(CoreUserAPI)      # User API
-        @sys.modules.install(CoreStorageAPI)   # Storage API
-        @sys.modules.install(CoreRenderAPI)    # Render API
+        @sys.state.core = [
+            CoreModelAPI,       # Model API
+            CoreAgentAPI,       # Agent API
+            CoreDispatchAPI,    # Dispatch API
+            CoreRPCAPI,         # RPC API
+            CorePushAPI,        # Push API
+            CoreUserAPI,        # User API
+            CoreStorageAPI,     # Storage API
+            CoreRenderAPI       # Render API
+        ]
+
+        @sys.modules.install(@sys.state.core)
 
 
         ##### ===== 4: Install Deferred Modules ===== #####
@@ -329,7 +349,7 @@ class AppTools
                     @sys.modules.install(module.module)
 
         ## 5: We're done!
-        return @.sys.go()
+        return @.sys.go @
 
 # Export to window
 window.AppTools = AppTools

@@ -167,6 +167,5 @@ class PushDriver extends CoreInterface
         return
 
 
-@__apptools_preinit.abstract_base_classes.push PushDriver
-@__apptools_preinit.abstract_base_classes.push CorePushAPI
+@__apptools_preinit.abstract_base_classes.push PushDriver, CorePushAPI
 @__apptools_preinit.abstract_feature_interfaces.push {adapter: PushDriver, name: "transport"}
