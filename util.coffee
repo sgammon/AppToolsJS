@@ -498,9 +498,6 @@ class Util
             else
                 return element.removeEventListener event
 
-        @trigger = (event) =>
-            return $.apptools.events.trigger(event)
-
         @block = (async_method, object={}) =>
             console.log '[Util]', 'Enforcing blocking at user request... :('
 
