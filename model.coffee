@@ -64,9 +64,10 @@ class CoreModelAPI extends CoreAPI
 
 class Model
 
-    log: (source, message) =>
+    log: (source, message) ->
 
         if message?
+            source = source.constructor.name
             if (a = $.apptools or window.apptools)?
                 return a.dev.verbose(source, message)
 
@@ -76,25 +77,43 @@ class Model
         else if source?
             message = source
             source = @constructor.name
-            
+
             return @log(source, message)
 
         else
             return @log('Model', 'No message passed to log(). (You get a log message anyway <3)')
 
-    validate: (object, cls=object.constructor::model, safe=false) =>
+    validate: (object, cls=object.constructor::model, safe=false) ->
 
         if object?
 
             if safe
                 results = {}
                 check = (k, v) =>
-                    results[k] = v if cls[k]? and v? is cls[k]? and v.constructor.name is cls[k].constructor.name
+                    if cls[k]? and (v? is cls[k]?)
+                        if cls[k].constructor.name is 'ListField'
+                            temp = new ListField()
+                            temp.push(new cls[k][0]().from_message(it)) for it in v
+                            results[k] = temp
+                        else if v.constructor.name is cls[k].constructor.name
+                            results[k] = v
 
             else
                 results = []
                 check = (k, v) =>
-                    results.push(k:v) if not cls[k]? or v? isnt cls[k]? or v.constructor.name isnt cls[k].constructor.name
+                    if cls[k]? and (v? is cls[k]?)
+                        if cls[k].constructor.name is 'ListField'
+                            temp = new ListField()
+                            for it in v
+                                _it = new cls[k][0]().from_message(it, true)
+                                temp.push(it) if it is _it
+                            if temp.length > 0
+                                results.push(k:v)
+
+                        else if v.constructor.name isnt cls[k].constructor.name
+                            results.push(k:v)
+                    else
+                        results.push(k:v)
 
             check(key, value) for own key, value of object
 
@@ -103,7 +122,7 @@ class Model
 
         else throw new ModelException(@constructor.name, 'No object passed to validate().')
 
-    from_message: (object, message={}, strict=false, exclude=[]) =>
+    from_message: (object, message={}, strict=false, exclude=[]) ->
 
         if object?
 
@@ -121,9 +140,9 @@ class Model
 
                 if not strict
                     @log('Nonstrict validation allowed, trying modelsafe conversion...')
-                    
+
                     modsafe = @validate(message, object.constructor::model, true)
-                        
+
                     if _.is_empty_object(modsafe)
                         @log('No modelsafe properties found, canceling update...')
                         return cached_obj
@@ -133,14 +152,14 @@ class Model
                         @log('Modelsafe conversion succeeded! Returning updated object...')
 
                         return object
-                        
+
                 else
                     @log('Strict validation only, canceling update...')
                     return cached_obj
-            
+
         else throw new ModelException(@constructor.name, 'No object passed to from_message().')
 
-    to_message: (object, exclude=[]) =>
+    to_message: (object, exclude=[]) ->
 
         # TO DO:
         #   - finish recursive kind validation
@@ -148,23 +167,24 @@ class Model
         if object?
             message = {}
             (message[prop] = val if object.constructor::model[prop]? and typeof val isnt 'function') for own prop, val of object
-            
+
             return message
 
         else throw new ModelException(@constructor.name, 'No object passed to to_message().')
 
     constructor: (key) ->
-        
+
         if _.is_raw_object(key) and arguments.length is 1
             @[prop] = val for prop, val of key
+        else @key = key
 
-        @from_message = (message, strict) => return @constructor::from_message(@, message, strict)
-        @to_message = () => return @constructor::to_message(@)
-        @log = (message) => return @constructor::log(@constructor.name, message)
-
+        for m in ['log', 'to_message', 'from_message']
+            do (m) =>
+                @[m] = (args...) =>
+                    return Model::[m](@, args...)
         return @
 
-            
+
 
     ###
 
@@ -186,7 +206,49 @@ class Model
 
     ###
 
+# represents clientside key
+class Key extends Model
+    model:
+        key: String()
+
+# represents repeated model property
+class ListField extends Array
+    constructor: () ->
+        t = @
+        super
+
+        if arguments.length > 0
+            _t = new ListField()
+            _t.push(arguments[0])
+            return _t
+
+        @pick = (item_or_index) ->
+            if parseInt(item_or_index).toString() isnt 'NaN'
+                index = item_or_index
+
+                old = [[@[index]], @slice(0, index), @slice(index+1, @length-1)]
+                @length = 0
+                return @join.apply(@, old)
+            else
+                item = item_or_index
+                return @pick(existing) if !!~(existing = _.indexOf(@, item))
+
+                @unshift(item)
+                return @
+
+        @join = (separator) =>
+            if separator? and _.is_array(separator)
+                joins = _.to_array(arguments)
+                @push(item) for item in joins.shift() while joins.length
+                return @
+            else
+                return @::join.call(@, separator)
+
+        return t
+
 
 
 @__apptools_preinit.abstract_base_classes.push CoreModelAPI
 @__apptools_preinit.abstract_base_classes.push Model
+@__apptools_preinit.abstract_base_classes.push Key
+@__apptools_preinit.abstract_base_classes.push ListField
