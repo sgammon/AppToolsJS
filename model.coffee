@@ -103,7 +103,7 @@ class Model
                 check = (k, v) =>
                     if cls[k]? and (v? is cls[k]?)
                         if cls[k].constructor.name is 'ListField'
-                            temp = new ListField()
+                            temp = []
                             for it in v
                                 _it = new cls[k][0]().from_message(it, true)
                                 temp.push(it) if it is _it
@@ -122,51 +122,36 @@ class Model
 
         else throw new ModelException(@constructor.name, 'No object passed to validate().')
 
-    from_message: (object, message={}, strict=false, exclude=[]) ->
+    from_message: (object, message={}, strict=false, excludes=[]) ->
 
         if object?
-
             cached_obj = object
 
-            @log('Validating incoming RPC update...')
-
             if @validate(message, object.constructor::model)
-                object[prop] = val for own prop, val of message if not !!~_.indexOf(exclude, prop)
-                @log('Valid model matched. Returning updated object...')
-                return object
+                object[prop] = val for own prop, val of message if not !!~_.indexOf(excludes, prop)
+                return _.exclude(object, excludes)
+
+            else if not strict
+                modsafe = @validate(message, object.constructor::model, true)
+                return _.exclude((if _.is_empty_object(modsafe) then cached_obj else modsafe), excludes)
 
             else
-                @log('Strict validation failed.')
-
-                if not strict
-                    @log('Nonstrict validation allowed, trying modelsafe conversion...')
-
-                    modsafe = @validate(message, object.constructor::model, true)
-
-                    if _.is_empty_object(modsafe)
-                        @log('No modelsafe properties found, canceling update...')
-                        return cached_obj
-
-                    else
-                        object[p] = v for own p, v of modsafe if not !!~_.indexOf(exclude, prop)
-                        @log('Modelsafe conversion succeeded! Returning updated object...')
-
-                        return object
-
-                else
-                    @log('Strict validation only, canceling update...')
-                    return cached_obj
+                @log('from_message() failed.')
+                return cached_obj
 
         else throw new ModelException(@constructor.name, 'No object passed to from_message().')
 
-    to_message: (object, exclude=[]) ->
-
-        # TO DO:
-        #   - finish recursive kind validation
+    to_message: (object, excludes=[]) ->
 
         if object?
             message = {}
-            (message[prop] = val if object.constructor::model[prop]? and typeof val isnt 'function') for own prop, val of object
+            for own prop, val of object
+                if object.constructor::model[prop] and typeof val isnt 'function'
+                    if val.constructor.name is 'ListField'
+                        _val = []
+                        _val.push(item.to_message()) for item in val
+                        message[prop] = _val
+                    else message[prop] = val
 
             return message
 
@@ -182,29 +167,11 @@ class Model
             do (m) =>
                 @[m] = (args...) =>
                     return Model::[m](@, args...)
+
+        @template = new t(@constructor::template) if @constructor::template
+
         return @
 
-
-
-    ###
-
-    # methods are placeholders for now :)
-
-    # synchronous methods
-    put: (args...) => $.apptools.model.put(@, args...)
-    get: (args...) => $.apptools.model.get(@, args...)
-    delete: (args...) => $.apptools.model.delete(@, args...)
-
-    # asynchronous methods - tentative until params finalized
-    put_async: (args...) => $.apptools.model.put_async(@, args...)
-    get_async: (args...) => $.apptools.model.get_async(@, args...)
-    delete_async: (args...) => $.apptools.model.delete_async(@, args...)
-
-    all: (args...) => $.apptools.model.all(@, args...)
-
-    render: (template) =>
-
-    ###
 
 # represents clientside key
 class Key extends Model

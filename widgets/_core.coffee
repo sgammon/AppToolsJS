@@ -1,6 +1,8 @@
 ## AppTools Widget Core
 class CoreWidgetAPI extends CoreAPI
 
+    @mount: 'widget'
+
     constructor: () ->
 
         @handle = (e) =>
@@ -26,7 +28,7 @@ class CoreWidgetAPI extends CoreAPI
                             other_targ.classList.remove('active') for other_targ in other_targs if (other_targs = _.filter(_.get(target.tagName), (o) => return _.is_child(widget, o) and (o isnt target) and not _.in_array(touched_targets, o)))?
                             other_trig.classList.remove('active') for other_trig in other_trigs if (other_trigs = _.filter(_.get(trigger.tagName), (o) => return _.is_child(widget, o) and (o isnt trigger)))?
 
-                        if is_curr 
+                        if is_curr
                             target.classList.remove('active')
                             trigger.classList.remove('active')
                             if trigger.classList.contains('autoclose')
@@ -39,7 +41,7 @@ class CoreWidgetAPI extends CoreAPI
                                 target.addEventListener('mouseout', @handle, false)
 
                         return
-                
+
                 else touched_targets = false
                 return touched_targets
 
@@ -52,20 +54,8 @@ class CoreWidgetAPI extends CoreAPI
 
             link.addEventListener('click', @handle , false) for link in target_links if (target_links = _.get('target-link'))?
 
-
 class CoreWidget extends Model
 
-
-if @__apptools_preinit?
-    if not @__apptools_preinit.abstract_base_classes?
-        @__apptools_preinit.abstract_base_classes = []
-    if not @__apptools_preinit.deferred_core_modules?
-        @__apptools_preinit.deferred_core_modules = []
-else
-    @__apptools_preinit =
-        abstract_base_classes: []
-        deferred_core_modules: []
-
-@__apptools_preinit.abstract_base_classes.push CoreWidget
-@__apptools_preinit.abstract_base_classes.push CoreWidgetAPI
-@__apptools_preinit.deferred_core_modules.push {module: CoreWidgetAPI}
+@__apptools_preinit?.abstract_base_classes.push CoreWidget
+@__apptools_preinit?.abstract_base_classes.push CoreWidgetAPI
+@__apptools_preinit?.deferred_core_modules.push {module: CoreWidgetAPI}
