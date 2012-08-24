@@ -151,13 +151,11 @@ class Util
                 if (_i = Array.prototype.indexOf)?
                     return _i.call(arr, item)
                 else
-                    len = arr.length
-                    i = -1
-                    while i++ <= len
-                        break if i is len
-                        continue if arr[i] isnt item
-                        break
-                    return if i is len then -1 else i
+                    i = arr.length
+                    while i--
+                        return i if arr[i] is item
+                    return -1
+
             else if @is_object(arr)
                 result = -1
                 for own key, val of arr
@@ -233,6 +231,17 @@ class Util
                 else throw 'reject() requires an iterable as the first parameter'
 
                 return results
+
+        @exclude = (array, excludes) =>
+            if @is_array(array)
+                results = []
+                (results.push(item) if not !!~@indexOf(excludes, item)) for item in array
+            else if @is_object(array)
+                results = {}
+                (results[k] = v if not !!~@indexOf(excludes, k)) for k, v of array
+            else throw 'exclude() requires two iterables'
+
+            return results
 
         @all = (arr, fn, ctx=window) =>
             if typeof fn isnt 'function'
@@ -453,12 +462,7 @@ class Util
                 else throw 'Unrecognized params passed to bind()'
 
             else if @is_array element # can accept multiple els for 1 event [el1, el2]
-                if @is_string(event)    # apptools event bridge to single event
-                    return @bind(element, [event], fn)
-                else if @is_array(event)    # event bridge from/to multiple
-                    return $.apptools.events.bridge(element, event, fn)
-                else
-                    @bind(el, event, fn, prop) for el in element
+                @bind(el, event, fn, prop) for el in element
                 return
 
             else if @is_array event #...multiple events for 1 handler on 1 element
