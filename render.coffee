@@ -35,6 +35,22 @@ class DOMTemplate extends Template
     constructor : (element) ->
         attrs = _.to_array(element.attributes)
 
+class QueryDriver extends CoreInterface
+
+    @export = 'private'
+    @methods = []
+
+    constructor: () ->
+        return
+
+class AnimationDriver extends CoreInterface
+
+    @export = 'private'
+    @methods = []
+
+    constructor: () ->
+        return
+
 class RenderDriver extends CoreInterface
 
     @export = 'private'
@@ -115,11 +131,11 @@ class RenderEnvironment extends Model
             filters: {}                # environment filters (currently stubbed)
             globals: {}                # base globals (probably not needed in JS?)
             shared: false              # can environment be reused/shared?
-        
+
         , options)
 
         ## Internal methods
-        
+
         @resolve_loader = () =>
             # If no loader set, resolve appropriate source loader via loader priority list.
             @log('Resolving template loader...')
@@ -142,7 +158,7 @@ class RenderEnvironment extends Model
                 return d
 
         @parse = () =>
-            # parse Template and data object into pre-rendered Template 
+            # parse Template and data object into pre-rendered Template
             @log('Template parsing currently stubbed.')
 
             return @
@@ -162,7 +178,7 @@ class RenderEnvironment extends Model
 
             @state.loader_priority = p if _.is_array(p)
             return @
-        
+
         @load = (name, loader=@loader) =>
             # Loads a named template, defaults to current loader.
 
@@ -178,8 +194,8 @@ class RenderEnvironment extends Model
                 return @load(names, loader)
             else
                 return @
-        
-        # Single-use manual loaders            
+
+        # Single-use manual loaders
         @load[k] = v for k, v of {
             from_string: (string) =>
                 # Manually load template from string parameter.
@@ -216,11 +232,5 @@ class RenderEnvironment extends Model
 
 
 
-@__apptools_preinit.abstract_base_classes.push CoreRenderAPI
-@__apptools_preinit.abstract_base_classes.push RenderDriver
-@__apptools_preinit.abstract_base_classes.push StringLoader
-@__apptools_preinit.abstract_base_classes.push DOMLoader
-@__apptools_preinit.abstract_base_classes.push ModelLoader
-@__apptools_preinit.abstract_base_classes.push StorageLoader
-@__apptools_preinit.abstract_base_classes.push RenderEnvironment
-@__apptools_preinit.abstract_feature_interfaces.push {adapter: RenderDriver, name: "render"}
+@__apptools_preinit.abstract_base_classes.push CoreRenderAPI, QueryDriver, AnimationDriver, RenderDriver, StringLoader, DOMLoader, ModelLoader, StorageLoader, RenderEnvironment
+@__apptools_preinit.abstract_feature_interfaces.push {adapter: QueryDriver, name: "query"}, {adapter: RenderDriver, name: "render"}, {adapter: AnimationDriver, name: "animation"}
