@@ -289,15 +289,23 @@ class AppTools
         if window.jQuery?
             @sys.libraries.install 'jQuery', window.jQuery, (lib, name) =>
                 @sys.drivers.install 'query', 'jquery', @sys.state.classes.QueryDriver, @lib.jquery, true, 100, null
-                @sys.drivers.install 'transport', 'jquery', @sys.state.classes.RPCDriver, @lib.jquery, true, 100, null
-                @sys.drivers.install 'animation', 'jquery', @sys.state.classes.AnimationDriver, @lib.jquery, true, 100, null
+
+                if lib.ajax?
+                    @sys.drivers.install 'transport', 'jquery', @sys.state.classes.RPCDriver, @lib.jquery, true, 100, null
+
+                if $('body').animate?
+                    @sys.drivers.install 'animation', 'jquery', @sys.state.classes.AnimationDriver, @lib.jquery, true, 100, null
 
         # 2.2 - Zepto
         if window.Zepto?
             @sys.libraries.install 'Zepto', window.Zepto, (lib, name) =>
                 @sys.drivers.install 'query', 'zepto', @sys.state.classes.QueryDriver, @lib.zepto, true, 500, null
-                @sys.drivers.install 'transport', 'zepto', @sys.state.classes.RPCDriver, @lib.zepto, true, 500, null
-                @sys.drivers.install 'animation', 'zepto', @sys.state.classes.AnimationDriver, @lib.zepto, true, 500, null
+
+                if lib.ajax?
+                    @sys.drivers.install 'transport', 'zepto', @sys.state.classes.RPCDriver, @lib.zepto, true, 500, null
+
+                if $('body').animate?
+                    @sys.drivers.install 'animation', 'zepto', @sys.state.classes.AnimationDriver, @lib.zepto, true, 500, null
 
 
         ## Round 3) Render/ Animation Libraries
@@ -313,6 +321,9 @@ class AppTools
             @sys.libraries.install 'Jacked', window.Jacked, (lib, name) =>
                 @sys.drivers.install 'animation', 'jacked', @sys.state.classes.AnimationDriver, @lib.jacked, true, 800, (jacked) =>
                     @dev.verbose 'Jacked', 'JackedJS detected. Installing animation support.', jacked
+
+                    if (@sys.libraries.resolve('jquery') != false) and (@sys.drivers.resolve('animation', 'jquery') == false)
+                        jQuery.fn.animate = (to, settings) => @jacked(to, settings)
 
                     @animate = (args...) ->
                         return jacked.tween args...

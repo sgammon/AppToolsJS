@@ -192,9 +192,8 @@ class CoreRPCAPI extends CoreAPI
         @socket_host = apptools.config.rpc.socket_host || null
 
         ## Set up request internals
-        if apptools.sys.libraries.resolve('jQuery') != false
+        if apptools.sys.drivers.resolve('transport', 'jquery') != false
             original_xhr = $.ajaxSettings.xhr
-
         else
             original_xhr = new XMLHttpRequest()
 
