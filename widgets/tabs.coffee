@@ -156,13 +156,13 @@ class Tabs extends CoreWidget
                 target_tab.classList.add('block')
                 trigger.classList.add('current-tab')
                 @_state.current_tab = target_tab.getAttribute('id')
-                $(target_tab).animate opacity: 1,
+                target_tab.animate opacity: 1,
                     duration: 300
                     complete: () =>
                         @_state.active = false
 
             else
-                $(current_tab).animate opacity: 0,
+                current_tab.animate opacity: 0,
                     duration: 200
                     complete: () =>
                         current_a.classList.remove('current-tab')
@@ -174,7 +174,7 @@ class Tabs extends CoreWidget
                         target_tab.classList.add('current-tab')
                         trigger.classList.add('current-tab')
                         @_state.current_tab = target_tab.getAttribute('id')
-                        $(target_tab).animate opacity: 1,
+                        target_tab.animate opacity: 1,
                             duration: 300
                             complete: () =>
                                 @_state.active = false

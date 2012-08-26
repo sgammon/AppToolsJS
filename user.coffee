@@ -6,13 +6,23 @@ class CoreUserAPI extends CoreAPI
 
     constructor: (apptools, window) ->
         @current_user = null
+        @authenticated = false
+        @permissions = {}
 
-    ## Set user info. Usually run by the server during JS injection.
-    setUserInfo: (userinfo) ->
+        @_init = (apptools) =>
+            if apptools.sys.state.config? and apptools.sys.state.config?.user?
+                @setUserInfo()
 
-        # Set user, log this, and trigger SET_USER_INFO
-        @current_user = userinfo.current_user || null
-        $.apptools.dev.log('UserAPI', 'Set server-injected userinfo: ', @current_user)
-        $.apptools.events.trigger('SET_USER_INFO', @current_user)
+        ## Set user info. Usually run by the server during JS injection.
+        @setUserInfo = (authenticated, userinfo, permissions) =>
+
+            # Set user, log this, and trigger SET_USER_INFO
+            @authenticated = true
+            @current_user = userinfo
+            @permissions = permissions
+
+            apptools.dev.log('User', 'Set server-injected userinfo: ', {authenticated: authenticated, user: userinfo, permissions: permissions})
+            apptools.events.trigger('SET_USER_INFO', userinfo, authenticated, permissions)
+            return
 
 @__apptools_preinit.abstract_base_classes.push CoreUserAPI

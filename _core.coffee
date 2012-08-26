@@ -5,7 +5,7 @@ class CoreAPI
 class CoreObject
 
 ## CoreInterface: Specifies an interface, usually used to adapt multiple libraries/modules to one task.
-class CoreInterface
+class CoreInterface extends CoreObject
 
 ## CoreException: Abstract exception class
 class CoreException extends Error
@@ -13,7 +13,6 @@ class CoreException extends Error
   constructor: (@module, @message, @context) ->
   toString: () ->
     return '[' + @module + '] CoreException: ' + @message
-
 
 # AppTools/App errors
 class AppException extends CoreException

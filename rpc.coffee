@@ -4,20 +4,20 @@
 class RPCAPI extends CoreObject
 
     # RPCAPI Constructor
-    constructor: (@name, @base_uri, @methods, @config) ->
+    constructor: (@name, @base_uri, @methods, @config, apptools) ->
 
         ## Build little shims for each method...
         if @methods.length > 0
             for method in @methods
-                @[method] = @_buildRPCMethod(method, base_uri, config)
+                @[method] = @_buildRPCMethod(method, base_uri, config, apptools)
 
 
     # Build a remote method shim
-    _buildRPCMethod: (method, base_uri, config) ->
+    _buildRPCMethod: (method, base_uri, config, apptools) ->
         api = @name
         rpcMethod = (params={}, callbacks=null, async=false, push=false, opts={}, config={}) =>
             do (params, callbacks, async, push, opts) =>
-                request = $.apptools.api.rpc.createRPCRequest({
+                request = apptools.api.rpc.createRPCRequest({
 
                     method: method
                     api: api
@@ -34,7 +34,7 @@ class RPCAPI extends CoreObject
                     return request
 
         # Register API method capability
-        $.apptools.api.registerAPIMethod(api, method, base_uri, config)
+        apptools.api.registerAPIMethod(api, method, base_uri, config)
         return rpcMethod
 
 
@@ -155,10 +155,9 @@ class RPCRequest extends CoreObject
 
 
 # Represents a single RPC response
-class RPCResponse extends CoreObject
+class RPCResponse extends Model
 
-    constructor: (args...) ->
-        $.apptools.dev.verbose('RPC', 'RPCResponse is not yet implemented and is currently stubbed.')
+    constructor: () ->
         return
 
 
@@ -261,10 +260,10 @@ class CoreRPCAPI extends CoreAPI
             factory: (name_or_apis, base_uri, methods, config) =>
 
                 if _.is_array(name_or_apis)
-                    (apptools.api[(name = item.name)] = new RPCAPI(name, item.base_uri, item.methods, item.config)) for item in name_or_apis if name_or_apis?
+                    (apptools.api[(name = item.name)] = new RPCAPI(name, item.base_uri, item.methods, item.config, apptools)) for item in name_or_apis if name_or_apis?
 
                 else
-                    apptools.api[(name = name_or_apis)] = new RPCAPI(name, base_uri, methods, config)
+                    apptools.api[(name = name_or_apis)] = new RPCAPI(name, base_uri, methods, config, apptools)
 
                 return @
 
@@ -511,26 +510,33 @@ class CoreRPCAPI extends CoreAPI
         @ext = null
 
         @registerAPIMethod = (api, name, base_uri, config) =>
-            if apptools?.sys?.drivers
-                amplify = apptools.sys.drivers.resolve('transport', 'amplify')
-                if amplify isnt false
-                    apptools.dev.log('RPCAPI', 'Registering request procedure "'+api+'.'+name+'" with AmplifyJS.')
+            amplify = apptools.sys.drivers.resolve('transport', 'amplify')
+            if amplify isnt false
+                apptools.dev.log('RPCAPI', 'Registering request procedure "'+api+'.'+name+'" with AmplifyJS.')
 
-                    resourceId = api+'.'+name
-                    base_settings =
-                        accepts: 'application/json'
-                        type: 'POST'
-                        dataType: 'json'
-                        contentType: 'application/json'
-                        url: @rpc._assembleRPCURL(name, api, null, base_uri)
-                        decoder: @rpc.decodeRPCResponse
+                resourceId = api+'.'+name
+                base_settings =
+                    accepts: 'application/json'
+                    type: 'POST'
+                    dataType: 'json'
+                    contentType: 'application/json'
+                    url: @rpc._assembleRPCURL(name, api, null, base_uri)
+                    decoder: @rpc.decodeRPCResponse
 
-                    if config.caching?
-                        if config.caching == true
-                            base_settings.caching = 'persist'
-                        amplify.request.define(resourceId, "ajax", base_settings)
-                    else
-                        amplify.request.define(resourceId, "ajax", base_settings)
+                if config.caching?
+                    if config.caching == true
+                        base_settings.caching = 'persist'
+                    amplify.request.define(resourceId, "ajax", base_settings)
+                else
+                    amplify.request.define(resourceId, "ajax", base_settings)
+
+        @_init = (apptools) =>
+            if apptools.sys.state.config? and apptools.sys.state.config?.services?
+                apptools.dev.verbose('RPC', 'Autoloaded in-page RPC config.', apptools.sys.state.config.services)
+                @rpc.factory(apptools.sys.state.config.services.apis)
+                @rpc.action_prefix = apptools.sys.state.config.services.endpoint
+                @rpc.consumer = apptools.sys.state.config.services.consumer
+            return
 
 
 class RPCDriver extends CoreInterface

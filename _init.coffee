@@ -43,6 +43,7 @@ class AppTools
             ## System state
             state:
                 core: []            # System core modules
+                config: {}          # Replaced with in-page config
                 status: 'NOT_READY' # System status
                 flags: ['base']     # System flags
                 preinit: {}         # System preinit
@@ -323,12 +324,17 @@ class AppTools
                     @dev.verbose 'Jacked', 'JackedJS detected. Installing animation support.', jacked
 
                     if (@sys.libraries.resolve('jquery') != false) and (@sys.drivers.resolve('animation', 'jquery') == false)
-                        jQuery.fn.animate = (to, settings) => @jacked(to, settings)
+                        jQuery.fn.animate = (to, settings) ->
+                            if settings.complete?
+                                settings.callback = settings.complete
+                            @jacked(to, settings)
 
                     @animate = (args...) ->
                         return jacked.tween args...
 
                     window.HTMLElement::animate = (to, sets) ->
+                        if sets.complete?
+                            sets.callback = sets.complete
                         return @jacked(to, sets)
 
         # 3.3 - t.coffee (template rendering)
@@ -344,7 +350,13 @@ class AppTools
                     @dev.verbose 'Mustache', 'Render support is currently stubbed. Come back later.'
 
 
-        ##### ===== 3: Install Core Modules ===== #####
+        ##### ===== 3: Parse In-Page Config ===== #####
+        cfelem = document.getElementById 'js-config'
+        if cfelem?
+            @sys.state.config = _.extend({}, @sys.state.config, JSON.parse(cfelem.innerText))
+
+
+        ##### ===== 4: Install Core Modules ===== #####
         @sys.state.core = [
             CoreModelAPI,       # Model API
             CoreAgentAPI,       # Agent API
@@ -359,7 +371,7 @@ class AppTools
         @sys.modules.install(@sys.state.core)
 
 
-        ##### ===== 4: Install Deferred Modules ===== #####
+        ##### ===== 5: Install Deferred Modules ===== #####
         if window.__apptools_preinit?.deferred_core_modules?
             for module in window.__apptools_preinit.deferred_core_modules
                 if module.package?
@@ -367,7 +379,8 @@ class AppTools
                 else
                     @sys.modules.install(module.module)
 
-        ## 5: We're done!
+
+        ## 6: We're done!
         return @.sys.go @
 
 # Export to window
