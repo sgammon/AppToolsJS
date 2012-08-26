@@ -49,8 +49,9 @@ class EditorAPI extends CoreWidgetAPI
 
         @_init = () =>
 
-            editors = _.get 'mini-editable'
+            editors = _.get '.mini-editable'
             @enable(@create(editor)) for editor in editors if editors?
+            @_state.init = true
 
             return @
 

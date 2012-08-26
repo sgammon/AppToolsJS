@@ -45,7 +45,7 @@ class TabsAPI extends CoreAPI
 
         @_init = () =>
 
-            tabsets = _.get 'pre-tabs'
+            tabsets = _.get '.pre-tabs'
             @enable(@create(tabs)) for tabs in tabsets if tabsets?
 
             return @_state.init = true
@@ -186,9 +186,7 @@ class Tabs extends CoreWidget
         @_init = () =>
 
             tabs = @make()
-
             @switch()
-
             @_state.init = true
 
             return @

@@ -14,6 +14,7 @@ class Util
 
         @_state =
             active: null
+            init: false
             dom_status: null
             dom_ready: false
 
@@ -389,10 +390,14 @@ class Util
             if @is_window node
                 node = document
             return query if not query? or query.nodeType
-            return id if (id = document.getElementById(query))?
-            return (if cls.length > 1 then @to_array(cls) else cls[0]) if (cls = node.getElementsByClassName(query)).length > 0
-            return (if tg.length > 1 then @to_array(tg) else tg[0]) if (tg = node.getElementsByTagName(query)).length > 0
-            return null
+            if @in_array(['.', '#'], query[0])
+                [selector, query] = [query[0], query.slice(1)]
+                return (if selector is '#' then document.getElementById(query) else node.getElementsByClassName(query))
+            else
+                return id if (id = document.getElementById(query))?
+                return (if cls.length > 1 then @to_array(cls) else cls[0]) if (cls = node.getElementsByClassName(query)).length > 0
+                return (if tg.length > 1 then @to_array(tg) else tg[0]) if (tg = node.getElementsByTagName(query)).length > 0
+                return null
 
         @get_offset = (elem) =>
             offL = offT = 0
@@ -460,10 +465,12 @@ class Util
                 if @is_raw_object(event)
                     element.addEventListener(k, v, prop) for k, v of event
                     return
-                else
+                if a
                     event = [event] if not @is_array(event)
                     el.addEventListener(ev, fn, prop) for el in element for ev in event
                     return
+                else
+                    return element.addEventListener(event, fn, prop)
             else
                 # AppTools bind, reassign vars
                 [event, fn, prop] = [element, event, fn]
@@ -743,7 +750,8 @@ class Util
             return (Array(length).join('0') + num).slice(-length)
 
         @_init = () =>
-            return
+            @_state.init = true
+            return @
 
 
 @__apptools_preinit.abstract_base_classes.push Util

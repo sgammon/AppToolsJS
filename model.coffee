@@ -13,6 +13,9 @@ class CoreModelAPI extends CoreAPI
 
     constructor: () ->
 
+        @_state =
+            init: false
+
         # internal methods
         @internal =
 
@@ -59,7 +62,9 @@ class CoreModelAPI extends CoreAPI
             # registers a new model kind
             apptools.dev.verbose 'CoreModelAPI', 'register() currently in active development, sorry.'
 
-    @init = () ->
+        @_init = () ->
+            @_state.init = true
+            return @
 
 
 class Model
