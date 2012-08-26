@@ -163,12 +163,12 @@ class Model
             @[prop] = val for prop, val of key
         else @key = key
 
-        for m in ['log', 'to_message', 'from_message']
+        for m in ['log', 'to_message', 'from_message', 'callback']
             do (m) =>
                 @[m] = (args...) =>
                     return Model::[m](@, args...)
 
-        @template = new t(@constructor::template) if @constructor::template
+        @template = new window.t(@constructor::template) if @constructor::template?
 
         return @
 
@@ -181,8 +181,7 @@ class Key extends Model
 # represents repeated model property
 class ListField extends Array
     constructor: () ->
-        t = @
-        super
+        super()
 
         if arguments.length > 0
             _t = new ListField()
@@ -192,26 +191,31 @@ class ListField extends Array
         @pick = (item_or_index) ->
             if parseInt(item_or_index).toString() isnt 'NaN'
                 index = item_or_index
-
                 old = [[@[index]], @slice(0, index), @slice(index+1, @length-1)]
-                @length = 0
-                return @join.apply(@, old)
             else
                 item = item_or_index
                 return @pick(existing) if !!~(existing = _.indexOf(@, item))
 
-                @unshift(item)
-                return @
+                old = _.to_array(@)
+                old.unshift(item)
+
+            @length = 0
+            return @join(old)
 
         @join = (separator) =>
             if separator? and _.is_array(separator)
                 joins = _.to_array(arguments)
-                @push(item) for item in joins.shift() while joins.length
-                return @
+                newthis = new ListField()
+                newthis.push(item) for item in joins.shift() while joins.length
+                return newthis
             else
                 return @::join.call(@, separator)
 
-        return t
+        @slice = () =>
+            newthis = new ListField()
+            return newthis.join(@::slice.apply(@, arguments))
+
+        return @
 
 
 

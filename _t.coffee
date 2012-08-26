@@ -44,7 +44,7 @@ class t
             temp += @render(inner, {_key: k, _val: v})
 
       if meta is '>'
-        if Array.isArray(val)
+        if Array.isArray(val) or val.constructor.name is 'ListField'
           temp += @render(inner, item) for item in val
         else temp += @render(inner, val)
 

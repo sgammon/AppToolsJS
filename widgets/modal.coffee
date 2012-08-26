@@ -203,7 +203,7 @@ class Modal extends CoreWidget
 
             return dialog
 
-        @open = () =>
+        @open = (callback) =>
 
             id = @_state.cached_id
             dialog = _.get(@_state.element_id)
@@ -224,6 +224,7 @@ class Modal extends CoreWidget
             dialog_animation.complete = () =>
                 @internal.classify(dialog, 'open')
                 $('#'+id+'-modal-fade').animate opacity: 1, fade_animation
+                return (if callback? then callback.call(@) else @)
 
             # get final params
             final = @internal.calc()
@@ -281,6 +282,10 @@ class Modal extends CoreWidget
 
             dialog = @make()
             _.get(@_state.trigger_id).removeAttribute('href')
+            @render = (html) =>
+                @close () =>
+                    _.get('modal-content', _.get(@_state.element_id)).innerHTML = html
+                    return @open()
 
             @_state.init = true
 

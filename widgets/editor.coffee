@@ -41,9 +41,11 @@ class EditorAPI extends CoreWidgetAPI
         @disable = (editor) =>
 
             _.unbind(_.get(editor._state.element_id), 'dblclick')
-
             return editor
 
+        @get = (element_id) =>
+
+            return if (index = @_state.editors_by_id[element_id])? then @_state.editors[index] else false
 
         @_init = () =>
 
@@ -59,10 +61,10 @@ class Editor extends CoreWidget
     template: ['<div id="editor-pane-{{<_state.element_id}}" class="absolute editor">','<div id="editorstep-{{&1}}" class="editorstep"></div>','</div>'].join('')
 
     steps:
-        edit: '{{@bundle}}<button class="editorbutton XMS" id="edit-cmd-{{<_key}}" value="{{&1}}">{{=_val}}</button>{{/bundle}}'
-        wait: '<span class="loading spinner momentron">&#xf0045;</span>'
-        done: '<span class="momentron" style="color: #bada55;">&#xf0053;</span>'
-        fail: '<span class="momentron" style="color: #f00;">&#xf0054;</span>'
+        edit: '<span class="rounded tools">{{@bundle}}<button class="editorbutton XMS" id="edit-cmd-{{<_key}}" value="{{&1}}">{{=_val}}</button>{{/bundle}}</span>'
+        wait: '<span class="rounded notify loading spinner momentron">&#xf0045;</span>'
+        done: '<span class="rounded yay momentron">&#xf0053;</span>'
+        fail: '<span class="rounded error momentron">&#xf0054;</span>'
 
     bundles: [
         save:
@@ -197,7 +199,7 @@ class Editor extends CoreWidget
 
             paneDF = _.create_doc_frag(@template.render(@))
             @_state.pane_id = paneDF.firstChild.getAttribute('id')
-            step = _.get('editorstep', paneDF.firstChild)[0]
+            step = _.get('editorstep', paneDF.firstChild)
 
             @_state.step = 'edit'
             @template.t = @steps['edit']
@@ -213,7 +215,7 @@ class Editor extends CoreWidget
 
             return @render = (cb) =>
                 pane = _.get(@_state.pane_id)
-                step = _.get('editorstep', pane)[0]
+                step = _.get('editorstep', pane)
                 step.innerHTML = @template.render(@)
 
                 _w = pane.scrollWidth
@@ -238,19 +240,12 @@ class Editor extends CoreWidget
 
         @step = (name='edit', cb) =>
 
-            return (if @_state.active then @hide() else @show()) if @_state.step is name
+            @hide()
+            setTimeout(@show, 350)
 
             @_state.step = name
             @template.t = @steps[name]
-            return @hide () =>
-                setTimeout(() =>
-                    return (if cb is false then @render() else @show(@render(cb)))
-                , 250)
-
-        @reset = (cb) =>
-            return window.setTimeout(() =>
-                return @step('edit', cb)
-            , 500)
+            return @render(cb)
 
         @edit = (e) =>
 
@@ -258,16 +253,14 @@ class Editor extends CoreWidget
                 e.preventDefault()
                 e.stopPropagation()
 
-            @show () =>
+            return @step 'edit', () =>
                 el = _.get(@_state.element_id)
                 _.unbind(el, 'dblclick', @edit)
                 el.contentEditable = true
                 @_state.cached_content = if @_state.config.bundle is 'plain' then el.innerText else el.innerHTML
 
-                _.bind(document.body, 'dblclick', () => return @reset(false))
+                _.bind(document.body, 'dblclick', @save)
                 el.focus()
-
-            return @
 
         @save = (e) =>
 
@@ -279,13 +272,12 @@ class Editor extends CoreWidget
             el = _.get(@_state.element_id)
             el.contentEditable = false
 
-            @step 'wait', () =>
-
+            return @step 'wait', () =>
                 html = if @_state.config.bundle is 'plain' then el.innerText else el.innerHTML
                 cached_html = @_state.cached_content
                 if html is cached_html
                     _.bind(el, 'dblclick', @edit)
-                    return @step('edit', false)
+                    return @hide()
                 else
                     return $.apptools.api.content.save_snippet(
                         keyname: @_state.keyname
@@ -293,21 +285,18 @@ class Editor extends CoreWidget
                         html: html
                     ).fulfill
                         success: (response) =>
-                            @step 'done', () =>
+                            return @step 'done', () =>
                                 el.innerHTML = response.html
                                 _.bind(el, 'dblclick', @edit)
-
                                 _.unbind(document.body, 'dblclick')
-                                setTimeout(() =>
-                                    return @step('edit', false)
-                                , 550)
+
+                                setTimeout(@hide, 1500)
+                                return @
 
                         failure: (error) =>
-                            @error = error
-                            @step 'fail', () =>
-                                setTimeout(() =>
-                                    return @step('edit', true)
-                                , 550)
+                            return @step 'fail', () =>
+                                setTimeout(@edit, 1500)
+                                return @
 
         @_init = () =>
 

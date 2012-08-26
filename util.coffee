@@ -337,7 +337,9 @@ class Util
 
             return el_str
 
-        @create_doc_frag = (html_string) =>
+        @create_doc_frag = () =>
+            html_string = ''
+            html_string += arg for arg in arguments
             range = document.createRange()
             range.selectNode(document.getElementsByTagName('div').item(0))
             frag = range.createContextualFragment(html_string)
@@ -387,7 +389,10 @@ class Util
             if @is_window node
                 node = document
             return query if not query? or query.nodeType
-            return if (id = document.getElementById(query))? then id else (if (cls = node.getElementsByClassName(query)).length > 0 then @to_array(cls) else (if (tg = node.getElementsByTagName(query)).length > 0 then @to_array(tg) else null))
+            return id if (id = document.getElementById(query))?
+            return (if cls.length > 1 then @to_array(cls) else cls[0]) if (cls = node.getElementsByClassName(query)).length > 0
+            return (if tg.length > 1 then @to_array(tg) else tg[0]) if (tg = node.getElementsByTagName(query)).length > 0
+            return null
 
         @get_offset = (elem) =>
             offL = offT = 0
@@ -448,35 +453,21 @@ class Util
 
         # Events/timing/animation
         @bind = (element, event, fn, prop=false) =>
-            return false if not element?
-            if not fn? or typeof fn is 'boolean' # either means custom event binding
-                fn ?= false
-                if @is_string(element)
-                    if @is_function(event)
-                        return $.apptools.events.hook(element, event, fn)
+            return false if not element? or not event?
 
-                else if @is_function(element) and @is_object(event)
-                    return () ->
-                        return element.apply(event, arguments)
-
-                else throw 'Unrecognized params passed to bind()'
-
-            else if @is_array element # can accept multiple els for 1 event [el1, el2]
-                @bind(el, event, fn, prop) for el in element
-                return
-
-            else if @is_array event #...multiple events for 1 handler on 1 element
-                @bind(element, evt, fn, prop) for evt in event
-                return
-
-            else if @is_raw_object event # ...or multiple event/handler pairs for 1 element {event: handler, event2: handler2}
-                @bind(element, ev, func, prop) for ev, func of event
-                return
-
-            else if @is_window(element) or element.nodeType
-                return element.addEventListener event, fn, prop
-
-            else throw 'bind() requires at least an event name and function to bind.'
+            if @is_window(element) or element.nodeType or ((a = @is_array(element)) and element.length > 0 and element[0].nodeType)
+                # DOM event binding
+                if @is_raw_object(event)
+                    element.addEventListener(k, v, prop) for k, v of event
+                    return
+                else
+                    event = [event] if not @is_array(event)
+                    el.addEventListener(ev, fn, prop) for el in element for ev in event
+                    return
+            else
+                # AppTools bind, reassign vars
+                [event, fn, prop] = [element, event, fn]
+                return (if @is_function(fn) then $.apptools.events.hook(event, fn, prop) else $.apptools.events.bridge(event, fn, prop))
 
         @bridge = () =>
             return @bind.apply(@, arguments)
@@ -769,4 +760,4 @@ window._ = new Util()
 if window.$?
     $.extend _: window._
 else
-    window.$ = window._
+    window.$ = window._.get
