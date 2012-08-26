@@ -163,7 +163,7 @@ class Model
             @[prop] = val for prop, val of key
         else @key = key
 
-        for m in ['log', 'to_message', 'from_message', 'callback']
+        for m in ['log', 'to_message', 'from_message']
             do (m) =>
                 @[m] = (args...) =>
                     return Model::[m](@, args...)
@@ -181,6 +181,7 @@ class Key extends Model
 # represents repeated model property
 class ListField extends Array
     constructor: () ->
+<<<<<<< HEAD
         super()
 
         if arguments.length > 0
