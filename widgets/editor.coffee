@@ -61,17 +61,10 @@ class Editor extends CoreWidget
     template: ['<div id="editor-pane-{{<_state.element_id}}" class="absolute editor">','<div id="editorstep-{{&1}}" class="editorstep"></div>','</div>'].join('')
 
     steps:
-<<<<<<< HEAD
         edit: '<span class="rounded tools">{{@bundle}}<button class="editorbutton XMS" id="edit-cmd-{{<_key}}" value="{{&1}}">{{=_val}}</button>{{/bundle}}</span>'
         wait: '<span class="rounded notify loading spinner momentron">&#xf0045;</span>'
         done: '<span class="rounded yay momentron">&#xf0053;</span>'
         fail: '<span class="rounded error momentron">&#xf0054;</span>'
-=======
-        edit: '{{@bundle}}<button class="editorbutton XMS" id="edit-cmd-{{<_key}}" value="{{&1}}">{{=_val}}</button>{{/bundle}}'
-        wait: '<span class="loading spinner momentron">&#xf0045;</span>'
-        done: '<span class="momentron" style="color: #bada55;">&#xf0053;</span>'
-        fail: '<span class="momentron" style="color: #f00;">&#xf0054;</span>'
->>>>>>> 2beaa7a721c1fe554ff13b026e624312439d6676
 
     bundles: [
         save:

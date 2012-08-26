@@ -181,7 +181,6 @@ class Key extends Model
 # represents repeated model property
 class ListField extends Array
     constructor: () ->
-<<<<<<< HEAD
         super()
 
         if arguments.length > 0
