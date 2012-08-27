@@ -69,98 +69,74 @@ class CoreModelAPI extends CoreAPI
 
 class Model
 
-    log: (source, message) ->
+    validate: (message, cls, safe=false) ->
 
-        if message?
-            source = source.constructor.name
-            if (a = $.apptools or window.apptools)?
-                return a.dev.verbose(source, message)
+        cls ?= this.constructor::model
 
-            else
-                return console.log('['+source+']', message)
-
-        else if source?
-            message = source
-            source = @constructor.name
-
-            return @log(source, message)
+        if safe
+            results = {}
+            check = (k, v) =>
+                if cls[k]? and (v? is cls[k]?)
+                    if cls[k].constructor.name is 'ListField'
+                        temp = new ListField()
+                        temp.push(new cls[k][0]().from_message(it)) for it in v
+                        results[k] = temp
+                    else if v.constructor.name is cls[k].constructor.name
+                        results[k] = v
 
         else
-            return @log('Model', 'No message passed to log(). (You get a log message anyway <3)')
-
-    validate: (object, cls=object.constructor::model, safe=false) ->
-
-        if object?
-
-            if safe
-                results = {}
-                check = (k, v) =>
-                    if cls[k]? and (v? is cls[k]?)
-                        if cls[k].constructor.name is 'ListField'
-                            temp = new ListField()
-                            temp.push(new cls[k][0]().from_message(it)) for it in v
-                            results[k] = temp
-                        else if v.constructor.name is cls[k].constructor.name
-                            results[k] = v
-
-            else
-                results = []
-                check = (k, v) =>
-                    if cls[k]? and (v? is cls[k]?)
-                        if cls[k].constructor.name is 'ListField'
-                            temp = []
-                            for it in v
-                                _it = new cls[k][0]().from_message(it, true)
-                                temp.push(it) if it is _it
-                            if temp.length > 0
-                                results.push(k:v)
-
-                        else if v.constructor.name isnt cls[k].constructor.name
+            results = []
+            check = (k, v) =>
+                if cls[k]? and (v? is cls[k]?)
+                    if cls[k].constructor.name is 'ListField'
+                        temp = []
+                        for it in v
+                            _it = new cls[k][0]().from_message(it, true)
+                            temp.push(it) if it is _it
+                        if temp.length > 0
                             results.push(k:v)
-                    else
+
+                    else if v.constructor.name isnt cls[k].constructor.name
                         results.push(k:v)
+                else
+                    results.push(k:v)
 
-            check(key, value) for own key, value of object
+        check(key, value) for own key, value of message
 
-            return results if safe
-            return results.length is 0
+        return results if safe
+        return results.length is 0
 
-        else throw new ModelException(@constructor.name, 'No object passed to validate().')
+    from_message: (message={}, strict=false) ->
 
-    from_message: (object, message={}, strict=false, excludes=[]) ->
+        object = this
 
-        if object?
-            cached_obj = object
+        if object.validate(message)
+            newobj = object.validate(message, null, true)
+            object[prop] = val for prop, val of newobj
 
-            if @validate(message, object.constructor::model)
-                object[prop] = val for own prop, val of message if not !!~_.indexOf(excludes, prop)
-                return _.exclude(object, excludes)
+        else if not strict
+            modsafe = object.validate(message, object.constructor::model, true)
+            object = modsafe if not _.is_empty_object(modsafe)
 
-            else if not strict
-                modsafe = @validate(message, object.constructor::model, true)
-                return _.exclude((if _.is_empty_object(modsafe) then cached_obj else modsafe), excludes)
+        else
+            console.log('from_message() failed.')
 
-            else
-                @log('from_message() failed.')
-                return cached_obj
+        return object
 
-        else throw new ModelException(@constructor.name, 'No object passed to from_message().')
+    to_message: (excludes=[]) ->
 
-    to_message: (object, excludes=[]) ->
+        object = this
+        message = {}
 
-        if object?
-            message = {}
-            for own prop, val of object
-                if object.constructor::model[prop] and typeof val isnt 'function'
-                    if val.constructor.name is 'ListField'
-                        _val = []
-                        _val.push(item.to_message()) for item in val
-                        message[prop] = _val
-                    else message[prop] = val
+        for own prop, val of object
+            if typeof val isnt 'function' and object.constructor::model[prop]?
+                if val.constructor.name is 'ListField'
+                    _val = []
+                    _val.push(item.to_message()) for item in val
+                    message[prop] = _val
+                else message[prop] = val
 
-            return message
-
-        else throw new ModelException(@constructor.name, 'No object passed to to_message().')
+        return message
 
     constructor: (key) ->
 
@@ -168,10 +144,20 @@ class Model
             @[prop] = val for prop, val of key
         else @key = key
 
-        for m in ['log', 'to_message', 'from_message']
+        for m in ['to_message', 'from_message']
             do (m) =>
-                @[m] = (args...) =>
-                    return Model::[m](@, args...)
+                @[m] = () =>
+                    return Model::[m].apply(@, arguments)
+
+        if (mounted = @constructor.mount)?
+            for prop, v of @[mounted].constructor::model
+                if v.constructor.name isnt 'ListField'
+                    do (mounted, prop) =>
+                        @__defineGetter__ prop, () =>
+                            return @[mounted][prop]
+                        @__defineSetter__ prop, (val) =>
+                            return @[mounted][prop] = val
+
 
         @template = new window.t(@constructor::template) if @constructor::template?
 
@@ -196,29 +182,52 @@ class ListField extends Array
         @pick = (item_or_index) ->
             if parseInt(item_or_index).toString() isnt 'NaN'
                 index = item_or_index
-                old = [[@[index]], @slice(0, index), @slice(index+1, @length-1)]
+                len = @length
+                front = @slice(0, index)
+                back = @slice(index+1)
+
+                newthis = @slice(0,0).push(@[index]).join(front).join(back)
             else
                 item = item_or_index
                 return @pick(existing) if !!~(existing = _.indexOf(@, item))
 
-                old = _.to_array(@)
-                old.unshift(item)
+                newthis = _.to_array(@)
+                newthis.unshift(item)
 
-            @length = 0
-            return @join(old)
+            @empty()
+            return @join(newthis)
 
-        @join = (separator) =>
-            if separator? and _.is_array(separator)
-                joins = _.to_array(arguments)
-                newthis = new ListField()
-                newthis.push(item) for item in joins.shift() while joins.length
-                return newthis
+        @join = (separator) ->
+            if separator? and (_.is_array(separator) or separator.constructor.name = @constructor.name)
+                @push(item) for item in separator
+                return @
             else
-                return @::join.call(@, separator)
+                string = ''
+                len = @length
+                for item, i in @
+                    string += item.toString() if i is len-1
+                    string += item.toString() + separator
 
-        @slice = () =>
-            newthis = new ListField()
-            return newthis.join(@::slice.apply(@, arguments))
+                return string
+
+        @slice = (start=0, end=@length) ->
+            temp = []
+            while start < end
+                temp.push(@[start])
+                start++
+
+            newlist = new @constructor()
+            return newlist.join(temp)
+
+        @push = (item) ->
+            len = @length
+            @[len] = item
+            @length++
+            return @
+
+        @empty = () ->
+            @length = 0
+            return @
 
         return @
 

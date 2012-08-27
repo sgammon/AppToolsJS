@@ -342,7 +342,7 @@ class CoreRPCAPI extends CoreAPI
 
                 apptools.dev.verbose('RPC', 'Fulfill', config, request, callbacks)
 
-                if apptools.sys.libraries.resolve('jQuery') != false
+                if apptools.sys.drivers.resolve('transport', 'jquery') != false
                     # Splice in our custom factory
                     $.ajaxSetup(
 

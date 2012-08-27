@@ -64,7 +64,7 @@ class StringLoader extends RenderDriver
     constructor: () ->
 
         @load = (pre_template) =>
-            @constructor::log(@constructor.name, 'Loading string templates currently stubbed.')
+            console.log(@constructor.name, 'Loading string templates currently stubbed.')
             return pre_template
 
         return @
@@ -74,7 +74,7 @@ class DOMLoader extends RenderDriver
     constructor: () ->
 
         @load = (pre_template) =>
-            @constructor::log(@constructor.name, 'Loading DOM templates currently stubbed.')
+            console.log(@constructor.name, 'Loading DOM templates currently stubbed.')
             return pre_template
 
         return @
@@ -84,7 +84,7 @@ class ModelLoader extends RenderDriver
     constructor: () ->
 
         @load = (pre_template) =>
-            @constructor::log(@constructor.name, 'Loading model templates currently stubbed.')
+            console.log(@constructor.name, 'Loading model templates currently stubbed.')
             return pre_template
 
         return @
@@ -94,7 +94,7 @@ class StorageLoader extends RenderDriver
     constructor: () ->
 
         @load = (pre_template) =>
-            @constructor::log(@constructor.name, 'Loading templates from storage currently stubbed.')
+            console.log(@constructor.name, 'Loading templates from storage currently stubbed.')
             return pre_template
 
         return @
@@ -115,10 +115,8 @@ class RenderEnvironment extends Model
     @export = 'public'
 
     constructor: (options={}) ->
-        ## Import logging
-        @log = (message) => return @constructor::log('Render', message)
-
         ## Setup initial state & extend with user options
+
         @state = _.extend(true, {},
 
             template_loaded: false     # is template ready to render?
@@ -138,7 +136,7 @@ class RenderEnvironment extends Model
 
         @resolve_loader = () =>
             # If no loader set, resolve appropriate source loader via loader priority list.
-            @log('Resolving template loader...')
+            console.log('Resolving template loader...')
 
             priority = @state.loader_priority
             errors = []
@@ -146,7 +144,7 @@ class RenderEnvironment extends Model
                 try
                     d = new driver()
                 catch err
-                    @log('Invalid driver:', driver.toString())
+                    console.log('Invalid driver:', driver.toString())
                 finally
                     break if d?
                     continue
@@ -154,12 +152,12 @@ class RenderEnvironment extends Model
             if errors.length is priority.length
                 throw new RenderException(@constructor.name, 'Unable to resolve valid template loader.')
             else
-                @log('Template loader resolved.')
+                console.log('Template loader resolved.')
                 return d
 
         @parse = () =>
             # parse Template and data object into pre-rendered Template
-            @log('Template parsing currently stubbed.')
+            console.log('Template parsing currently stubbed.')
 
             return @
 
@@ -168,13 +166,13 @@ class RenderEnvironment extends Model
         # Template loading
         @set_loader = (@loader) =>
             # Manually sets template loader for this environment.
-            @log('Manually setting template loader.')
+            console.log('Manually setting template loader.')
 
             return @
 
         @set_loader_priority = (p) =>
             # Manually sets priority array for template loaders
-            @log('Manually assigning template loader priority.')
+            console.log('Manually assigning template loader priority.')
 
             @state.loader_priority = p if _.is_array(p)
             return @
@@ -213,7 +211,7 @@ class RenderEnvironment extends Model
         ## API methods
         @selfdestruct = () =>
             # Perform any final cleanup & trigger self-delete with Render API
-            @log('selfdestruct() currently stubbed. lucky you.');
+            console.log('selfdestruct() currently stubbed. lucky you.');
 
             return @
 
