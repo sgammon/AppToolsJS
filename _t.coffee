@@ -10,7 +10,6 @@ class t
       return new Option(val).innerHTML.replace(/["']/g, '&quot;')
 
     @get_value = (vars, key) =>
-      return @render(vars[key], @get_value(vars, 'context')) if key is 'template'
       parts = key.split('.')
       while parts.length
         return false if parts[0] not of vars

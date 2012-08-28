@@ -56,6 +56,11 @@ class CoreWidgetAPI extends CoreAPI
 
 class CoreWidget extends Model
 
+    constructor: (@element_id) ->
+        @id = @constructor.name.toLowerCase() + '-' + @element_id
+        super()
+        return
+
 @__apptools_preinit?.abstract_base_classes.push CoreWidget
 @__apptools_preinit?.abstract_base_classes.push CoreWidgetAPI
 @__apptools_preinit?.deferred_core_modules.push {module: CoreWidgetAPI}

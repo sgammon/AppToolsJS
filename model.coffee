@@ -76,30 +76,36 @@ class Model
         if safe
             results = {}
             check = (k, v) =>
-                if cls[k]? and (v? is cls[k]?)
-                    if cls[k].constructor.name is 'ListField'
+                if (_v = cls[k])? and (v? is _v?)
+                    if typeof _v is 'function'
+                        results[k] = new _v().from_message(v)
+
+                    else if _v.constructor.name is 'ListField'
                         temp = new ListField()
-                        temp.push(new cls[k][0]().from_message(it)) for it in v
+                        temp.push(new _v[0]().from_message(it)) for it in v
                         results[k] = temp
-                    else if v.constructor.name is cls[k].constructor.name
+
+                    else if v.constructor.name is _v.constructor.name
                         results[k] = v
 
         else
             results = []
             check = (k, v) =>
-                if cls[k]? and (v? is cls[k]?)
-                    if cls[k].constructor.name is 'ListField'
-                        temp = []
-                        for it in v
-                            _it = new cls[k][0]().from_message(it, true)
-                            temp.push(it) if it is _it
-                        if temp.length > 0
-                            results.push(k:v)
+                if (_v = cls[k])? and (v? is _v?)
+                    if typeof _v is 'function'
+                        t = new _v()
+                        results.push(k:v) if not t.validate(v)
 
-                    else if v.constructor.name isnt cls[k].constructor.name
+                    else if _v.constructor.name is 'ListField'
+                        _it = new _v[0]()
+                        for it in v
+                            continue if _it.validate(it)
+                            results.push(k:v)
+                            break
+
+                    else if v.constructor.name isnt _v.constructor.name
                         results.push(k:v)
-                else
-                    results.push(k:v)
+                else results.push(k:v)
 
         check(key, value) for own key, value of message
 
@@ -111,7 +117,7 @@ class Model
         object = this
 
         if object.validate(message)
-            newobj = object.validate(message, null, true)
+            newobj = object.validate(message, object.constructor::model, true)
             object[prop] = val for prop, val of newobj
 
         else if not strict
@@ -144,22 +150,24 @@ class Model
             @[prop] = val for prop, val of key
         else @key = key
 
-        for m in ['to_message', 'from_message']
+        for m in Model::
             do (m) =>
-                @[m] = () =>
+                @::[m] = () =>
                     return Model::[m].apply(@, arguments)
 
-        if (mounted = @constructor.mount)?
-            for prop, v of @[mounted].constructor::model
-                if v.constructor.name isnt 'ListField'
-                    do (mounted, prop) =>
-                        @__defineGetter__ prop, () =>
-                            return @[mounted][prop]
-                        @__defineSetter__ prop, (val) =>
-                            return @[mounted][prop] = val
+        if @constructor.mount?
+            mounted = @[@constructor.mount]
+            if mounted?
+                for prop, v of mounted.constructor::model
+                    if v.constructor.name isnt 'ListField'
+                        do (mounted, prop) =>
+                            @__defineGetter__ prop, () =>
+                                return mounted[prop]
+                            @__defineSetter__ prop, () =>
+                                return
 
-
-        @template = new window.t(@constructor::template) if @constructor::template?
+        @template = new window.t(@constructor.template) if @constructor.template?
+        @__ = true
 
         return @
 
@@ -233,7 +241,4 @@ class ListField extends Array
 
 
 
-@__apptools_preinit.abstract_base_classes.push CoreModelAPI
-@__apptools_preinit.abstract_base_classes.push Model
-@__apptools_preinit.abstract_base_classes.push Key
-@__apptools_preinit.abstract_base_classes.push ListField
+@__apptools_preinit.abstract_base_classes.push CoreModelAPI, Model, Key, ListField
