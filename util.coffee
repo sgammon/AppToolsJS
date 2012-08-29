@@ -392,7 +392,7 @@ class Util
             return query if not query? or query.nodeType
             if @in_array(['.', '#'], query[0])
                 [selector, query] = [query[0], query.slice(1)]
-                return (if selector is '#' then document.getElementById(query) else node.getElementsByClassName(query))
+                return (if selector is '#' then document.getElementById(query) else @to_array(node.getElementsByClassName(query)))
             else
                 return id if (id = document.getElementById(query))?
                 return (if cls.length > 1 then @to_array(cls) else cls[0]) if (cls = node.getElementsByClassName(query)).length > 0
