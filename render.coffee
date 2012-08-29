@@ -1,23 +1,37 @@
-# Render API
-class CoreRenderAPI extends CoreAPI
 
-    @mount = 'render'
-    @events = []
-    @export = 'private'
+#### === Render/DOM Interfaces === ####
+class QueryInterface extends Interface
 
-    constructor: (apptools, window) ->
-        @_init = () =>
-            @environment = new RenderEnvironment(shared: true).set_loader_priority([
-                DOMLoader,
-                StorageLoader,
-                ModelLoader,
-                StringLoader
-            ])._init()
-            @context = new RenderContext()
+    capability: 'query'
+    required: ['element_by_id', 'elements_by_class', 'elements_by_tag', 'get']
+
+    get: (selector) ->
+    element_by_id: (id) ->
+    elements_by_tag: (tagname) ->
+    elements_by_class: (classname) ->
+
+class RenderInterface extends Interface
+
+    capability: 'render'
+    required: []
+
+    render: (template, context) ->
+
+class AnimationInterface extends Interface
+
+    capability: 'animation'
+    required: ['animate']
+
+    animate: (to, settings) ->
 
 
+#### === Render Base Classes === ####
+
+## Core
+class TemplateLoader extends CoreObject
 class RenderException extends CoreException
 
+## Models
 class Template extends Model
 
     constructor : () ->
@@ -35,70 +49,7 @@ class DOMTemplate extends Template
     constructor : (element) ->
         attrs = _.to_array(element.attributes)
 
-class QueryDriver extends CoreInterface
-
-    @export = 'private'
-    @methods = []
-
-    constructor: () ->
         return
-
-class AnimationDriver extends CoreInterface
-
-    @export = 'private'
-    @methods = []
-
-    constructor: () ->
-        return
-
-class RenderDriver extends CoreInterface
-
-    @export = 'private'
-    @methods = []
-
-    constructor: () ->
-        return
-
-class StringLoader extends RenderDriver
-    # takes JS string template (Mustache {{x}} or Apptools [% x %] syntax) & returns prepared Template
-    constructor: () ->
-
-        @load = (pre_template) =>
-            @constructor::log(@constructor.name, 'Loading string templates currently stubbed.')
-            return pre_template
-
-        return @
-
-class DOMLoader extends RenderDriver
-    # takes pre-classed element and returns prepared Template
-    constructor: () ->
-
-        @load = (pre_template) =>
-            @constructor::log(@constructor.name, 'Loading DOM templates currently stubbed.')
-            return pre_template
-
-        return @
-
-class ModelLoader extends RenderDriver
-    # takes object model & returns prepped Template
-    constructor: () ->
-
-        @load = (pre_template) =>
-            @constructor::log(@constructor.name, 'Loading model templates currently stubbed.')
-            return pre_template
-
-        return @
-
-class StorageLoader extends RenderDriver
-    # takes StorageAPI key & returns stored Template
-    constructor: () ->
-
-        @load = (pre_template) =>
-            @constructor::log(@constructor.name, 'Loading templates from storage currently stubbed.')
-            return pre_template
-
-        return @
-
 
 class TemplateContext extends Model
 class RenderContext extends Model
@@ -109,6 +60,7 @@ class RenderContext extends Model
             @[k] = v for own k, v of ctx
 
         return @
+
 
 class RenderEnvironment extends Model
 
@@ -230,7 +182,93 @@ class RenderEnvironment extends Model
 
         return @
 
+## Loaders
+class StringLoader extends TemplateLoader
+    # takes JS string template (Mustache {{x}} or Apptools [% x %] syntax) & returns prepared Template
+    constructor: () ->
+
+        @load = (pre_template) =>
+            @constructor::log(@constructor.name, 'Loading string templates currently stubbed.')
+            return pre_template
+
+        return @
+
+class DOMLoader extends TemplateLoader
+    # takes pre-classed element and returns prepared Template
+    constructor: () ->
+
+        @load = (pre_template) =>
+            @constructor::log(@constructor.name, 'Loading DOM templates currently stubbed.')
+            return pre_template
+
+        return @
+
+class ModelLoader extends TemplateLoader
+    # takes object model & returns prepped Template
+    constructor: () ->
+
+        @load = (pre_template) =>
+            @constructor::log(@constructor.name, 'Loading model templates currently stubbed.')
+            return pre_template
+
+        return @
+
+class StorageLoader extends TemplateLoader
+    # takes StorageAPI key & returns stored Template
+    constructor: () ->
+
+        @load = (pre_template) =>
+            @constructor::log(@constructor.name, 'Loading templates from storage currently stubbed.')
+            return pre_template
+
+        return @
+
+class ServiceLoader extends TemplateLoader
+    # takes StorageAPI key & returns stored Template
+    constructor: () ->
+
+        @load = (pre_template) =>
+            @constructor::log(@constructor.name, 'Loading templates from the service layer is currently stubbed.')
+            return pre_template
+
+        return @
 
 
-@__apptools_preinit.abstract_base_classes.push CoreRenderAPI, QueryDriver, AnimationDriver, RenderDriver, StringLoader, DOMLoader, ModelLoader, StorageLoader, RenderEnvironment
-@__apptools_preinit.abstract_feature_interfaces.push {adapter: QueryDriver, name: "query"}, {adapter: RenderDriver, name: "render"}, {adapter: AnimationDriver, name: "animation"}
+#### === Core Render API === ####
+class CoreRenderAPI extends CoreAPI
+
+    @mount = 'render'
+    @events = []
+    @export = 'private'
+
+    constructor: (apptools, window) ->
+        @_init = () =>
+            @environment = new RenderEnvironment(shared: true).set_loader_priority([
+                DOMLoader,
+                StorageLoader,
+                ModelLoader,
+                StringLoader
+            ])._init()
+            @context = new RenderContext()
+
+
+@__apptools_preinit.abstract_base_classes.push  QueryInterface,
+                                                RenderInterface,
+                                                AnimationInterface,
+                                                TemplateLoader,
+                                                RenderException,
+                                                Template,
+                                                DOMTemplate,
+                                                TemplateContext,
+                                                RenderContext,
+                                                RenderEnvironment,
+                                                StringLoader,
+                                                DOMLoader,
+                                                ModelLoader,
+                                                StorageLoader,
+                                                ServiceLoader,
+                                                CoreRenderAPI
+
+@__apptools_preinit.abstract_feature_interfaces.push QueryInterface,
+                                                     RenderInterface,
+                                                     AnimationInterface
