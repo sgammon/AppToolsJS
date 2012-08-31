@@ -166,8 +166,7 @@ class Model
                             @__defineSetter__ prop, () =>
                                 return
 
-        @template = new window.t(@constructor.template) if @constructor.template?
-        @__ = true
+        @template = new window.t(temp) if (temp = @constructor::template or @constructor.template)?
 
         return @
 
@@ -187,14 +186,32 @@ class ListField extends Array
             _t.push(arguments[0])
             return _t
 
-        @pick = (item_or_index) ->
+        @pick = (item_or_index, new_index) ->
             if parseInt(item_or_index).toString() isnt 'NaN'
                 index = item_or_index
                 len = @length
-                front = @slice(0, index)
-                back = @slice(index+1)
 
-                newthis = @slice(0,0).push(@[index]).join(front).join(back)
+                if new_index?
+                    diff = index - new_index
+
+                    if diff > 0
+                        new_front = @slice(0, new_index)
+                        newthis = new_front.join(@slice(new_index).pick(diff))
+
+                    else
+                        _d = -diff
+                        new_front = @slice(0, index )
+                        new_back = @slice(index)
+                        while diff < 0
+                            new_back.pick(_d)
+                            diff++
+                        newthis = new_front.join(new_back)
+
+                else
+                    front = @slice(0, index)
+                    back = @slice(index+1)
+
+                    newthis = @slice(0,0).push(@[index]).join(front).join(back)
             else
                 item = item_or_index
                 return @pick(existing) if !!~(existing = _.indexOf(@, item))
@@ -236,6 +253,56 @@ class ListField extends Array
         @empty = () ->
             @length = 0
             return @
+
+        @keys = () ->
+            ks = []
+            ks.push(item.key) for item in @
+
+            return _.purge(ks)
+
+        @order = (new_index, prop=false) ->           # prop - optional, property on each object in this ListField to sort by
+
+            oldthis = new ListField().join(@)
+            @empty()
+            @length = new_index.length
+
+            _.map(oldthis, (item, i, arr) ->
+                @[_.indexOf(new_index)] = (if !!prop then item[prop] else item)
+            , @)
+
+            return @
+
+        @promote = (key_or_index) =>
+            if parseInt(key_or_index).toString() isnt 'NaN'
+                index = key_or_index
+            else
+                key = key_or_index
+                index = _.indexOf(@keys(), key)
+
+            return @pick(index, index-1)
+
+        @demote = (key_or_index) =>
+            if parseInt(key_or_index).toString() isnt 'NaN'
+                index = key_or_index
+            else
+                key = key_or_index
+                index = _.indexOf(@keys(), key)
+
+            return @pick(index, index+1)
+
+        @remove = (key_or_index) =>
+            if parseInt(key_or_index).toString() isnt 'NaN'
+                index = key_or_index
+            else
+                key = key_or_index
+                index = _.indexOf(@keys(), key)
+
+            copy = @slice()
+            newthis = copy.slice(0, index).join(copy.slice(index+1))
+
+            @empty()
+
+            return @join(newthis)
 
         return @
 

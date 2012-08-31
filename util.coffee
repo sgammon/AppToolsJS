@@ -325,6 +325,16 @@ class Util
             arr = array
             return arr.pop()
 
+        @purge = (array) =>
+            return @filter(array, (it) => return @is(it))
+
+        @empties = (array) =>
+            idxs = []
+            _.each array, (it, i) =>
+                idxs.push(i) if not @is(it)
+                return
+            return idxs
+
         # DOM checks/manipulation
         @create_element_string = (tag, attrs, separator='*', ext) =>
             no_close = ['area', 'base', 'basefont', 'br', 'col', 'frame', 'hr', 'img', 'input', 'link']

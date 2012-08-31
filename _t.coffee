@@ -2,7 +2,7 @@
 class t
 
   blockregex = /\{\{\s*?(([@!>]?)(.+?))\s*?\}\}(([\s\S]+?)(\{\{\s*?:\1\s*?\}\}([\s\S]+?))?)\{\{\s*?\/(?:\1|\s*?\3\s*?)\s*?\}\}/g
-  valregex = /\{\{\s*?([<&=%])\s*?(.+?)\s*?\}\}/g
+  valregex = /\{\{\s*?([<&=%\+])\s*?(.+?)\s*?\}\}/g
 
   constructor: (template) ->
 
@@ -19,9 +19,10 @@ class t
 
     @t = template
     @temp = []
+    @children = {}
     return @
 
-  render: (fragment, vars) =>
+  parse: (fragment, vars) =>
     @temp = []
     if not vars?
       vars = fragment
@@ -32,24 +33,25 @@ class t
       temp = ''
 
       if not val
-        return (if meta is '!' then @render(inner, vars) else (if has_else then @render(if_false, vars) else ''))
+        return (if meta is '!' then @parse(inner, vars) else (if has_else then @parse(if_false, vars) else ''))
 
       if not meta
-        return @render(`has_else ? if_true : inner, vars`)
+        return @parse(`has_else ? if_true : inner, vars`)
 
       if meta is '@'
         for k, v of val
           if val.hasOwnProperty(k)
-            temp += @render(inner, {_key: k, _val: v})
+            temp += @parse(inner, {_key: k, _val: v})
 
       if meta is '>'
         if Array.isArray(val) or val.constructor.name is 'ListField'
-          temp += @render(inner, item) for item in val
-        else temp += @render(inner, val)
+          temp += @parse(inner, item) for item in val
+        else temp += @parse(inner, val)
 
       return temp
     ).replace(valregex, (_, meta, key) =>
       return @temp[parseInt(key)-1] if meta is '&'
+      return (val = (@children[key] ||= new window[key]()).parse(vars)) if meta is '+'
       val = @get_value(vars, key)
       @temp.push(val) if meta is '<'
       return (if val? then (if meta is '%' then @scrub(val) else val) else '')
