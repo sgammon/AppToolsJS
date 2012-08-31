@@ -53,11 +53,38 @@ class CoreInterface extends CoreObject
   required: []      # methods that must be on implementation drivers
   capability: null  # shortname for this capability, used as a prefix on drivers that implement this interface
 
+  constructor: (capability, apptools) ->
+      @capability = capability
+      @driver =
+
+        name_i: {}
+        registry: []
+
+        add: (driver) =>
+          registry_i = (@driver.registry.push(driver) - 1)
+          @driver.name_i[driver.name] = registry_i
+          return @driver.registry[@driver.name_i[driver.name]]
+
+        resolve: (name) =>
+          if name?
+            if not @driver.name_i[name]?
+              return false
+            return @driver.name_i[name]
+          priority = -1
+          selected = false
+          for driver in @driver.registry
+            if driver.bindings[@capability] > priority
+              selected = driver
+          return selected
+
+    return @
+
   install: (window, cls) ->
     if window.apptools?
       window.apptools.sys.interfaces.install(cls)
     window.__apptools_preinit.abstract_feature_interfaces.push(cls)
     return cls
+
 
 ## CoreException: Abstract exception class
 class CoreException extends Error

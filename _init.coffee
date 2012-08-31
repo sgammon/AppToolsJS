@@ -277,7 +277,7 @@ class AppTools
                             if driver.library?
                                 @sys.state.drivers[driver.name] = new driver(driver.library)
                                 for iface in interfaces
-                                    iface.add_driver(driver)
+                                    iface.driver.add(driver)
 
                         else
                             @dev.verbose('System', 'Installed driver "' + driver.name + '" was found to be incompatible with the current environment.')
