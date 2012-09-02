@@ -207,7 +207,7 @@ class Util
                     (results.push(item) if fn.call(ctx, item, i, arr)) for item, i in arr
                 else if @is_object(arr)
                     results = {}
-                    (results[k] = v if fn.call(ctx, val, k, arr)) for own k, val of arr
+                    (results[k] = val if fn.call(ctx, val, k, arr)) for own k, val of arr
                 else throw 'filter() requires an iterable as the first parameter'
 
                 return results
@@ -221,7 +221,7 @@ class Util
                     (results.push(item) if not fn.call(ctx, item, i, arr)) for item, i in arr
                 else if @is_object(arr)
                     results = {}
-                    (results[k] = v if not fn.call(ctx, val, k, arr)) for own k, val of arr
+                    (results[k] = val if not fn.call(ctx, val, k, arr)) for own k, val of arr
                 else throw 'reject() requires an iterable as the first parameter'
 
                 return results
