@@ -171,15 +171,13 @@ class Util
         @each = (arr, fn, ctx=window) =>
             if typeof fn isnt 'function'
                 throw 'each() requires an iterator as the second parameter'
-            else if (_e = Array.prototype.forEach)?
-                return _e.call(arr, fn, ctx)
-
             else
                 results = []
                 if @is_array(arr)
+                    return _e.call(arr, fn, ctx) if (_e = Array.prototype.forEach)?
                     results.push(fn.call(ctx, item, i, arr)) for item, i in arr
                 else if @is_object(arr)
-                    results.push(fn.call(ctx, val, k, arr)) for own k, val of arr
+                    results.push(fn.call(ctx, val, k, arr)) for k, val of arr
                 else throw 'each() requires an iterable as the first parameter'
 
                 return
@@ -187,11 +185,9 @@ class Util
         @map = (arr, fn, ctx=window) =>
             if typeof fn isnt 'function'
                 throw 'map() requires an iterator as the second parameter'
-            else if (_m = Array.prototype.map)?
-                return _m.call(arr, fn, ctx)
-
             else
                 if @is_array(arr)
+                    return _m.call(arr, fn, ctx) if (_m = Array.prototype.map)?
                     results = []
                     (results.push(fn.call(ctx, item, i, arr))) for item, i in arr
                 else if @is_object(arr)
@@ -204,11 +200,9 @@ class Util
         @filter = (arr, fn, ctx=window) =>
             if typeof fn isnt 'function'
                 throw 'filter() requires an iterator as the second parameter'
-            else if (_f = Array.prototype.filter)?
-                return _f.call(arr, fn, ctx)
-
             else
                 if @is_array(arr)
+                    return _f.call(arr, fn, ctx) if (_f = Array.prototype.filter)?
                     results = []
                     (results.push(item) if fn.call(ctx, item, i, arr)) for item, i in arr
                 else if @is_object(arr)
@@ -221,7 +215,6 @@ class Util
         @reject = (arr, fn, ctx=window) =>
             if typeof fn isnt 'function'
                 throw 'reject() requires an iterator as the second parameter'
-
             else
                 if @is_array(arr)
                     results = []
@@ -247,11 +240,9 @@ class Util
         @all = (arr, fn, ctx=window) =>
             if typeof fn isnt 'function'
                 throw 'all() requires an iterator as the second parameter'
-            else if (_all = Array.prototype.every)?
-                return _all.call(arr, fn, ctx)
-
             else
                 if (_arr = @is_array(arr)) or (_obj = @is_object(arr))
+                    (return _all.call(arr, fn, ctx) if (_all = Array.prototype.every)?) if _arr
                     results = @reject(arr, fn, ctx)
                     return if _arr then results.length is 0 else false for key of _obj
                 else throw 'all() requires an iterable as the first parameter'
@@ -259,11 +250,9 @@ class Util
         @any = (arr, fn, ctx=window) =>
             if typeof fn isnt 'function'
                 throw 'any() requires an iterator as the second parameter'
-            else if (_any = Array.prototype.some)?
-                return _any.call(arr, fn, ctx)
-
             else
                 if (_arr = @is_array(arr)) or (_obj = @is_object(arr))
+                    (return _any.call(arr, fn, ctx) if (_any = Array.prototype.some)?) if _arr
                     results = @filter(arr, fn, ctx)
                     return if _arr then results.length > 0 else true for key of _obj
                 else throw 'any() requires an iterable as the first parameter'
@@ -273,11 +262,9 @@ class Util
             initial ?= if @is_array(arr[0]) then [] else 0
             if typeof fn isnt 'function'
                 throw 'reduce() requires an iterator as the second parameter'
-            else if (_r = Array.prototype.reduce)?
-                return _r.call(arr, fn, initial, ctx)
-
             else
                 if @is_array(arr)
+                    return _r.call(arr, fn, initial, ctx) if (_r = Array.prototype.reduce)?
                     results = initial
                     fn.call(ctx, results, item, arr) for item in arr
                     return results
@@ -297,7 +284,6 @@ class Util
                 throw 'sort() requires an iterator as the second parameter'
             else if (_s = Array.prototype.sort)?
                 return _s.call(arr, fn)
-
             else
                 console.log('non-native sort() currently stubbed.')
                 return false
