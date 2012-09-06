@@ -107,7 +107,7 @@ class Model
 
         check(key, value) for own key, value of message
 
-        return results if safe
+        return results if strict
         return results.length is 0
 
     from_message: (message={}, strict=false) ->
