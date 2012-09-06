@@ -69,26 +69,9 @@ class CoreModelAPI extends CoreAPI
 
 class Model
 
-    validate: (message, cls, safe=false) ->
+    validate: (message, cls=@constructor::model, strict=true) ->
 
-        cls ?= this.constructor::model
-
-        if safe
-            results = {}
-            check = (k, v) =>
-                if (_v = cls[k])? and (v? is _v?)
-                    if typeof _v is 'function'
-                        results[k] = new _v().from_message(v)
-
-                    else if _v.constructor.name is 'ListField'
-                        temp = new ListField()
-                        temp.push(new _v[0]().from_message(it)) for it in v
-                        results[k] = temp
-
-                    else if v.constructor.name is _v.constructor.name
-                        results[k] = v
-
-        else
+        if strict
             results = []
             check = (k, v) =>
                 if (_v = cls[k])? and (v? is _v?)
@@ -107,6 +90,21 @@ class Model
                         results.push(k:v)
                 else results.push(k:v)
 
+        else
+            results = {}
+            check = (k, v) =>
+                if (_v = cls[k])? and (v? is _v?)
+                    if typeof _v is 'function'
+                        results[k] = new _v().from_message(v)
+
+                    else if _v.constructor.name is 'ListField'
+                        temp = new ListField()
+                        temp.push(new _v[0]().from_message(it)) for it in v
+                        results[k] = temp
+
+                    else if v.constructor.name is _v.constructor.name
+                        results[k] = v
+
         check(key, value) for own key, value of message
 
         return results if safe
@@ -114,18 +112,16 @@ class Model
 
     from_message: (message={}, strict=false) ->
 
-        object = this
+        object = @
+        valid = object.validate(message)
+        modsafe = object.validate(message, null, false)
 
-        if object.validate(message)
-            newobj = object.validate(message, object.constructor::model, true)
-            object[prop] = val for prop, val of newobj
-
-        else if not strict
-            modsafe = object.validate(message, object.constructor::model, true)
-            object = modsafe if not _.is_empty_object(modsafe)
-
+        if strict and not valid
+            console.log('Strict from_message() failed. Returning unmodified object.', object)
+        else if _.is_empty_object(modsafe)
+            console.log('No modelsafe properties found. Returning unmodified object.', object)
         else
-            console.log('from_message() failed.')
+            object[prop] = val for prop, val of modsafe
 
         return object
 
