@@ -200,33 +200,40 @@ class AppTools
                                 throw "Parent interface references must be valid and child interfaces must be loaded after their parents."
                             else
                                 @sys.state.interfaces[adapter.parent].children[adapter.capability] = {adapter: adapter, children: {}}
+                                @events.trigger('SYS_INTERFACE_LOADED', adapter: @sys.state.interfaces[adapter.parent].children[adapter.capability].adapter)
                         else
-                            if not @sys.state.interfaces[adapter.parent.capability]?
+                            if not @sys.state.interfaces[adapter.parent::capability]?
                                 @dev.error('System', 'Encountered interface with invalid parent reference.', adapter, adapter.parent)
                                 throw "Parent interface references must be valid and child interfaces must be loaded after their parents."
                             else
-                                @sys.state.interfaces[adapter.parent.capability].children[adapter.capability] = {adapter: adapter, children: {}}
+                                @sys.state.interfaces[adapter.parent::capability].children[adapter.capability] = {adapter: adapter, children: {}}
+                                @events.trigger('SYS_INTERFACE_LOADED', adapter: @sys.state.interfaces[adapter.parent::capability].children[adapter.capability].adapter)
                     else
                         @sys.state.interfaces[adapter.capability] = {adapter: adapter, children: {}}
+                        @events.trigger('SYS_INTERFACE_LOADED', adapter: @sys.state.interfaces[adapter.capability].adapter)
 
-                    @events.trigger('SYS_INTERFACE_LOADED', adapter: @sys.state.interfaces[adapter.capability].adapter)
                     return @sys.state.interfaces[adapter.capability]
 
                 resolve: (iface) =>
 
                     if not _.is_string(iface)
-                        iface = iface.capability
+                        if iface::parent?
+                            spec = [iface::parent::capability, iface::capability].join('.')
+                        else
+                            spec = iface::capability
+                    else
+                        spec = String(iface).toLowerCase()
 
                     ## Look for it
-                    if iface.contains(".")
-                        n = iface.split(".")
-                        if @sys.state.interfaces[n[0]]?[n[1]]?
-                            return @sys.state.interfaces[n[0]][n[1]].adapter
+                    n = spec.split('.')
+                    if n.length > 1
+                        if @sys.state.interfaces[n[0]]?.children[n[1]]?
+                            return @sys.state.interfaces[n[0]]?.children[n[1]]?.adapter
                         return false
 
-                    if @sys.state.interfaces[iface]?
-                        if @sys.state.interfaces[iface]?
-                            return @sys.state.interfaces[iface].adapter
+                    if @sys.state.interfaces[spec]?
+                        if @sys.state.interfaces[spec]?
+                            return @sys.state.interfaces[spec].adapter
                         return false
 
                 children: (iface) =>
@@ -260,9 +267,15 @@ class AppTools
                     else
 
                         # Make sure the driver can even work
-                        if driver.library? or (driver.compatible? and (driver.compatible() == true))
+                        if (driver::native? and driver::native == true) or (driver::library? or (driver::compatible? and (driver::compatible() == true)))
 
-                            interfaces = [@sys.state.interfaces.resolve(iface) for iface in driver.interfaces]
+                            interfaces = (@sys.interfaces.resolve(iface) for iface in driver::interface)
+
+                            if driver::library?
+                                driver = @sys.state.drivers[driver.name] = new driver(driver::library)
+
+                            else
+                                driver = @sys.state.drivers[driver.name] = new driver(@)
 
                             # Validate interfaces
                             for iface in interfaces
@@ -273,40 +286,18 @@ class AppTools
                                         if not driver[iface.capability][method]?
                                             @dev.error('System', 'Encountered driver ("' + driver.name + '") without required implementation method ("' + method + '") for attached interface "' + iface.capability + '".', iface, driver)
                                             throw "Encountered fatal driver validation error."
-
-                            if driver.library?
-                                @sys.state.drivers[driver.name] = new driver(driver.library)
-                                for iface in interfaces
-                                    iface.add_driver(driver)
+                                iface.add(driver)
 
                         else
                             @dev.verbose('System', 'Installed driver "' + driver.name + '" was found to be incompatible with the current environment.')
                             return false
 
+
                 ## Resolve a driver by type, or type + name
-                resolve: (type, name=null, strict=false) =>
+                resolve: (spec, name=null) =>
 
-                    if not @sys.drivers[type]?
-                        apptools.dev.critical 'CORE', 'Unkown driver type "' + type + '".'
-                        return
-                    else
-                        if name?
-                            if @sys.drivers[type][name]?
-                                return @sys.drivers[type][name].driver
-                            else
-                                if strict
-                                    apptools.dev.critical 'CORE', 'Could not resolve driver ', name, ' of type ', type, '.'
-                            return false
-
-                    priority_state = -1
-                    selected_driver = false
-                    for driver of @sys.drivers[type]
-
-                        driver = @sys.drivers[type][driver]
-                        if driver.priority > priority_state
-                            selected_driver = driver
-                            break
-                    return selected_driver
+                    iface = @sys.interfaces.resolve(spec)
+                    return iface.resolve(name)
 
             ## All systems go!
             go: (apptools) =>

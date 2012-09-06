@@ -20,18 +20,20 @@ for boot in __apptools_preinit_bootlist
 ## CoreAPI: Holds a piece of AppTools core functionality.
 class CoreAPI
 
-  install: (window, cls) ->
+  install: (window, i) ->
     if window.apptools?
-      window.apptools.sys.modules.install(cls)
-    window.__apptools_preinit.deferred_core_modules.push cls
-    return cls
+      window.apptools.sys.modules.install(i)
+    window.__apptools_preinit.deferred_core_modules.push i
+    return i
+window.CoreAPI = CoreAPI
 
 ## CoreObject: Holds an interactive object that is usually attached to a CoreAPI in some way.
 class CoreObject
 
-  install: (window, cls) ->
-    window.__apptools_preinit.abstract_base_classes.push cls
-    return cls
+  install: (window, i) ->
+    window.__apptools_preinit.abstract_base_classes.push i
+    return i
+window.CoreObject = CoreObject
 
 ## CoreDriver: Specifies integration bridges, that must conform to at least one CoreInterface.
 class CoreDriver extends CoreObject
@@ -40,11 +42,12 @@ class CoreDriver extends CoreObject
   library: null     # library that this driver bridges to, if any
   interface: []     # list of interfaces this driver fulfills
 
-  install: (window, cls) ->
+  install: (window, i) ->
     if window.apptools?
-      window.apptools.sys.drivers.install(cls)
-    window.__apptools_preinit.installed_drivers.push(cls)
-    return cls
+      window.apptools.sys.drivers.install(i)
+    window.__apptools_preinit.installed_drivers.push(i)
+    return i
+window.CoreDriver = CoreDriver
 
 ## CoreInterface: Specifies an interface, usually used to adapt multiple libraries/modules to one task.
 class CoreInterface extends CoreObject
@@ -52,12 +55,46 @@ class CoreInterface extends CoreObject
   parent: null      # interface parent for this capability
   required: []      # methods that must be on implementation drivers
   capability: null  # shortname for this capability, used as a prefix on drivers that implement this interface
+  static: true      # specifies that once a driver is resolved, it can be used for the lifetime of the session without perfoming checks again
 
-  install: (window, cls) ->
+  constructor: (apptools) ->
+    @drivers =
+      adapters: {}
+      priority: []
+      selected: null
+
+  install: (window, i) ->
     if window.apptools?
-      window.apptools.sys.interfaces.install(cls)
-    window.__apptools_preinit.abstract_feature_interfaces.push(cls)
-    return cls
+      window.apptools.sys.interfaces.install(i)
+    window.__apptools_preinit.abstract_feature_interfaces.push(i)
+    return i
+
+  add: (driver) ->
+    @drivers.adapters[driver.name] = driver
+    @drivers.priority.push driver.name
+    return
+
+  resolve: (name) ->
+    if name?
+      if @drivers.adapters[name]?
+        return @drivers.adapters[name]
+      return false
+    if @static and @drivers.selected?
+      return @drivers.adapters[@drivers.selected]
+    else
+      start_p = -1
+      for driver in @drivers.priority
+        if driver.priority? and driver.priority > start_p
+          @drivers.selected = driver
+        else
+          if not driver.priority?
+            @drivers.selected = driver
+          continue
+      if @drivers.selected == null
+        return false
+      return @drivers.adapters[@drivers.selected]
+
+window.CoreInterface = CoreInterface
 
 ## CoreException: Abstract exception class
 class CoreException extends Error
@@ -66,15 +103,19 @@ class CoreException extends Error
   toString: () ->
     return '[' + @module + '] CoreException: ' + @message
 
-  install: (window, cls) ->
-    window.__apptools_preinit.abstract_base_classes.push(cls)
-    return cls
+  install: (window, i) ->
+    window.__apptools_preinit.abstract_base_classes.push(i)
+    return i
 
-CoreException::install(window, CoreException)
+window.CoreException = CoreException
 
 ##### ==== AppTools Internals ==== #####
 class AppToolsDriver extends CoreDriver
 class AppToolsException extends CoreException
+
+window.AppToolsDriver = AppToolsDriver
+window.AppToolsException = AppToolsException
+
 
 ##### ==== AppTools Extension Points ==== #####
 
@@ -82,6 +123,8 @@ class AppToolsException extends CoreException
 class Driver extends CoreDriver
 class Interface extends CoreInterface
 
+window.Driver = Driver
+window.Interface = Interface
 
 @__apptools_preinit.abstract_base_classes.push  CoreAPI,
                                                 CoreObject,

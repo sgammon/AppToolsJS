@@ -27,14 +27,14 @@ class jQueryDriver extends Driver
 
 		## RPC/Transport
 		@rpc =
-			factory: (args...) =>
-				return $.ajaxSettings.xhr(args...)
+			factory: (context) =>
+				return $.ajaxSettings.xhr(context)
 
-			fulfill: () =>
+			fulfill: (xhr, request, dispatch) =>
 
 		## Animation
 		@animation =
-			animate: (to, settings) ->
+			animate: (to, settings) -
 			element: (to, settings) =>
 
 		return @
