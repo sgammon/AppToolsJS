@@ -198,13 +198,13 @@ class Editor extends CoreWidget
 
         @render = () =>
 
-            paneDF = _.create_doc_frag(@template.render(@))
+            paneDF = _.create_doc_frag(@template.parse(@))
             @_state.pane_id = paneDF.firstChild.getAttribute('id')
             step = _.get('editorstep', paneDF.firstChild)
 
             @_state.step = 'edit'
             @template.t = @steps['edit']
-            step.innerHTML = @template.render(@)
+            step.innerHTML = @template.parse(@)
 
             document.body.appendChild(paneDF)
 
@@ -217,7 +217,7 @@ class Editor extends CoreWidget
             return @render = (cb) =>
                 pane = _.get(@_state.pane_id)
                 step = _.get('editorstep', pane)
-                step.innerHTML = @template.render(@)
+                step.innerHTML = @template.parse(@)
 
                 _w = pane.scrollWidth
                 pane.style.right = (window.innerWidth - _w)/2 + 'px'

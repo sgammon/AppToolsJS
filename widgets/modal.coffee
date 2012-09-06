@@ -277,15 +277,21 @@ class Modal extends CoreWidget
                 }
             )
 
+        @fade = (opacity, cback) =>
+            id = @_state.cached_id
+            $('#'+id+'modal-fade').animate(opacity: opacity, {duration: 300, complete: cback})
+            return @
+        @fadeout = (cback) =>
+            return @fade(0, cback)
+        @fadein = (cback) =>
+            return @fade(1, cback)
 
         @_init = () =>
 
             dialog = @make()
             _.get(@_state.trigger_id).removeAttribute('href')
             @render = (html) =>
-                @close () =>
-                    _.get('modal-content', _.get(@_state.element_id)).innerHTML = html
-                    return @open()
+                _.get('modal-content', _.get(@_state.element_id)).innerHTML = html
 
             @_state.init = true
 

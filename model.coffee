@@ -69,98 +69,76 @@ class CoreModelAPI extends CoreAPI
 
 class Model
 
-    log: (source, message) ->
+    validate: (message, cls=@constructor::model, strict=true) ->
 
-        if message?
-            source = source.constructor.name
-            if (a = $.apptools or window.apptools)?
-                return a.dev.verbose(source, message)
+        if strict
+            results = []
+            check = (k, v) =>
+                if (_v = cls[k])? and (v? is _v?)
+                    if typeof _v is 'function'
+                        t = new _v()
+                        results.push(k:v) if not t.validate(v)
 
-            else
-                return console.log('['+source+']', message)
+                    else if _v.constructor.name is 'ListField'
+                        _it = new _v[0]()
+                        for it in v
+                            continue if _it.validate(it)
+                            results.push(k:v)
+                            break
 
-        else if source?
-            message = source
-            source = @constructor.name
-
-            return @log(source, message)
+                    else if v.constructor.name isnt _v.constructor.name
+                        results.push(k:v)
+                else results.push(k:v)
 
         else
-            return @log('Model', 'No message passed to log(). (You get a log message anyway <3)')
+            results = {}
+            check = (k, v) =>
+                if (_v = cls[k])? and (v? is _v?)
+                    if typeof _v is 'function'
+                        results[k] = new _v().from_message(v)
 
-    validate: (object, cls=object.constructor::model, safe=false) ->
+                    else if _v.constructor.name is 'ListField'
+                        temp = new ListField()
+                        temp.push(new _v[0]().from_message(it)) for it in v
+                        results[k] = temp
 
-        if object?
+                    else if v.constructor.name is _v.constructor.name
+                        results[k] = v
 
-            if safe
-                results = {}
-                check = (k, v) =>
-                    if cls[k]? and (v? is cls[k]?)
-                        if cls[k].constructor.name is 'ListField'
-                            temp = new ListField()
-                            temp.push(new cls[k][0]().from_message(it)) for it in v
-                            results[k] = temp
-                        else if v.constructor.name is cls[k].constructor.name
-                            results[k] = v
+        check(key, value) for own key, value of message
 
-            else
-                results = []
-                check = (k, v) =>
-                    if cls[k]? and (v? is cls[k]?)
-                        if cls[k].constructor.name is 'ListField'
-                            temp = []
-                            for it in v
-                                _it = new cls[k][0]().from_message(it, true)
-                                temp.push(it) if it is _it
-                            if temp.length > 0
-                                results.push(k:v)
+        return results if safe
+        return results.length is 0
 
-                        else if v.constructor.name isnt cls[k].constructor.name
-                            results.push(k:v)
-                    else
-                        results.push(k:v)
+    from_message: (message={}, strict=false) ->
 
-            check(key, value) for own key, value of object
+        object = @
+        valid = object.validate(message)
+        modsafe = object.validate(message, null, false)
 
-            return results if safe
-            return results.length is 0
+        if strict and not valid
+            console.log('Strict from_message() failed. Returning unmodified object.', object)
+        else if _.is_empty_object(modsafe)
+            console.log('No modelsafe properties found. Returning unmodified object.', object)
+        else
+            object[prop] = val for prop, val of modsafe
 
-        else throw new ModelException(@constructor.name, 'No object passed to validate().')
+        return object
 
-    from_message: (object, message={}, strict=false, excludes=[]) ->
+    to_message: (excludes=[]) ->
 
-        if object?
-            cached_obj = object
+        object = this
+        message = {}
 
-            if @validate(message, object.constructor::model)
-                object[prop] = val for own prop, val of message if not !!~_.indexOf(excludes, prop)
-                return _.exclude(object, excludes)
+        for own prop, val of object
+            if typeof val isnt 'function' and object.constructor::model[prop]?
+                if val.constructor.name is 'ListField'
+                    _val = []
+                    _val.push(item.to_message()) for item in val
+                    message[prop] = _val
+                else message[prop] = val
 
-            else if not strict
-                modsafe = @validate(message, object.constructor::model, true)
-                return _.exclude((if _.is_empty_object(modsafe) then cached_obj else modsafe), excludes)
-
-            else
-                @log('from_message() failed.')
-                return cached_obj
-
-        else throw new ModelException(@constructor.name, 'No object passed to from_message().')
-
-    to_message: (object, excludes=[]) ->
-
-        if object?
-            message = {}
-            for own prop, val of object
-                if object.constructor::model[prop] and typeof val isnt 'function'
-                    if val.constructor.name is 'ListField'
-                        _val = []
-                        _val.push(item.to_message()) for item in val
-                        message[prop] = _val
-                    else message[prop] = val
-
-            return message
-
-        else throw new ModelException(@constructor.name, 'No object passed to to_message().')
+        return message
 
     constructor: (key) ->
 
@@ -168,12 +146,23 @@ class Model
             @[prop] = val for prop, val of key
         else @key = key
 
-        for m in ['log', 'to_message', 'from_message']
+        for m in Model::
             do (m) =>
-                @[m] = (args...) =>
-                    return Model::[m](@, args...)
+                @::[m] = () =>
+                    return Model::[m].apply(@, arguments)
 
-        @template = new window.t(@constructor::template) if @constructor::template?
+        if @constructor.mount?
+            mounted = @[@constructor.mount]
+            if mounted?
+                for prop, v of mounted.constructor::model
+                    if v.constructor.name isnt 'ListField'
+                        do (mounted, prop) =>
+                            @__defineGetter__ prop, () =>
+                                return mounted[prop]
+                            @__defineSetter__ prop, () =>
+                                return
+
+        @template = new window.t(temp) if (temp = @constructor::template or @constructor.template)?
 
         return @
 
@@ -193,38 +182,126 @@ class ListField extends Array
             _t.push(arguments[0])
             return _t
 
-        @pick = (item_or_index) ->
+        @pick = (item_or_index, new_index) ->
             if parseInt(item_or_index).toString() isnt 'NaN'
                 index = item_or_index
-                old = [[@[index]], @slice(0, index), @slice(index+1, @length-1)]
+                len = @length
+
+                if new_index?
+                    diff = index - new_index
+
+                    if diff > 0
+                        new_front = @slice(0, new_index)
+                        newthis = new_front.join(@slice(new_index).pick(diff))
+
+                    else
+                        _d = -diff
+                        new_front = @slice(0, index )
+                        new_back = @slice(index)
+                        while diff < 0
+                            new_back.pick(_d)
+                            diff++
+                        newthis = new_front.join(new_back)
+
+                else
+                    front = @slice(0, index)
+                    back = @slice(index+1)
+
+                    newthis = @slice(0,0).push(@[index]).join(front).join(back)
             else
                 item = item_or_index
                 return @pick(existing) if !!~(existing = _.indexOf(@, item))
 
-                old = _.to_array(@)
-                old.unshift(item)
+                newthis = _.to_array(@)
+                newthis.unshift(item)
 
-            @length = 0
-            return @join(old)
+            @empty()
+            return @join(newthis)
 
-        @join = (separator) =>
-            if separator? and _.is_array(separator)
-                joins = _.to_array(arguments)
-                newthis = new ListField()
-                newthis.push(item) for item in joins.shift() while joins.length
-                return newthis
+        @join = (separator) ->
+            if separator? and (_.is_array(separator) or separator.constructor.name = @constructor.name)
+                @push(item) for item in separator
+                return @
             else
-                return @::join.call(@, separator)
+                string = ''
+                len = @length
+                for item, i in @
+                    string += item.toString() if i is len-1
+                    string += item.toString() + separator
 
-        @slice = () =>
-            newthis = new ListField()
-            return newthis.join(@::slice.apply(@, arguments))
+                return string
+
+        @slice = (start=0, end=@length) ->
+            temp = []
+            while start < end
+                temp.push(@[start])
+                start++
+
+            newlist = new @constructor()
+            return newlist.join(temp)
+
+        @push = (item) ->
+            len = @length
+            @[len] = item
+            @length++
+            return @
+
+        @empty = () ->
+            @length = 0
+            return @
+
+        @keys = () ->
+            ks = []
+            ks.push(item.key) for item in @
+
+            return _.purge(ks)
+
+        @order = (new_index, prop=false) ->           # prop - optional, property on each object in this ListField to sort by
+
+            oldthis = new ListField().join(@)
+            @empty()
+            @length = new_index.length
+
+            _.map(oldthis, (item, i, arr) ->
+                @[_.indexOf(new_index)] = (if !!prop then item[prop] else item)
+            , @)
+
+            return @
+
+        @promote = (key_or_index) =>
+            if parseInt(key_or_index).toString() isnt 'NaN'
+                index = key_or_index
+            else
+                key = key_or_index
+                index = _.indexOf(@keys(), key)
+
+            return @pick(index, index-1)
+
+        @demote = (key_or_index) =>
+            if parseInt(key_or_index).toString() isnt 'NaN'
+                index = key_or_index
+            else
+                key = key_or_index
+                index = _.indexOf(@keys(), key)
+
+            return @pick(index, index+1)
+
+        @remove = (key_or_index) =>
+            if parseInt(key_or_index).toString() isnt 'NaN'
+                index = key_or_index
+            else
+                key = key_or_index
+                index = _.indexOf(@keys(), key)
+
+            copy = @slice()
+            newthis = copy.slice(0, index).join(copy.slice(index+1))
+
+            @empty()
+
+            return @join(newthis)
 
         return @
 
 
 
-@__apptools_preinit.abstract_base_classes.push CoreModelAPI
-@__apptools_preinit.abstract_base_classes.push Model
-@__apptools_preinit.abstract_base_classes.push Key
-@__apptools_preinit.abstract_base_classes.push ListField
+@__apptools_preinit.abstract_base_classes.push CoreModelAPI, Model, Key, ListField
