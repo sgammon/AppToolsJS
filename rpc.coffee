@@ -122,7 +122,9 @@ class ServiceLayerDriver extends Driver
                 xhr.open(request.context.http_method, request.endpoint(apptools.rpc.state.config.jsonrpc), request.context.async)
 
                 ## Set headers for XHR RPC interaction
+                payload = JSON.stringify(request.payload())
                 xhr.set_header("Content-Type", request.context.content_type)
+                xhr.set_header("Content-Length", payload.length)
                 for header, value of _.extend({}, request.context.headers, apptools.rpc.state.config.headers)
                     xhr.set_header(header, value)
 
@@ -151,7 +153,7 @@ class ServiceLayerDriver extends Driver
 
                     return decode_and_dispatch('failure', event)
 
-                return xhr.send(JSON.stringify(request.payload()))
+                return xhr.send(payload)
         super apptools
         return @
 

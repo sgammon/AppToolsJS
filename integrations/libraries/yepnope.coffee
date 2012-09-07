@@ -11,8 +11,11 @@ class YepNopeDriver extends Driver
 
 		## Asset Loading
 		@load =
-			script: () =>
-			styles: () =>
+			script: (fragments...) =>
+				return library.load fragments...
+
+			styles: (fragments...) =>
+				return library.load fragments...
 
 		return @
 

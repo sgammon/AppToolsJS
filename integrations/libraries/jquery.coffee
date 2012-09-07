@@ -34,7 +34,7 @@ class jQueryDriver extends Driver
 
 		## Animation
 		@animation =
-			animate: (to, settings) -
+			animate: (to, settings) =>
 			element: (to, settings) =>
 
 		return @
