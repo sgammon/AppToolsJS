@@ -7,7 +7,7 @@ class RPCAPI extends CoreObject
     constructor: (@name, @base_uri, @methods, @config, apptools) ->
 
         ## Build little shims for each method...
-        if @methods.length > 0
+        if @methods and @methods.length > 0
             for method in @methods
                 @[method] = @_buildRPCMethod(method, base_uri, config, apptools)
 
@@ -260,7 +260,10 @@ class CoreRPCAPI extends CoreAPI
             factory: (name_or_apis, base_uri, methods, config) =>
 
                 if _.is_array(name_or_apis)
-                    (apptools.api[(name = item.name)] = new RPCAPI(name, item.base_uri, item.methods, item.config, apptools)) for item in name_or_apis if name_or_apis?
+                    if _.is_array(item)
+                        (apptools.api[(name = item[0])] = new RPCAPI(name, item[0], item[1], item[2], apptools)) for item in name_or_apis if name_or_apis?
+                    else
+                        (apptools.api[(name = item.name)] = new RPCAPI(name, item.base_uri, item.methods, item.config, apptools)) for item in name_or_apis if name_or_apis?
 
                 else
                     apptools.api[(name = name_or_apis)] = new RPCAPI(name, base_uri, methods, config, apptools)
