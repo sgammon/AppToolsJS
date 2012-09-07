@@ -7,7 +7,7 @@ class RPCAPI extends CoreObject
     constructor: (@name, @base_uri, @methods, @config, apptools) ->
 
         ## Build little shims for each method...
-        if @methods.length > 0
+        if @methods and @methods.length > 0
             for method in @methods
                 @[method] = @_buildRPCMethod(method, base_uri, config, apptools)
 
