@@ -68,7 +68,7 @@ class RenderEnvironment extends Model
 
     constructor: (options={}) ->
         ## Import logging
-        @log = (message) => return @constructor::log('Render', message)
+        @log = (message) => return console.log('[RenderEnvironment]', message)
 
         ## Setup initial state & extend with user options
         @state = _.extend(true, {},

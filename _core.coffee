@@ -42,10 +42,13 @@ class CoreDriver extends CoreObject
   library: null     # library that this driver bridges to, if any
   interface: []     # list of interfaces this driver fulfills
 
+  constructor: (apptools) -> @
+
   install: (window, i) ->
     if window.apptools?
       window.apptools.sys.drivers.install(i)
     window.__apptools_preinit.installed_drivers.push(i)
+    window[i.name] = i
     return i
 window.CoreDriver = CoreDriver
 
@@ -67,6 +70,7 @@ class CoreInterface extends CoreObject
     if window.apptools?
       window.apptools.sys.interfaces.install(i)
     window.__apptools_preinit.abstract_feature_interfaces.push(i)
+    window[i.name] = i
     return i
 
   add: (driver) ->
@@ -93,7 +97,6 @@ class CoreInterface extends CoreObject
       if @drivers.selected == null
         return false
       return @drivers.adapters[@drivers.selected]
-
 window.CoreInterface = CoreInterface
 
 ## CoreException: Abstract exception class

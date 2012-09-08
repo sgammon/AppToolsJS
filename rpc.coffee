@@ -1,4 +1,3 @@
-
 #### === Transport Interfaces === ####
 class TransportInterface extends Interface
 
@@ -6,8 +5,6 @@ class TransportInterface extends Interface
 
     capability: 'transport'
     required: []
-
-window.TransportInterface = TransportInterface
 
 class RPCInterface extends TransportInterface
 
@@ -20,8 +17,6 @@ class RPCInterface extends TransportInterface
     factory: () ->
     fulfill: () ->
 
-window.RPCInterface = RPCInterface
-
 class PushInterface extends TransportInterface
 
     # Channel/Comet Capability
@@ -30,8 +25,6 @@ class PushInterface extends TransportInterface
     parent: TransportInterface
     required: []
 
-window.PushInterface = PushInterface
-
 class SocketInterface extends TransportInterface
 
     # WebSockets (Bi-Directional) Capability
@@ -39,10 +32,6 @@ class SocketInterface extends TransportInterface
     capability: 'socket'
     parent: TransportInterface
     required: []
-
-window.SocketInterface = SocketInterface
-
-(i::install(window, i) for i in [TransportInterface, RPCInterface, PushInterface, SocketInterface])
 
 #### === Native Driver === ####
 class NativeXHR extends CoreObject
@@ -54,35 +43,19 @@ class NativeXHR extends CoreObject
 
     constructor: (@xhr, @request) ->
 
-        @open = (http_method, url, async) =>
+        @open = (http_method, url, async) => @xhr.open(http_method, url, async)
 
-            # Proxy to the XHR object
-            @xhr.open(http_method, url, async)
-
-        @set_header = (key, value) =>
-
-            # Set headers locally to keep track, then proxy
-            @headers[key] = value
-            @xhr.setRequestHeader(key, value)
-            return @
-
-        @get_header = (key) =>
-
-            # Return a set header
-            return @headers[key]
+        @get_header = (key) => return @headers[key]
+        @set_header = (key, value) => @headers[key] = value
 
         @send = (payload) =>
 
-            # Hook up the bound events, send with payload
-            for name, callback of @events
-                @xhr[name] = callback
+            # Set headers and callbacks
+            (@xhr.setRequestHeader(key, value) for key, value of @headers)
+            (@xhr[name] = callback) for name, callback of @events
 
-            # Send it, baby!
-            @xhr.send(payload)
-
+            return @xhr.send(payload)
         return @
-
-window.NativeXHR = NativeXHR
 
 class RPCPromise extends CoreObject
 
@@ -93,15 +66,12 @@ class RPCPromise extends CoreObject
     constructor: (@expected, @directive) ->
         return @
 
-window.RPCPromise = RPCPromise
-
 class ServiceLayerDriver extends Driver
 
     name: 'apptools'
     native: true
     interface: [
-        RPCInterface,
-        PushInterface
+        RPCInterface
     ]
 
     constructor: (apptools) ->
@@ -118,46 +88,35 @@ class ServiceLayerDriver extends Driver
 
             fulfill: (xhr, request, dispatch) =>
 
-                ## Open XHR
+                ## Open XHR + set headers
                 xhr.open(request.context.http_method, request.endpoint(apptools.rpc.state.config.jsonrpc), request.context.async)
+                (xhr.set_header(header, value) for header, value of _.extend({"Content-Type": request.context.content_type}, apptools.rpc.state.config.headers, request.context.headers))
 
-                ## Set headers for XHR RPC interaction
-                payload = JSON.stringify(request.payload())
-                xhr.set_header("Content-Type", request.context.content_type)
-                xhr.set_header("Content-Length", payload.length)
-                for header, value of _.extend({}, request.context.headers, apptools.rpc.state.config.headers)
-                    xhr.set_header(header, value)
-
-                ## Prepare decode function
-                decode_and_dispatch = (status, event) ->
-                    if _.is_string(event.target.response)
-                        response = JSON.parse(event.target.response)
-                    else
+                decode = (status, event) ->
+                    response = event
+                    try
+                        if event.target.response? and _.is_string(event.target.response) and event.target.response.length > 0
+                            response = JSON.parse(event.target.response)
+                        else
+                            response = event.target.response
+                    catch e
                         response = event.target.response
-
-                    return dispatch(status, response)
-
-                ## Attach XHR success callback
-                load = xhr.events.onload = (event) =>
-
+                    if status == 'failure'
+                        return dispatch(status, response)
                     for http_status in [400, 401, 403, 404, 405, 500]
                         if http_status == event.target.status
-                            return decode_and_dispatch('failure', event)
-                    return decode_and_dispatch('success', event)
+                            return dispatch('failure', response)
+                    return dispatch(response.status, response)
 
-                ## Attach XHR progress callbacks
-                progress = xhr.events.onprogress = xhr.events.onloadstart = xhr.events.onloadend = (event) =>
+                ## Attach XHR success callback
+                load = xhr.events.onload = (event) => decode('success', event)
+                failure = xhr.events.onerror = xhr.events.onabort = xhr.events.timeout = (event) => decode('failure', event)
+                #progress = xhr.events.onprogress = xhr.events.onloadstart = xhr.events.onloadend = (event) =>
 
-                ## Attach XHR failure callbacks
-                failure = xhr.events.onerror = xhr.events.onabort = xhr.events.timeout = (event) =>
+                ## Serialize payload and send
+                return xhr.send(JSON.stringify(request.payload()))
 
-                    return decode_and_dispatch('failure', event)
-
-                return xhr.send(payload)
-        super apptools
-        return @
-
-window.ServiceLayerDriver = ServiceLayerDriver::install(window, ServiceLayerDriver)
+        return super apptools
 
 #### === RPC Base Objects === ####
 class RPCContext extends Model
@@ -176,9 +135,8 @@ class RPCContext extends Model
         ifmodified: false
         base_uri: String()
 
-    constructor: (opts) ->
-        return _.extend(@,
-            {async: true, cacheable: false, http_method: 'POST', crossdomain: false, content_type: 'application/json', ifmodified: false}, opts)
+    constructor: (opts={}) ->
+        return _.extend(@, {async: true, cacheable: false, http_method: 'POST', crossdomain: false, content_type: 'application/json', ifmodified: false}, opts)
 
 class RPCEnvelope extends Model
 
@@ -191,10 +149,7 @@ class RequestEnvelope extends RPCEnvelope
         opts: Object()
         agent: Object()
 
-    constructor: (envelope) ->
-
-        # Provision an ID, splice it in, and pass the call up the super chain.
-        _.extend(@, envelope)
+    constructor: (envelope) -> _.extend(@, envelope)
 
 class ResponseEnvelope extends RPCEnvelope
 
@@ -205,12 +160,7 @@ class ResponseEnvelope extends RPCEnvelope
         flags: Object()
         platform: Object()
 
-    constructor: (envelope) ->
-
-        # Fill out a response envelope, given a native response object.
-        if not envelope.id?
-            envelope.id = $.apptools.rpc.request.provision()
-        super _.extend(@, envelope)
+    constructor: (envelope) -> super _.extend(@, envelope)
 
 class RPC extends Model
 
@@ -219,40 +169,44 @@ class RPC extends Model
         context: RPCContext
         envelope: RPCEnvelope
 
+    constructor: ->
+        return @state('constructed')
+
     expired: () -> true
+
+    state: (state) =>
+        if not @flags?
+            @flags = {}
+        @flags.state = state
+        return @
 
 #### === RPC Request/Response === ####
 class RPCRequest extends RPC
 
     # Represents a single RPC request, complete with config, params, callbacks, etc
 
+    states: ['constructed', 'pending', 'fulfilled']
+
     model:
+        state: String()
         params: Object()
         method: String()
         service: String()
 
     # RPCRequest Constructor
-    constructor: (object) ->
-
-        _.extend(@, object)
+    constructor: (object) -> super _.extend(@, object)
 
     # Fulfill an RPC method server-side
-    fulfill: (callbacks={}) ->
-
-        ## fulfill request
-        return $.apptools.rpc.request.fulfill(@, callbacks)
+    fulfill: (callbacks={}) -> $.apptools.rpc.request.fulfill(@, callbacks)
 
     # Indicate that we'd like to defer a response to a push channel, if possible
-    defer: (push) ->
-
-        ## set deferred mode
-        return @
+    defer: (push) -> @flags.defer = push
 
     # Return a unique string representing this requests' signature, suitable for caching.
-    fingerprint: () ->
+    fingerprint: => window.btoa(JSON.stringify([@service, @method, @params, @envelope.opts]))
 
     # Return a prepared endpoint URL.
-    endpoint: (config) ->
+    endpoint: (config={}) ->
         if not @context.url?
             if not config.host?
                 base_host = [window.location.protocol, window.location.host].join('//')
@@ -266,7 +220,7 @@ class RPCRequest extends RPC
         return @context.url
 
     # Format the RPC for communication
-    payload: ->
+    payload: =>
         return {
             id: @envelope.id
             opts: @envelope.opts
@@ -281,6 +235,8 @@ class RPCResponse extends RPC
 
     # Represents a response to an RPCRequest
 
+    states: ['constructed', 'pending', 'success', 'failure', 'wait']
+
     model:
         type: String()
         status: String()
@@ -290,13 +246,9 @@ class RPCResponse extends RPC
         success: null
         failure: null
 
-    constructor: (response) ->
-        super _.extend(@, response)
-
+    constructor: (response) -> super _.extend(@, response)
+    inflate: (raw_response) => _.extend(@, raw_response)
     callbacks: (@events) -> @
-
-    inflate: (raw_response) ->
-        _.extend(@, raw_response)
 
 class RPCErrorResponse extends RPCResponse
 
@@ -305,6 +257,14 @@ class RPCErrorResponse extends RPCResponse
     model:
         code: Number()
         message: String()
+
+    constructor: (response, raw_response) ->
+
+        @events = response.events
+        if not raw_response.response?.content?
+            $.apptools.dev.error('RPC', 'Invalid RPC error structure.', response, raw_response)
+            throw "Invalid RPC error structure."
+        return @inflate(raw_response)
 
 #### === RPCAPI - Service Class === ####
 class RPCAPI extends CoreObject
@@ -319,36 +279,25 @@ class RPCAPI extends CoreObject
 
                 # Build a remote method proxy
                 do (params, context, opts, envelope) =>
-                    request_id = apptools.rpc.request.provision()
                     return apptools.rpc.request.factory(
                                 method: method
                                 service: name
                                 params: params || {}
                                 context: new RPCContext(_.extend(apptools.rpc.request.context.default(), context))
-                                envelope: new RequestEnvelope(_.extend(envelope, id: request_id, opts: opts || {}, agent: apptools.agent.fingerprint)),
+                                envelope: new RequestEnvelope(_.extend(envelope, id: apptools.rpc.request.provision(), opts: opts || {}, agent: apptools.agent.fingerprint)),
                                 request_class)
 
         # Build a function to proxy shortcutted RPC requests to the main API.
-        if methods.length > 0
-            @[method] = __remote_method_proxy(name, method, config, apptools) for method in methods
-        apptools.rpc.service.register(name, methods, config)
-        return
+        (@[method] = __remote_method_proxy(name, method, config, apptools) for method in methods) unless (not methods.length? or methods.length == 0)
+        apptools.rpc.service.register(@, methods, config)
+        return @
 
 class CoreRPCAPI extends CoreAPI
 
-    # CoreRPCAPI - kicks off RPC's and mediates with dispatch
+    # CoreRPCAPI - low-level RPC interaction API, mediates between the service layer and dispatch.
 
     @mount = 'rpc'
-    @events = [
-
-        'RPC_CREATE',
-        'RPC_FULFILL',
-        'RPC_SUCCESS',
-        'RPC_ERROR',
-        'RPC_COMPLETE',
-        'RPC_PROGRESS'
-
-    ]
+    @events = ['RPC_CREATE', 'RPC_FULFILL', 'RPC_SUCCESS', 'RPC_FAILURE', 'RPC_COMPLETE', 'RPC_PROGRESS']
 
     constructor: (apptools, window) ->
 
@@ -385,13 +334,7 @@ class CoreRPCAPI extends CoreAPI
                     driver: null
 
                 headers:
-                    "X-ServiceClient": ["AppToolsJS/", [
-                                                AppTools.version.major.toString(),
-                                                AppTools.version.minor.toString(),
-                                                AppTools.version.micro.toString(),
-                                                AppTools.version.build.toString()].join('.'),
-                                         "-", AppTools.version.release.toString()].join(''),
-
+                    "X-ServiceClient": ["AppToolsJS/", AppTools.version.get()].join(''),
                     "X-ServiceTransport": "AppTools/JSONRPC"
 
             # Holds information about the current API consumer.
@@ -431,7 +374,7 @@ class CoreRPCAPI extends CoreAPI
 
         @internals =
 
-            validate: (rpc) =>
+            validate: (rpc) => rpc
 
             respond: (directive, use_cache=false) =>
 
@@ -439,9 +382,7 @@ class CoreRPCAPI extends CoreAPI
                     if directive.request.cacheable? and directive.request.cacheable == true
                         try
                             return @internals.validate(x) if ((x = @state.cache.data[@state.cache.index[directive.request.fingerprint()]])? and not x.expired())
-
-                promise = @internals.expect(directive, use_cache)
-                return [promise, @internals.send_rpc(directive)]
+                return [@internals.expect(directive, use_cache), @internals.send_rpc(directive)]
 
             expect: (directive, use_cache) =>
 
@@ -452,6 +393,7 @@ class CoreRPCAPI extends CoreAPI
 
                         # Mark as `done`
                         directive.status = 'success'
+                        directive.response.state('success')
                         @state.requestpool.done.push(@state.requestpool.index[directive.request.envelope.id])
 
                         # Remove from `queued` and `expect`
@@ -461,7 +403,8 @@ class CoreRPCAPI extends CoreAPI
                         if use_cache
                             @response.store(directive.request, directive.response)
 
-                        # Dispatch request success event
+                        # Dispatch AppTools-level event and request-level success event
+                        apptools.events.dispatch('RPC_SUCCESS', directive.request, response, directive)
                         directive.response.events.success(response.response.content, response.response.type, response)
                         return
 
@@ -469,14 +412,23 @@ class CoreRPCAPI extends CoreAPI
 
                         # Mark as `failure`
                         directive.status = 'failure'
+                        directive.response.state('failure')
                         @state.requestpool.error.push(@state.requestpool.index[directive.request.envelope.id])
 
                         # Remove from `queued` and `expect`
                         @state.requestpool.queue.splice(directive.queue_i, directive.queue_i)
                         delete @state.requestpool.expect[@state.requestpool.index[directive.request.envelope.id]]
 
-                        # Dispatch request failure event
+                        # Dispatch AppTools-level event and request-level failure event
+                        apptools.events.dispatch('RPC_FAILURE', directive.request, response, directive)
                         directive.response.events.failure(response.response.content, response.response.type, response)
+                        return
+
+                    progress: (event) =>
+
+                        # Dispatch AppTools-level event and request-level event
+                        apptools.events.dispatch('RPC_PROGRESS', directive.request, event, directive)
+                        directive.response.events.progress?(directive.request, event, directive)
                         return
 
                 }))
@@ -490,6 +442,8 @@ class CoreRPCAPI extends CoreAPI
 
                 queue_i = directive.queue_i = (@state.requestpool.queue.push(@state.requestpool.index[directive.request.envelope.id]) - 1)
                 xhr = directive.xhr = driver.rpc.factory(directive.request)
+
+                apptools.events.dispatch('RPC_FULFILL', directive.request, directive.xhr, directive)
                 driver.rpc.fulfill(directive.xhr, directive.request, (status, response) => @response.dispatch(status, directive, response))
 
                 return directive
@@ -499,24 +453,20 @@ class CoreRPCAPI extends CoreAPI
                 if not @state.requestpool.expect[@state.requestpool.index[directive.request.envelope.id]]?
                     apptools.dev.error('RPC', 'Received a request to dispatch an unexpected RPC response.', directive)
                     throw "Unexpected RPC response."
-                else
-                    # Dispatch request-level callback
-                    @state.requestpool.expect[@state.requestpool.index[directive.request.envelope.id]][directive.response.status](directive.response, directive.response.type, raw_response)
-                return @
+                    return @
+                return @state.requestpool.expect[@state.requestpool.index[directive.request.envelope.id]][directive.response.status](directive.response, directive.response.type, raw_response)
 
         ## Request Tools/Methods
         @request =
 
             # Provision a request ID, with space in dispatch arrays laid out.
-            provision: () =>
-                id = @state.requestpool.id
-                @state.requestpool.id++
-                return id
+            provision: () => @state.requestpool.id++
 
             # Create a new RPCRequest object, from an RPCContext + RPCEnvelope and a proxied method call.
             factory: (rpc, request_class=RPCRequest) =>
                 request = new request_class(rpc)
-                @state.requestpool.index[request.envelope.id] = (@state.requestpool.data.push({request: request, response: new RPCResponse(id: request.envelope.id), status: 'constructed'}) - 1)
+                data_i = @state.requestpool.index[request.envelope.id] = (@state.requestpool.data.push({request: request, response: new RPCResponse(id: request.envelope.id), status: 'constructed'}) - 1)
+                apptools.events.dispatch('RPC_CREATE', rpc, request, data_i)
                 return request
 
             # Fulfill an RPC by exchanging it for a response with either a cache or the Service Layer.
@@ -528,27 +478,21 @@ class CoreRPCAPI extends CoreAPI
 
                 # Return the default RPC execution context.
                 default: (setdefault) =>
-                    if setdefault?
-                        @state.requestpool.context = setdefault
+                    (@state.requestpool.context = setdefault) unless not setdefault?
                     return @state.requestpool.context
 
                 # Create a new RPC execution context.
-                factory: (args...) =>
-                    return new RPCContext(args...)
+                factory: => new RPCContext(arguments...)
 
         ## Response Tools/Methods
         @response =
 
-            store: (request, response) =>
-
-                apptools.dev.verbose('RPC', 'Response caching is currently stubbed.', request, response)
-                return @
+            store: (request, response) => @  # Response caching is currently stubbed.
 
             dispatch: (status, directive, raw_response) =>
 
-                if status == 'failure'
-                    directive.response = new RPCErrorResponse()
-                directive.response.inflate(raw_response)
+                (directive.response = new RPCErrorResponse(directive.response, raw_response)) unless status != 'failure'
+                directive.response.inflate(raw_response) unless status == 'failure'
                 return @internals.dispatch(directive, raw_response)
 
             callbacks:
@@ -558,44 +502,28 @@ class CoreRPCAPI extends CoreAPI
                     success: (response) => apptools.dev.verbose('RPC', 'Encountered successful RPC with no callback.', response)
                     failure: (response) => apptools.dev.verbose('RPC', 'Encountered failing RPC with no error callback.', response)
 
-
         ## Service Tools
         @service =
 
             # Factory method for installing new RPCAPIs.
             factory: (name_or_apis, base_uri, methods, config) =>
 
-                if not _.is_array(name_or_apis)
-                    name_or_apis = [name_or_apis]
-
+                (name_or_apis = [name_or_apis]) unless _.is_array(name_or_apis)
                 for item in name_or_apis
-
                     [name, methods, config] = item
-
-                    # Construct new RPCAPI and append to state
-                    rpcapi = new RPCAPI(name, methods, config, apptools)
-                    pool_i = (@state.servicepool.rpc_apis.push(rpcapi) - 1)
-                    @state.servicepool.name_i[name] = @state.servicepool.rpc_apis[pool_i]
-
-                    # Proxy getter on CoreServicesAPI to the RPCAPI we're working with
-                    apptools.api[name] = @state.servicepool.rpc_apis[pool_i]
-
+                    @state.servicepool.name_i[name] = @state.servicepool.rpc_apis.push(new RPCAPI(name, methods, config, apptools)) - 1
+                    apptools.api[name] = @state.servicepool.rpc_apis[@state.servicepool.name_i[name]]
                 return @
 
             # Callback from an RPCAPI once it is done constructing itself
-            register: (service, methods, config) =>
+            register: (service, methods, config) => apptools.events.dispatch('CONSTRUCT_SERVICE', service, methods, config)
 
 class CoreServicesAPI extends CoreAPI
 
     ## CoreServicesAPI - sits on top of the RPCAPI to abstract server interaction
 
     @mount = 'api'
-    @events = [
-
-        'SERVICES_INIT',
-        'CONSTRUCT_SERVICE'
-
-    ]
+    @events = ['SERVICES_INIT', 'CONSTRUCT_SERVICE']
 
     constructor: (apptools, window) ->
 
@@ -610,6 +538,9 @@ class CoreServicesAPI extends CoreAPI
                 if apptools.sys.state.config.services.consumer?
                     apptools.rpc.state.config.consumer = apptools.sys.state.config.services.consumer
 
+                apptools.events.dispatch('SERVICES_INIT', apptools.rpc.state.config)
                 apptools.rpc.service.factory(apptools.sys.state.config.services.apis)
                 apptools.dev.verbose('RPC', 'Autoloaded in-page RPC config.', apptools.sys.state.config.services)
             return
+
+(i::install(window, i) for i in [TransportInterface, RPCInterface, PushInterface, SocketInterface, NativeXHR, RPCPromise, ServiceLayerDriver])
