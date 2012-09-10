@@ -126,8 +126,8 @@ class Modal extends CoreWidget
 
                     css.width = dW+'px'
                     css.height = dH+'px'
-                    css.left = Math.floor (wW-dW)/2
-                    css.top = Math.floor (wH-dH)/2
+                    css.left = Math.floor((wW-dW)/2)+'px'
+                    css.top = Math.floor((wH-dH)/2)+'px'
 
                     return css
 
@@ -292,6 +292,20 @@ class Modal extends CoreWidget
             _.get(@_state.trigger_id).removeAttribute('href')
             @render = (html) =>
                 _.get('modal-content', _.get(@_state.element_id)).innerHTML = html
+
+            @resize = (e) =>
+                if e.preventDefault
+                    return false if @ts? and @ts is e.timeStamp
+                    @ts = e.timeStamp
+                    e.preventDefault()
+                    e.stopPropagation()
+
+                newcss = @internal.calc()
+                modal = _.get('#'+@_state.element_id)
+                modal.style[prop] = val for prop, val of newcss
+                return
+
+            _.bind(window, 'resize', _.throttle(@resize, 350, false), true)
 
             @_state.init = true
 
