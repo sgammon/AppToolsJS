@@ -17,22 +17,6 @@ class RPCInterface extends TransportInterface
     factory: () ->
     fulfill: () ->
 
-class PushInterface extends TransportInterface
-
-    # Channel/Comet Capability
-
-    capability: 'push'
-    parent: TransportInterface
-    required: []
-
-class SocketInterface extends TransportInterface
-
-    # WebSockets (Bi-Directional) Capability
-
-    capability: 'socket'
-    parent: TransportInterface
-    required: []
-
 #### === Native Driver === ####
 class NativeXHR extends CoreObject
 
@@ -66,6 +50,17 @@ class RPCPromise extends CoreObject
     constructor: (@expected, @directive) ->
         return @
 
+    value: (block=true, autostart=false) ->
+        if directive.status != 'constructed'
+            if directive.status == 'pending'
+                loop
+                    break unless directive.status == 'pending'
+                return directive.response
+            else
+                return @directive.response
+        else
+            return @directive.request.fulfill()
+
 class ServiceLayerDriver extends Driver
 
     name: 'apptools'
@@ -78,13 +73,16 @@ class ServiceLayerDriver extends Driver
 
         @internal =
 
-            endpoint: (request) =>
+            status_codes:
+                errors: [400, 401, 403, 404, 405, 406, 500, 501, 502, 503, 504, 505]
+                success: [200, 201, 202, 203, 204, 205, 303, 304, 301, 302, 307, 308]
+
+            endpoint: (request) =>  # Not yet in use.
 
         ## NativeRPC
         @rpc =
-            factory: (context) =>
 
-                return new NativeXHR(new XMLHttpRequest(), context)
+            factory: (context) => new NativeXHR(new XMLHttpRequest(), context)
 
             fulfill: (xhr, request, dispatch) =>
 
@@ -92,30 +90,23 @@ class ServiceLayerDriver extends Driver
                 xhr.open(request.context.http_method, request.endpoint(apptools.rpc.state.config.jsonrpc), request.context.async)
                 (xhr.set_header(header, value) for header, value of _.extend({"Content-Type": request.context.content_type}, apptools.rpc.state.config.headers, request.context.headers))
 
-                decode = (status, event) ->
-                    response = event
+                decode = (status, event) =>
+
                     try
-                        if event.target.response? and _.is_string(event.target.response) and event.target.response.length > 0
-                            response = JSON.parse(event.target.response)
-                        else
-                            response = event.target.response
+                        response = JSON.parse(event.target.response) unless ((not event.target.response?) or (not _.is_string(event.target.response)) or (event.target.response.length < 0))
                     catch e
                         response = event.target.response
-                    if status == 'failure'
-                        return dispatch(status, response)
-                    for http_status in [400, 401, 403, 404, 405, 500]
-                        if http_status == event.target.status
-                            return dispatch('failure', response)
+
+                    if _.in_array(@internal.status_codes.errors, event.target.status)
+                        return dispatch('failure', response)
                     return dispatch(response.status, response)
 
                 ## Attach XHR success callback
                 load = xhr.events.onload = (event) => decode('success', event)
                 failure = xhr.events.onerror = xhr.events.onabort = xhr.events.timeout = (event) => decode('failure', event)
-                #progress = xhr.events.onprogress = xhr.events.onloadstart = xhr.events.onloadend = (event) =>
 
                 ## Serialize payload and send
                 return xhr.send(JSON.stringify(request.payload()))
-
         return super apptools
 
 #### === RPC Base Objects === ####
@@ -125,18 +116,20 @@ class RPCContext extends Model
 
     model:
         url: String()
-        async: true
-        defer: false
-        headers: {}
-        cacheable: false
+        async: Boolean()
+        defer: Boolean()
+        headers: Object()
+        cacheable: Boolean()
         http_method: String()
-        crossdomain: false
+        crossdomain: Boolean()
         content_type: String()
-        ifmodified: false
+        ifmodified: Boolean()
         base_uri: String()
 
-    constructor: (opts={}) ->
-        return _.extend(@, {async: true, cacheable: false, http_method: 'POST', crossdomain: false, content_type: 'application/json', ifmodified: false}, opts)
+    defaults:
+        async: true, defer: false, headers: {}, cacheable: false, http_method: 'POST', crossdomain: false, content_type: 'application/json', ifmodified: false
+
+    constructor: (opts={}) -> _.extend(@, @defaults, opts)
 
 class RPCEnvelope extends Model
 
@@ -387,13 +380,18 @@ class CoreRPCAPI extends CoreAPI
             expect: (directive, use_cache) =>
 
                 directive.status = 'pending'
+                directive.request.state('pending')
+                directive.response.state('pending')
+
                 return new RPCPromise(directive, (@state.requestpool.expect[@state.requestpool.index[directive.request.envelope.id]] = {
 
                     success: (response) =>
 
                         # Mark as `done`
                         directive.status = 'success'
+                        directive.request.state('fulfilled')
                         directive.response.state('success')
+
                         @state.requestpool.done.push(@state.requestpool.index[directive.request.envelope.id])
 
                         # Remove from `queued` and `expect`
@@ -413,6 +411,8 @@ class CoreRPCAPI extends CoreAPI
                         # Mark as `failure`
                         directive.status = 'failure'
                         directive.response.state('failure')
+                        directive.request.state('fulfilled')
+
                         @state.requestpool.error.push(@state.requestpool.index[directive.request.envelope.id])
 
                         # Remove from `queued` and `expect`
@@ -543,4 +543,4 @@ class CoreServicesAPI extends CoreAPI
                 apptools.dev.verbose('RPC', 'Autoloaded in-page RPC config.', apptools.sys.state.config.services)
             return
 
-(i::install(window, i) for i in [TransportInterface, RPCInterface, PushInterface, SocketInterface, NativeXHR, RPCPromise, ServiceLayerDriver])
+(i::install(window, i) for i in [TransportInterface, RPCInterface, NativeXHR, RPCPromise, ServiceLayerDriver])
