@@ -360,6 +360,9 @@ if window.jQuery?
 
 # No? I'll just let myself in.
 else
-    # Attach jQuery shim
-    window.$ = (id) -> document.getElementById(id)
+    if not window.$?
+        if window._
+            window.$ = window._
+        else
+            window.$ = {}
     window.$.apptools = window.apptools

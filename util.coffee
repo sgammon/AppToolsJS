@@ -12,6 +12,9 @@ class Util
 
     constructor: () ->
 
+        if arguments.length > 0
+            return @get.apply @, arguments
+
         @_state =
             active: null
             init: false
@@ -146,6 +149,9 @@ class Util
             array = []
             `for (i = node_or_token_list.length; i--; array.unshift(node_or_token_list[i]))`
             return array
+
+        @to_type = (obj) =>
+            return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase()
 
         @indexOf = (arr, item) =>
             if @is_array(arr)
@@ -761,7 +767,7 @@ if window._?
 
 window._ = new Util()
 
-if window.$?
+if window.jQuery?
     $.extend _: window._
 else
-    window.$ = window._.get
+    window.$ = window._
