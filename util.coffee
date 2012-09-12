@@ -392,14 +392,14 @@ class Util
             if @is_window node
                 node = document
             return query if not query? or query.nodeType
-            if @in_array(['.', '#'], query[0])
-                [selector, query] = [query[0], query.slice(1)]
-                return (if selector is '#' then document.getElementById(query) else @to_array(node.getElementsByClassName(query)))
-            else
-                return id if (id = document.getElementById(query))?
-                return (if cls.length > 1 then @to_array(cls) else cls[0]) if (cls = node.getElementsByClassName(query)).length > 0
-                return (if tg.length > 1 then @to_array(tg) else tg[0]) if (tg = node.getElementsByTagName(query)).length > 0
-                return null
+            if (parts = query.split('.')).length > 1
+                [tag_or_id, query] = parts
+                subnode = _.get(tag_or_id, node) or node
+                result = subnode.getElementsByClassName(query)
+                return (if result.length > 0 then (if result.length > 1 then @to_array(subnode.getElementsByClassName(query)) else result[0]) else [])
+            else if (parts = query.split('#')).length > 1
+                return document.getElementById(parts[1])
+            else return (if (i = document.getElementById(query))? then i else (if (cls = node.getElementsByClassName(query)).length > 0 then @to_array(cls) else (if (tags = node.getElementsByTagName(query)).length > 0 then @to_array(tags) else null)))
 
         @get_offset = (elem) =>
             offL = offT = 0
@@ -770,4 +770,4 @@ window._ = new Util()
 if window.jQuery?
     $.extend _: window._
 else
-    window.$ = window._
+    window.$ = Util
