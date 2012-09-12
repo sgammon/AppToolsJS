@@ -12,9 +12,6 @@ class Util
 
     constructor: () ->
 
-        if arguments.length > 0
-            return @get.apply @, arguments
-
         @_state =
             active: null
             init: false
@@ -754,6 +751,9 @@ class Util
         @_init = () =>
             @_state.init = true
             return @
+            
+        if arguments.length > 0
+            return @get.apply @, arguments
 
 
 @__apptools_preinit.abstract_base_classes.push Util
