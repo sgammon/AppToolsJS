@@ -383,6 +383,8 @@ class Util
             return node.parentNode.removeChild(node)
 
         @get = (query, node=document) => # ID, class or tag
+            if @is_array(query)
+                query = query[0]
             if @is_window node
                 node = document
             return query if not query? or query.nodeType
@@ -752,7 +754,6 @@ class Util
 
 @__apptools_preinit.abstract_base_classes.push Util
 @__apptools_preinit.deferred_core_modules.push {module: Util}
-
 window.Util = Util
 
 if window._?
@@ -768,3 +769,7 @@ else
 
 Element.prototype.find = (query) -> return _.get(query, @)
 HTMLElement.prototype.find = Element.prototype.find
+Element.prototype.fadeIn = (opts, sets) -> return Jacked.fadeIn(@, opts, sets)
+Element.prototype.fadeOut = (opts, sets) -> return Jacked.fadeOut(@, opts, sets)
+HTMLElement.prototype.fadeIn = Element.prototype.fadeIn
+HTMLElement.prototype.fadeOut = Element.prototype.fadeOut
