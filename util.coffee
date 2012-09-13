@@ -327,9 +327,11 @@ class $
             throw 'all() requires an iterator as the second parameter'
         else
             if (_arr = @is_array(arr)) or (_obj = @is_object(arr))
-                (return _all.call(arr, fn, ctx) if (_all = Array.prototype.every)?) if _arr
-                results = @reject(arr, fn, ctx)
-                return if _arr then results.length is 0 else false for key of _obj
+                if _arr and (_all = Array.prototype.every)?
+                    return _all.call(arr, fn, ctx)
+                else
+                    results = @reject(arr, fn, ctx)
+                    return (if _arr then results.length is 0 else @is_empty_object(results))
             else throw 'all() requires an iterable as the first parameter'
 
     any: (arr, fn, ctx=window) ->
@@ -495,8 +497,7 @@ class $
     is_child: (parent, child) ->
         result = false
         if @is_array(child)
-            results = _.reject(_.map(child, (ch)-> return @is_child(parent, ch)), (r) -> return r)
-            result = results.length is 0
+            result = (_.reject(_.map(child, (ch)-> return @is_child(parent, ch)), (r) -> return r)).length is 0
         else
             while child = child.parentNode
                 continue if child isnt parent
@@ -807,6 +808,9 @@ class $
     zero_fill: (num, length) ->
         return (Array(length).join('0') + num).slice(-length)
 
+    append: (parent, node) ->
+        return parent.appendChild(node)
+
 
 window.Util = window.$ = $
 window._ = new $()
@@ -823,6 +827,7 @@ HTMLElement.prototype.isParent = (child) -> return _.is_child(@, child)
 HTMLElement.prototype.resolveAncestor = (node, bound) -> return _.resolve_common_ancestor(@, node, bound)
 HTMLElement.prototype.bind = () -> return (_.to_array(arguments).unshift(@); _.bind.apply(_, arguments))
 HTMLElement.prototype.unbind = () -> return (_.to_array(arguments).unshift(@); _.unbind.apply(_, arguments))
+HTMLElement.prototype.append = (node) -> return _.append(@, node)
 
 HTMLElement.prototype.fadeIn = () -> return HTMLElement.prototype.fadeInJacked.apply(@, arguments)
 HTMLElement.prototype.fadeOut = () -> return HTMLElement.prototype.fadeOutJacked.apply(@, arguments)
