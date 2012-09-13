@@ -60,7 +60,7 @@ class ScrollerAPI extends CoreWidgetAPI
 
         @_init = () =>
 
-            scrollers = _.get('pre-scroller') or []
+            scrollers = _.get('.pre-scroller') or []
 
             @create(@enable(scroller)) for scroller in scrollers
 
@@ -89,11 +89,11 @@ class Scroller extends CoreWidget
 
         @classify = () =>
 
-            target = _.get(@_state.frame_id)
+            target = _.get('#'+@_state.frame_id)
             if _.in_array(target.classList, 'pre-scroller')
                 target.classList.remove 'pre-scroller'
 
-            panes = _.get 'scroller-pane', target
+            panes = _.get '.scroller-pane', target
 
             for pane in panes
                 do (pane) =>

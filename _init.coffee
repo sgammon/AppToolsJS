@@ -388,12 +388,9 @@ window.AppTools = AppTools
 window.apptools = new AppTools(window)
 
 # Is jQuery around?
-if window.jQuery?
+if window.jQuery? or window.$?
     # Attach jQuery shortcut
     $.extend(apptools: window.apptools)
 
 # No? I'll just let myself in.
-else
-    # Attach jQuery shim
-    window.$ = (id) -> document.getElementById(id)
-    window.$.apptools = window.apptools
+else (window.$ = (x) -> return document.getElementById(x)).apptools = window.apptools

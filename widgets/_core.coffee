@@ -52,7 +52,7 @@ class CoreWidgetAPI extends CoreAPI
 
         @_init = () =>
 
-            link.addEventListener('click', @handle , false) for link in target_links if (target_links = _.get('target-link'))?
+            link.addEventListener('click', @handle , false) for link in target_links if (target_links = _.get('.target-link'))?
 
 class CoreWidget extends Model
 

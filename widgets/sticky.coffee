@@ -45,7 +45,7 @@ class StickyAPI extends CoreAPI
 
         @_init = () =>
 
-            stickies = _.get('pre-sticky')
+            stickies = _.get('.pre-sticky')
             @enable(@create(sticky)) for sticky in stickies if stickies?
 
             apptools.events.trigger 'STICKY_API_READY', @

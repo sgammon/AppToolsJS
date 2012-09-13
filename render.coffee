@@ -6,24 +6,26 @@ class CoreRenderAPI extends CoreAPI
     @export = 'private'
 
     constructor: (apptools, window) ->
-        @_init = () =>
-            @environment = new RenderEnvironment(shared: true).set_loader_priority([
-                DOMLoader,
-                StorageLoader,
-                ModelLoader,
-                StringLoader
-            ])._init()
-            @context = new RenderContext()
+        @environment = new RenderEnvironment(
+            shared: true
+            context: new RenderContext()
+        ).set_loader_priority([
+            StringLoader,
+            ModelLoader,
+            DOMLoader,
+            StorageLoader,
+        ])._init()
 
 
 class RenderException extends CoreException
 
-class Template extends Model
+class Template
 
-    constructor : () ->
+    @export = 'public'
+
+    constructor : (@source) ->
 
         @name = ''
-        @source = ''
         @cacheable =
             rendered: false     # should we cache rendered templates?
             source: false       # what about source?
@@ -60,12 +62,14 @@ class RenderDriver extends CoreInterface
         return
 
 class StringLoader extends RenderDriver
-    # takes JS string template (Mustache {{x}} or Apptools [% x %] syntax) & returns prepared Template
+    # takes JS string template ({{etc}}) & returns prepared Template
     constructor: () ->
 
-        @load = (pre_template) =>
-            console.log(@constructor.name, 'Loading string templates currently stubbed.')
-            return pre_template
+        @engine = new t('')
+
+        @load = (template) =>
+            @engine.template(template)
+            return @
 
         return @
 
@@ -99,18 +103,20 @@ class StorageLoader extends RenderDriver
 
         return @
 
-
-class TemplateContext extends Model
-class RenderContext extends Model
+class RenderContext
 
     constructor: (ctxs=[]) ->
 
         for ctx in ctxs
-            @[k] = v for own k, v of ctx
+            _.extend(@, ctx)
+
+        @add = (context) =>
+            _.extend(@, context)
+            return @
 
         return @
 
-class RenderEnvironment extends Model
+class RenderEnvironment
 
     @export = 'public'
 
@@ -122,8 +128,8 @@ class RenderEnvironment extends Model
             template_loaded: false     # is template ready to render?
 
             template: null             # default template to use
-            context: null              # base context
-            loader: null               # loader
+            context: false             # base context
+            loader: false              # loader
             loader_priority: []        # order in which to load
 
             filters: {}                # environment filters (currently stubbed)
@@ -136,7 +142,7 @@ class RenderEnvironment extends Model
 
         @resolve_loader = () =>
             # If no loader set, resolve appropriate source loader via loader priority list.
-            console.log('Resolving template loader...')
+            console.log('[Render] Resolving template loader...')
 
             priority = @state.loader_priority
             errors = []
@@ -144,7 +150,7 @@ class RenderEnvironment extends Model
                 try
                     d = new driver()
                 catch err
-                    console.log('Invalid driver:', driver.toString())
+                    console.log('[Render] Invalid driver:', driver.toString())
                 finally
                     break if d?
                     continue
@@ -152,7 +158,7 @@ class RenderEnvironment extends Model
             if errors.length is priority.length
                 throw new RenderException(@constructor.name, 'Unable to resolve valid template loader.')
             else
-                console.log('Template loader resolved.')
+                console.log('[Render] Template loader resolved.')
                 return d
 
         @parse = () =>
@@ -177,8 +183,8 @@ class RenderEnvironment extends Model
             @state.loader_priority = p if _.is_array(p)
             return @
 
-        @load = (name, loader=@loader) =>
-            # Loads a named template, defaults to current loader.
+        @load = (name) =>
+            # Loads a named template
 
             if _.is_array(name)
                 return @select(name, loader)
@@ -217,14 +223,15 @@ class RenderEnvironment extends Model
 
         ## Init
         @_init = () =>
-            if not @state.loader?
+            if not @loader?
                 try
-                    @state.loader = @resolve_loader()
+                    @loader = @resolve_loader()
+                    @state.loader = true
                 catch err
                     console.error(@constructor.name, 'Couldn\'t resolve a template loader. Reraising...')
                     throw err
 
-            return @
+            return delete @_init
 
         return @
 

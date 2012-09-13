@@ -22,6 +22,9 @@ class t
     @children = {}
     return @
 
+  template: (@t) ->
+    return @
+
   parse: (fragment, vars) =>
     @temp = []
     if not vars?

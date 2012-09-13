@@ -184,6 +184,8 @@ class Editor extends CoreWidget
 
         @_state.config = _.extend true, @_state.config, options
 
+        @id = 'editor-pane-' + @_state.element_id
+
         @ctrl = (e) =>
             if e? and e.preventDefault
                 e.preventDefault()
@@ -198,30 +200,27 @@ class Editor extends CoreWidget
 
         @render = () =>
 
-            paneDF = _.create_doc_frag(@template.parse(@))
-            @_state.pane_id = paneDF.firstChild.getAttribute('id')
-            step = _.get('editorstep', paneDF.firstChild)
+            document.body.appendChild(_.create_doc_frag(@template.parse(@)))
+            pane = _.get('#'+@id)
+            step = pane.find('editorstep')
 
             @_state.step = 'edit'
             @template.t = @steps['edit']
             step.innerHTML = @template.parse(@)
 
-            document.body.appendChild(paneDF)
-
-            pane = _.get(@_state.pane_id)
             _w = pane.scrollWidth
             pane.style.right = (window.innerWidth - _w)/2 + 'px'
 
-            _.bind(_.get('editorbutton', step), 'click', @ctrl)
+            _.bind(step.find('editorbutton'), 'click', @ctrl)
 
             return @render = (cb) =>
                 pane = _.get(@_state.pane_id)
-                step = _.get('editorstep', pane)
+                step = pane.find('editorstep')
                 step.innerHTML = @template.parse(@)
 
                 _w = pane.scrollWidth
                 pane.style.right = (window.innerWidth - _w)/2 + 'px'
-                _.bind(_.get('editorbutton', step), 'click', @ctrl)
+                _.bind(step.find('editorbutton', 'click', @ctrl))
 
                 return @callback(cb)
 
