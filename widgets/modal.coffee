@@ -188,7 +188,7 @@ class Modal extends CoreWidget
             # extend default animation params with callbacks
             dialog_animation =
                 callback: (d) =>
-                    d.find('.modal-fade').fadeIn()
+                    d.find('modal-fade').fadeIn()
                     return @internal.classify(d, 'open')
 
             # get final params
@@ -215,7 +215,7 @@ class Modal extends CoreWidget
             final = @_state.config.initial
             final.opacity = 0
 
-            dialog.find('.modal-fade').fadeOut()
+            dialog.find('modal-fade').fadeOut()
             dialog.animate final,
                 delay: 400
                 complete: (d) =>
@@ -230,7 +230,7 @@ class Modal extends CoreWidget
             dialog = @make()
             _.get(@_state.trigger_id).removeAttribute('href')
             @render = (html) =>
-                _.get('.modal-content', _.get('#'+@id)).innerHTML = html
+                _.get('modal-content', _.get('#'+@id)).innerHTML = html
 
             @resize = (e) =>
                 if e.preventDefault
