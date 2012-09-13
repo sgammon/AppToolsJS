@@ -811,6 +811,9 @@ class $
     append: (parent, node) ->
         return parent.appendChild(node)
 
+    val: (node) ->
+        return node.value or node.innerText
+
 
 window.Util = window.$ = $
 window._ = new $()
@@ -828,6 +831,7 @@ HTMLElement.prototype.resolveAncestor = (node, bound) -> return _.resolve_common
 HTMLElement.prototype.bind = () -> return (_.to_array(arguments).unshift(@); _.bind.apply(_, arguments))
 HTMLElement.prototype.unbind = () -> return (_.to_array(arguments).unshift(@); _.unbind.apply(_, arguments))
 HTMLElement.prototype.append = (node) -> return _.append(@, node)
+HTMLElement.prototype.val = () -> return _.val(@)
 
 HTMLElement.prototype.fadeIn = () -> return HTMLElement.prototype.fadeInJacked.apply(@, arguments)
 HTMLElement.prototype.fadeOut = () -> return HTMLElement.prototype.fadeOutJacked.apply(@, arguments)
