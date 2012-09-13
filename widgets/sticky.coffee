@@ -138,7 +138,7 @@ class Sticky extends CoreWidget
             return @
 
         @_init = () =>
-            _.bind(window, 'resize', @recalc, true)
+            _.bind(window, 'resize', _.debounce(@recalc, 100), true)
             @_state.init = true
             return @
 
