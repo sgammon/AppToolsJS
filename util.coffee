@@ -765,3 +765,6 @@ if window.$?
     $.extend _: window._
 else
     window.$ = window._.get
+
+Element.prototype.find = (query) -> return _.get(query, @)
+HTMLElement.prototype.find = Element.prototype.find
