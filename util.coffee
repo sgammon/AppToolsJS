@@ -12,6 +12,9 @@ class Util
 
     constructor: () ->
 
+        return _.get.apply(_, arguments) if arguments.length > 0
+        return window._ if window._? and window._.resolve_common_ancestor?
+
         @_state =
             active: null
             init: false
@@ -378,6 +381,8 @@ class Util
             @internal.queues.add(q_name, [element_type, attrs])
             @internal.queues.process(q_name)
 
+        @append = (parent, node) =>
+            return parent.appendChild(node)
 
         @remove = (node) =>
             return node.parentNode.removeChild(node)
@@ -396,6 +401,9 @@ class Util
                 return (if cls.length > 1 then @to_array(cls) else cls[0]) if (cls = node.getElementsByClassName(query)).length > 0
                 return (if tg.length > 1 then @to_array(tg) else tg[0]) if (tg = node.getElementsByTagName(query)).length > 0
                 return null
+
+        @val = (el) =>
+            return (if el.value then el.value else el.innerText)
 
         @get_offset = (elem) =>
             offL = offT = 0
@@ -748,7 +756,44 @@ class Util
             return (Array(length).join('0') + num).slice(-length)
 
         @_init = () =>
+            Element.prototype.find = (query) -> return _.get(query, @)
+            Element.prototype.getOffset = () -> return _.get_offset(@)
+            Element.prototype.remove = () -> return _.remove(@)
+            Element.prototype.hasClass = (cls) -> return _.has_class(@, cls)
+            Element.prototype.addClass = (cls) -> return _.add_class(@, cls)
+            Element.prototype.removeClass = (cls) -> return _.remove_class(@, cls)
+            Element.prototype.isChild = (parent) -> return _.is_child(parent, @)
+            Element.prototype.isParent = (child) -> return _.is_child(@, child)
+            Element.prototype.resolveAncestor = (node, bound) -> return _.resolve_common_ancestor(@, node, bound)
+            Element.prototype.bind = () -> return (_.to_array(arguments).unshift(@); _.bind.apply(_, arguments))
+            Element.prototype.unbind = () -> return (_.to_array(arguments).unshift(@); _.unbind.apply(_, arguments))
+            Element.prototype.append = (node) -> return _.append(@, node)
+            Element.prototype.val = () -> return _.val(@)
+            Element.prototype.fadeIn = () -> return HTMLElement.prototype.fadeInJacked.apply(@, arguments)
+            Element.prototype.fadeOut = () -> return HTMLElement.prototype.fadeOutJacked.apply(@, arguments)
+
+            HTMLElement.prototype.find = Element.prototype.find
+            HTMLElement.prototype.getOffset = Element.prototype.getOffset
+            HTMLElement.prototype.remove = Element.prototype.remove
+            HTMLElement.prototype.hasClass = Element.prototype.hasClass
+            HTMLElement.prototype.addClass = Element.prototype.addClass
+            HTMLElement.prototype.removeClass = Element.prototype.removeClass
+            HTMLElement.prototype.isChild = Element.prototype.isChild
+            HTMLElement.prototype.isParent = Element.prototype.isParent
+            HTMLElement.prototype.resolveAncestor = Element.prototype.resolveAncestor
+            HTMLElement.prototype.bind = Element.prototype.bind
+            HTMLElement.prototype.unbind = Element.prototype.unbind
+            HTMLElement.prototype.append = Element.prototype.append
+            HTMLElement.prototype.val = Element.prototype.val
+            HTMLElement.prototype.fadeIn = Element.prototype.fadeIn
+            HTMLElement.prototype.fadeOut = Element.prototype.fadeOut
+
+            Array.prototype.each = Array.prototype.forEach or _.each
+
+            document.ready = () -> return _.ready.apply(_, arguments)
+
             @_state.init = true
+            delete @_init
             return @
 
 
@@ -756,20 +801,10 @@ class Util
 @__apptools_preinit.deferred_core_modules.push {module: Util}
 window.Util = Util
 
-if window._?
-    window._cached = window._
-    window._ = null
-
-window._ = new Util()
+window._ = new Util()._init()
 
 if window.$?
     $.extend _: window._
 else
     window.$ = window._.get
 
-Element.prototype.find = (query) -> return _.get(query, @)
-HTMLElement.prototype.find = Element.prototype.find
-Element.prototype.fadeIn = (opts, sets) -> return Jacked.fadeIn(@, opts, sets)
-Element.prototype.fadeOut = (opts, sets) -> return Jacked.fadeOut(@, opts, sets)
-HTMLElement.prototype.fadeIn = Element.prototype.fadeIn
-HTMLElement.prototype.fadeOut = Element.prototype.fadeOut
