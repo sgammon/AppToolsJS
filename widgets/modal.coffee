@@ -19,8 +19,9 @@ class ModalAPI extends CoreWidgetAPI
             id = modal._state.cached_id
 
             @_state.modals_by_id[id] = @_state.modals.push(modal) - 1
+            modal._init()
 
-            return if callback? then callback?(modal._init()) else modal._init()
+            return if callback? then callback(modal) else modal
 
         @destroy = (modal) =>
 
@@ -59,7 +60,7 @@ class ModalAPI extends CoreWidgetAPI
         @_init = () =>
 
             modals = _.get '.pre-modal'
-            (_m = @create(modal, (_t = _.get('a-'+modal.getAttribute('id'))))
+            (_m = @create(modal, (_t = _.get('#a-'+modal.getAttribute('id'))))
             @enable(_m)) for modal in modals if modals?
 
             @_state.init = true
@@ -68,15 +69,27 @@ class ModalAPI extends CoreWidgetAPI
 
 class Modal extends CoreWidget
 
+    template: [
+        '<div id="{{<element_id}}-modal-dialog" style="opacity: 0;" class="fixed dropshadow modal-dialog{{config.rounded}} rounded{{/config.rounded}}">',
+            '<div id="{{&1}}-modal-fade" style="opacity: 0" class="modal-fade">',
+                '<div id="{{&1}}-modal-content" class="modal-content">{{=html}}</div>',
+                '<div id="{{&1}}-modal-ui" class="absolute modal-ui">',
+                    '<div id="{{&1}}-modal-title" class="absolute modal-title">{{=title}}</div>',
+                    '<div id="{{&1}}-modal-close" class="absolute modal-close">X</div>',
+                '</div>',
+            '</div>',
+        '</div>'
+    ].join('')
+
     constructor: (target, trigger, options) ->
 
         @_state =
 
-            cached_id: target.getAttribute('id')        # source div ID
-            cached_html: null
+            element_id: target.getAttribute('id')        # source div ID
+            html: target.innerHTML
             trigger_id: trigger.getAttribute('id')
-            element_id: null
             overlay: null
+            title: target.getAttribute('data-title')
 
             active: false
             init: false
@@ -84,31 +97,21 @@ class Modal extends CoreWidget
             config:
 
                 initial:                                # style props at animate start
-                    width: '0px'
-                    height: '0px'
-                    top: window.innerHeight/2 + 'px'
-                    left: window.innerHeight/2 + 'px'
+                    width: '0'
+                    height: '0'
+                    top: window.innerHeight/2
+                    left: window.innerHeight/2
 
                 ratio:                                  # 0-1, final size vs. window inner
                     x: 0.4
                     y: 0.4
 
-                template: [                             # someday I'll write the render API
-                    '<div id="modal-dialog" style="opacity: 0;" class="fixed dropshadow">',
-                        '<div id="modal-fade" style="opacity: 0">',
-                            '<div id="modal-content">&nbsp;</div>',
-                            '<div id="modal-ui" class="absolute">',
-                                '<div id="modal-title" class="absolute"></div>',
-                                '<div id="modal-close" class="absolute">X</div>',
-                            '</div>',
-                        '</div>',
-                    '</div>'
-                ].join('\n')
-
                 rounded: true
                 calc: null
 
         @_state.config = _.extend(@_state.config, options)
+
+        @id = @_state.element_id + '-modal-dialog'
 
         @internal =
 
@@ -124,10 +127,10 @@ class Modal extends CoreWidget
                     dW = Math.floor r.x*wW
                     dH = Math.floor r.y*wH
 
-                    css.width = dW+'px'
-                    css.height = dH+'px'
-                    css.left = Math.floor (wW-dW)/2
-                    css.top = Math.floor (wH-dH)/2
+                    css.width = dW
+                    css.height = dH
+                    css.left = Math.floor((wW-dW)/2)
+                    css.top = Math.floor((wH-dH)/2)
 
                     return css
 
@@ -153,78 +156,40 @@ class Modal extends CoreWidget
 
         @make = () =>
 
-            template = @_state.config.template
-
-            # make & append document fragment from template string
-            range = document.createRange()
-            range.selectNode(document.getElementsByTagName('div').item(0))  # select document body
-            d = range.createContextualFragment(template)                    # parse html string
-            document.body.appendChild d
+            @template = new t(@constructor::template)
+            df = _.create_doc_frag(@template.parse(@_state))
+            document.body.appendChild(df)
 
             # style & customize modal dialogue
-            dialog = _.get 'modal-dialog'
-            title = _.get 'modal-title'
-            content = _.get 'modal-content'
-            ui = _.get 'modal-ui'
-            close_x = _.get 'modal-close'
-            fade = _.get 'modal-fade'
-            id = @_state.cached_id
-            pre = _.get(id)
+            dialog = _.get('#'+@id)
+            content = dialog.find('modal-content')
+            pre = _.get('#'+@_state.element_id)
 
-            dialog.classList.add dialog.getAttribute 'id'
-            dialog.setAttribute 'id', id+'-modal-dialog'
-            dialog.classList.add 'rounded' if @_state.config.rounded
-            dialog.style[prop] = val for prop, val of @_state.config.initial
+            dialog.style[prop] = val + 'px' for prop, val of @_state.config.initial
 
-            content.classList.add content.getAttribute 'id'
-            content.setAttribute 'id', id+'-modal-content'
-            content.style[prop] = val for prop, val of pre.style
             content.style.opacity = 1
             content.style.height = @internal.calc().height
-            content.innerHTML = (t = _.get(id)).innerHTML
 
-            title.classList.add title.getAttribute 'id'
-            title.setAttribute 'id', id+'-modal-title'
-            title.innerHTML = t.getAttribute 'data-title'
-
-            ui.classList.add ui.getAttribute 'id'
-            ui.setAttribute 'id', id+'-modal-ui'
-
-            close_x.classList.add close_x.getAttribute 'id'
-            close_x.setAttribute 'id', id+'-modal-close'
-
-            fade.classList.add fade.getAttribute 'id'
-            fade.setAttribute 'id', id+'-modal-fade'
-
-            # stash a reference to dialogue element
-            @_state.element_id = dialog.getAttribute 'id'
-            @_state.cached_html = t.innerHTML
-            t.innerHTML = ''
+            pre.innerHTML = ''
 
             return dialog
 
-        @open = (callback) =>
+        @open = (cback) =>
+            if cback? and cback.preventDefault
+                cback.preventDefault()
+                cback.stopPropagation()
+                cback = arguments[1] or null
 
-            id = @_state.cached_id
-            dialog = _.get(@_state.element_id)
-            close_x = _.get(id+'-modal-close')
+            id = @_state.element_id
+            dialog = _.get('#'+@id)
+            close_x = dialog.find('#'+id+'-modal-close')
             @_state.active = true
 
-            # overlay!
-            #overlay = @_state.overlay or @prepare_overlay('modal')
-            #@_state.overlay = overlay
-            #if not overlay.parentNode?
-                #document.body.appendChild(overlay)
-
             # extend default animation params with callbacks
-            fade_animation = _.prep_animation()
-            dialog_animation = _.prep_animation()
-            #overlay_animation = @animation
-
-            dialog_animation.complete = () =>
-                @internal.classify(dialog, 'open')
-                $('#'+id+'-modal-fade').animate opacity: 1, fade_animation
-                return (if callback? then callback.call(@) else @)
+            dialog_animation =
+                callback: (d) =>
+                    d.find('modal-fade').fadeIn()
+                    return @internal.classify(d, 'open')
 
             # get final params
             final = @internal.calc()
@@ -232,66 +197,52 @@ class Modal extends CoreWidget
 
             # show & bind close()
             dialog.style.display = 'block'
-            #overlay.style.display = 'block'
-
-            #$(overlay).animate opacity: 0.5, overlay_animation
-            $(dialog).animate final, dialog_animation
+            dialog.animate final, dialog_animation
 
             _.bind(close_x, 'mousedown', @close)
 
-            return @
+            return if cback? then cback(@) else @
 
-        @close = (callback) =>
+        @close = (cback) =>
+            if cback? and cback.preventDefault
+                cback.preventDefault()
+                cback.stopPropagation()
+                cback = arguments[1] or null
 
-            id = @_state.cached_id
+            _.unbind(_.get('#'+@_state.element_id+'-modal-close'), 'mousedown', @close)
+            dialog = _.get('#'+@id)
 
-            #overlay = @_state.overlay
-            dialog = _.get @_state.element_id
+            final = @_state.config.initial
+            final.opacity = 0
 
-            _.unbind(_.get(id+'-modal-close'), 'mousedown')
+            dialog.find('modal-fade').fadeOut()
+            dialog.animate final,
+                delay: 400
+                complete: (d) =>
+                    d.style.display = 'none'
+                    return @internal.classify(d, 'close')
 
-            midpoint = _.extend({}, @_state.config.initial, opacity: 0.5)
-
-
-            _.get(id+'-modal-content').style.overflow = 'hidden' # disable scroll during animation
-            $('#'+id+'-modal-fade').animate({opacity: 0}, {
-                duration: 300,
-                complete: () =>
-                    @internal.classify(dialog, 'close')
-
-                    $(dialog).animate(midpoint, {
-                        duration: 200,
-                        complete: () =>
-                            $(dialog).animate({opacity: 0}, {
-                                duration: 250,
-                                complete: () =>
-                                    dialog.style.display = 'none'
-                                    dialog.style[prop] = val for prop, val of @_state.config.initial
-                                    @_state.active = false
-
-                                    return if callback? then callback?(@) else @
-                                }
-                            )
-                        }
-                    )
-                }
-            )
-
-        @fade = (opacity, cback) =>
-            id = @_state.cached_id
-            $('#'+id+'modal-fade').animate(opacity: opacity, {duration: 300, complete: cback})
-            return @
-        @fadeout = (cback) =>
-            return @fade(0, cback)
-        @fadein = (cback) =>
-            return @fade(1, cback)
+            @_state.active = false
+            return if cback? then cback(@) else @
 
         @_init = () =>
 
             dialog = @make()
             _.get(@_state.trigger_id).removeAttribute('href')
             @render = (html) =>
-                _.get('modal-content', _.get(@_state.element_id)).innerHTML = html
+                _.get('modal-content', _.get('#'+@id)).innerHTML = html
+
+            @resize = (e) =>
+                if e.preventDefault
+                    e.preventDefault()
+                    e.stopPropagation()
+
+                newcss = @internal.calc()
+                modal = _.get('#'+@id)
+                modal.style[prop] = val + 'px' for prop, val of newcss
+                return
+
+            _.bind(window, 'resize', _.throttle(@resize, 350, false), true)
 
             @_state.init = true
 

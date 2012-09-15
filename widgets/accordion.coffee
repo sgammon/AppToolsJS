@@ -33,12 +33,12 @@ class AccordionAPI extends CoreWidgetAPI
 
         @enable = (accordion) =>
 
-            (trigger.addEventListener('click', accordion.fold, false) if (trigger = _.get('a-'+f))? and trigger.nodeType) for f in accordion._state.folds
+            (trigger.addEventListener('click', accordion.fold, false) if (trigger = _.get('#a-'+f))? and trigger.nodeType) for f in accordion._state.folds
             return accordion
 
         @disable = (accordion) =>
 
-            (trigger.removeEventListener('click') if (trigger = _.get('a-'+fold))? and trigger.nodeType) for fold in accordion._state.folds
+            (trigger.removeEventListener('click') if (trigger = _.get('#a-'+fold))? and trigger.nodeType) for fold in accordion._state.folds
             return accordion
 
         @get = (element_id) =>
@@ -47,7 +47,7 @@ class AccordionAPI extends CoreWidgetAPI
 
         @_init = () =>
 
-            accordions = _.get 'pre-accordion'
+            accordions = _.get '.pre-accordion'
             @enable(@create(accordion)) for accordion in accordions if accordions?
 
             apptools.events.trigger 'ACCORDION_API_READY', @
@@ -123,7 +123,7 @@ class Accordion extends CoreWidget
 
             accordion = _.get(@_state.element_id)
 
-            [curr_folds, block_folds] = [_.get('current-fold', accordion), _.get('block', accordion)]
+            [curr_folds, block_folds] = [_.get('.current-fold', accordion), _.get('.block', accordion)]
 
             (if folds?
                 folds = _.filter(folds, (el) -> return el.parentNode is accordion)) for folds in [curr_folds, block_folds]

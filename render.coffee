@@ -1,4 +1,3 @@
-
 #### === Render/DOM Interfaces === ####
 class QueryInterface extends Interface
 
@@ -25,19 +24,35 @@ class AnimationInterface extends Interface
     animate: (to, settings) ->
 
 
-#### === Render Base Classes === ####
+# Render API
+class CoreRenderAPI extends CoreAPI
 
-## Core
+    @mount = 'render'
+    @events = []
+    @export = 'private'
+
+    constructor: (apptools, window) ->
+        @environment = new RenderEnvironment(
+            shared: true
+            context: new RenderContext()
+        ).set_loader_priority([
+            StringLoader,
+            ModelLoader,
+            DOMLoader,
+            StorageLoader,
+        ])._init()
+
+
 class TemplateLoader extends CoreObject
 class RenderException extends CoreException
 
-## Models
-class Template extends Model
+class Template
 
-    constructor : () ->
+    @export = 'public'
+
+    constructor : (@source) ->
 
         @name = ''
-        @source = ''
         @cacheable =
             rendered: false     # should we cache rendered templates?
             source: false       # what about source?
@@ -49,35 +64,86 @@ class DOMTemplate extends Template
     constructor : (element) ->
         attrs = _.to_array(element.attributes)
 
-        return
 
-class TemplateContext extends Model
-class RenderContext extends Model
+class StringLoader extends TemplateLoader
+    # takes JS string template ({{etc}}) & returns prepared Template
+    constructor: () ->
+
+        @engine = new t('')
+
+        @load = (template) =>
+            @engine.template(template)
+            return @
+
+        return @
+
+class DOMLoader extends TemplateLoader
+    # takes pre-classed element and returns prepared Template
+    constructor: () ->
+
+        @load = (pre_template) =>
+            console.log(@constructor.name, 'Loading DOM templates currently stubbed.')
+            return pre_template
+
+        return @
+
+class ModelLoader extends TemplateLoader
+    # takes object model & returns prepped Template
+    constructor: () ->
+
+        @load = (pre_template) =>
+            console.log(@constructor.name, 'Loading model templates currently stubbed.')
+            return pre_template
+
+        return @
+
+class StorageLoader extends TemplateLoader
+    # takes StorageAPI key & returns stored Template
+    constructor: () ->
+
+        @load = (pre_template) =>
+            console.log(@constructor.name, 'Loading templates from storage currently stubbed.')
+            return pre_template
+
+        return @
+
+class ServiceLoader extends TemplateLoader
+    # takes remote template path & returns via service layer call
+    constructor: () ->
+
+        @load = (pre_template) =>
+            console.log(@constructor.name, 'Loading templates from a remote service is currently stubbed.')
+            return pre_template
+
+        return @
+
+class RenderContext
 
     constructor: (ctxs=[]) ->
 
         for ctx in ctxs
-            @[k] = v for own k, v of ctx
+            _.extend(@, ctx)
+
+        @add = (context) =>
+            _.extend(@, context)
+            return @
 
         return @
 
-
-class RenderEnvironment extends Model
+class RenderEnvironment
 
     @export = 'public'
 
     constructor: (options={}) ->
-        ## Import logging
-        @log = (message) => return console.log('[RenderEnvironment]', message)
-
         ## Setup initial state & extend with user options
+
         @state = _.extend(true, {},
 
             template_loaded: false     # is template ready to render?
 
             template: null             # default template to use
-            context: null              # base context
-            loader: null               # loader
+            context: false             # base context
+            loader: false              # loader
             loader_priority: []        # order in which to load
 
             filters: {}                # environment filters (currently stubbed)
@@ -90,7 +156,7 @@ class RenderEnvironment extends Model
 
         @resolve_loader = () =>
             # If no loader set, resolve appropriate source loader via loader priority list.
-            @log('Resolving template loader...')
+            console.log('[Render] Resolving template loader...')
 
             priority = @state.loader_priority
             errors = []
@@ -98,7 +164,7 @@ class RenderEnvironment extends Model
                 try
                     d = new driver()
                 catch err
-                    @log('Invalid driver:', driver.toString())
+                    console.log('[Render] Invalid driver:', driver.toString())
                 finally
                     break if d?
                     continue
@@ -106,12 +172,12 @@ class RenderEnvironment extends Model
             if errors.length is priority.length
                 throw new RenderException(@constructor.name, 'Unable to resolve valid template loader.')
             else
-                @log('Template loader resolved.')
+                console.log('[Render] Template loader resolved.')
                 return d
 
         @parse = () =>
             # parse Template and data object into pre-rendered Template
-            @log('Template parsing currently stubbed.')
+            console.log('Template parsing currently stubbed.')
 
             return @
 
@@ -120,19 +186,19 @@ class RenderEnvironment extends Model
         # Template loading
         @set_loader = (@loader) =>
             # Manually sets template loader for this environment.
-            @log('Manually setting template loader.')
+            console.log('Manually setting template loader.')
 
             return @
 
         @set_loader_priority = (p) =>
             # Manually sets priority array for template loaders
-            @log('Manually assigning template loader priority.')
+            console.log('Manually assigning template loader priority.')
 
             @state.loader_priority = p if _.is_array(p)
             return @
 
-        @load = (name, loader=@loader) =>
-            # Loads a named template, defaults to current loader.
+        @load = (name) =>
+            # Loads a named template
 
             if _.is_array(name)
                 return @select(name, loader)
@@ -165,101 +231,32 @@ class RenderEnvironment extends Model
         ## API methods
         @selfdestruct = () =>
             # Perform any final cleanup & trigger self-delete with Render API
-            @log('selfdestruct() currently stubbed. lucky you.');
+            console.log('selfdestruct() currently stubbed. lucky you.');
 
             return @
 
         ## Init
         @_init = () =>
-            if not @state.loader?
+            if not @loader?
                 try
-                    @state.loader = @resolve_loader()
+                    @loader = @resolve_loader()
+                    @state.loader = true
                 catch err
                     console.error(@constructor.name, 'Couldn\'t resolve a template loader. Reraising...')
                     throw err
 
-            return @
+            return delete @_init
 
         return @
-
-## Loaders
-class StringLoader extends TemplateLoader
-    # takes JS string template (Mustache {{x}} or Apptools [% x %] syntax) & returns prepared Template
-    constructor: () ->
-
-        @load = (pre_template) =>
-            @constructor::log(@constructor.name, 'Loading string templates currently stubbed.')
-            return pre_template
-
-        return @
-
-class DOMLoader extends TemplateLoader
-    # takes pre-classed element and returns prepared Template
-    constructor: () ->
-
-        @load = (pre_template) =>
-            @constructor::log(@constructor.name, 'Loading DOM templates currently stubbed.')
-            return pre_template
-
-        return @
-
-class ModelLoader extends TemplateLoader
-    # takes object model & returns prepped Template
-    constructor: () ->
-
-        @load = (pre_template) =>
-            @constructor::log(@constructor.name, 'Loading model templates currently stubbed.')
-            return pre_template
-
-        return @
-
-class StorageLoader extends TemplateLoader
-    # takes StorageAPI key & returns stored Template
-    constructor: () ->
-
-        @load = (pre_template) =>
-            @constructor::log(@constructor.name, 'Loading templates from storage currently stubbed.')
-            return pre_template
-
-        return @
-
-class ServiceLoader extends TemplateLoader
-    # takes StorageAPI key & returns stored Template
-    constructor: () ->
-
-        @load = (pre_template) =>
-            @constructor::log(@constructor.name, 'Loading templates from the service layer is currently stubbed.')
-            return pre_template
-
-        return @
-
-
-#### === Core Render API === ####
-class CoreRenderAPI extends CoreAPI
-
-    @mount = 'render'
-    @events = []
-    @export = 'private'
-
-    constructor: (apptools, window) ->
-        @_init = () =>
-            @environment = new RenderEnvironment(shared: true).set_loader_priority([
-                DOMLoader,
-                StorageLoader,
-                ModelLoader,
-                StringLoader
-            ])._init()
-            @context = new RenderContext()
 
 
 @__apptools_preinit.abstract_base_classes.push  QueryInterface,
                                                 RenderInterface,
                                                 AnimationInterface,
-                                                TemplateLoader,
                                                 RenderException,
                                                 Template,
                                                 DOMTemplate,
-                                                TemplateContext,
+                                                TemplateLoader,
                                                 RenderContext,
                                                 RenderEnvironment,
                                                 StringLoader,
@@ -269,6 +266,7 @@ class CoreRenderAPI extends CoreAPI
                                                 ServiceLoader,
                                                 CoreRenderAPI
 
-@__apptools_preinit.abstract_feature_interfaces.push QueryInterface,
+@__apptools_preinit.abstract_feature_interfaces.push DOMInterface,
+                                                     QueryInterface,
                                                      RenderInterface,
                                                      AnimationInterface

@@ -359,10 +359,7 @@ if window.jQuery?
     $.extend(apptools: window.apptools)
 
 # No? I'll just let myself in.
-else
-    if not window.$?
-        if window._
-            window.$ = window._
-        else
-            window.$ = {}
+else if window.$?
     window.$.apptools = window.apptools
+
+else (window.$ = (x) -> return document.getElementById(x)).apptools = window.apptools

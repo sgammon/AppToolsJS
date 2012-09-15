@@ -45,7 +45,7 @@ class StickyAPI extends CoreAPI
 
         @_init = () =>
 
-            stickies = _.get('pre-sticky')
+            stickies = _.get('.pre-sticky')
             @enable(@create(sticky)) for sticky in stickies if stickies?
 
             apptools.events.trigger 'STICKY_API_READY', @
@@ -64,46 +64,46 @@ class Sticky extends CoreWidget
             active: false
             init: false
 
-            config:
+            config: _.extend(true,
                 side: 'top'
-
+            , options)
 
             cache:
-                original_offset: null
+                original_offset: target.getOffset()
                 past_offset: null
                 classes: null
                 style: {}
 
-        @_state.config = _.extend(true, @_state.config, options)
+        @recalc = () =>
+
+            @_state.cache.original_offset = _.get('#'+@_state.element_id).getOffset()
 
         @refresh = () =>
 
             el = document.getElementById(@_state.element_id)
-            console.log('[STICKY]', 'REFRESH METHOD HIT!')
-
             offset_side = @_state.config.side
             window_offset = if offset_side is 'top' then window.scrollY else window.scrollX
             past_offset = @_state.cache.past_offset or 0
 
             @_state.cache.past_offset = window_offset
 
-            distance = @_state.cache.original_offset[offset_side] - 8
+            distance = @_state.cache.original_offset[offset_side] - 5
 
-            achieved = window_offset - distance
+            traveled = window_offset - distance
             scroll = window_offset - past_offset
 
             if scroll > 0                   # we scrolled down
-                if @_state.active or achieved < 0
+                if @_state.active or traveled < 0
                     return false
 
-                else if achieved > 0
+                else if traveled > 0
                     return @stick()
 
             else if scroll < 0              # scrolled up
-                if not @_state.active or achieved > 0
+                if not @_state.active or traveled > 0
                     return false
 
-                else if achieved < 0
+                else if traveled < 0
                     return @unstick()
 
             else return false
@@ -119,7 +119,7 @@ class Sticky extends CoreWidget
             @_state.cache.style[prop] = val for prop, val of el.style
 
             el.classList.add 'fixed'
-            el.style.top = -8 + 'px'
+            el.style.top = -5 + 'px'
             el.style.left = @_state.cache.original_offset.left + 'px'
 
             return @
@@ -137,14 +137,11 @@ class Sticky extends CoreWidget
             return @
 
         @_init = () =>
-
-            @_state.cache.original_offset = _.get_offset(_.get(@_state.element_id))
-
+            _.bind(window, 'resize', _.debounce(@recalc, 100), true)
             @_state.init = true
             return @
 
 
 
-@__apptools_preinit.abstract_base_classes.push Sticky
-@__apptools_preinit.abstract_base_classes.push StickyAPI
+@__apptools_preinit.abstract_base_classes.push Sticky, StickyAPI
 @__apptools_preinit.deferred_core_modules.push {module: StickyAPI, package: 'widgets'}

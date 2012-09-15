@@ -29,14 +29,22 @@ class CoreWidgetAPI extends CoreAPI
                             other_trig.classList.remove('active') for other_trig in other_trigs if (other_trigs = _.filter(_.get(trigger.tagName), (o) => return _.is_child(widget, o) and (o isnt trigger)))?
 
                         if is_curr
-                            target.classList.remove('active')
-                            trigger.classList.remove('active')
-                            if trigger.classList.contains('autoclose')
-                                target.removeEventListener('mouseout', @handle, false)
+                            return @deferred
+                                target: target
+                                trigger: trigger
+                                preventDefault: ->
+                                stopPropagation: ->
+                                callback: (targ, trig) ->
+                                    targ.classList.remove('active')
+                                    trig.classList.remove('active')
+                                    if trig.classList.contains('autoclose')
+                                        targ.removeEventListener('mouseout', @handle, false)
 
                         else
                             target.classList.add('active')
                             trigger.classList.add('active')
+
+                            target.addEventListener('webkitTransitionEnd', @deferred, false)
                             if trigger.classList.contains('autoclose')
                                 target.addEventListener('mouseout', @handle, false)
 
@@ -47,12 +55,54 @@ class CoreWidgetAPI extends CoreAPI
 
             else if e?
                 throw 'Unparseable event object passed to default handle()'
-            else
-                throw 'Default handle() can only be called via event binding'
+            else throw 'Default handle() can only be called via event binding'
+
+        @deferred = (e) =>
+
+            if e.preventDefault
+                e.preventDefault()
+                e.stopPropagation()
+
+                e.target?.removeEventListener('webkitTransitionEnd', @deferred)
+
+                if (evc = e.callback)?
+                    tar = e.target
+                    tri = e.trigger
+                    deact = _.debounce((d) =>
+                        return evc.call(@, tar, tri)
+                    , 50)
+                    cback = (ev) =>
+                        if ev.preventDefault
+                            ev.preventDefault()
+                            ev.stopPropagation()
+                            d = ev.target
+                            d.removeEventListener('webkitTransitionEnd', cback)
+
+                        return deact()
+
+                custom = !!cback
+
+                defers = e.target.find('.deferred')
+
+                if not defers? or (defers.length and defers.length is 0)
+                    return (if custom then cback() else e)
+
+                for defer in defers
+                    if custom
+                        defer.addEventListener('webkitTransitionEnd', cback, false)
+                        defer.classList.remove('active')
+                    else
+                        defer.classList.add('active')
+
+                return
+
+            else if e?
+                throw 'Unparseable event object passed to default deferred()'
+            else throw 'Default deferred() can only be called via event binding'
 
         @_init = () =>
 
-            link.addEventListener('click', @handle , false) for link in target_links if (target_links = _.get('target-link'))?
+            link.addEventListener('click', @handle , false) for link in target_links if (target_links = _.get('.target-link'))?
 
 class CoreWidget extends Model
 
