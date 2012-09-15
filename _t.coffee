@@ -39,7 +39,7 @@ class t
         return (if meta is '!' then @parse(inner, vars) else (if has_else then @parse(if_false, vars) else ''))
 
       if not meta
-        return @parse(`has_else ? if_true : inner, vars`)
+        return @parse(if has_else then if_true else `inner, vars`)
 
       if meta is '@'
         for k, v of val

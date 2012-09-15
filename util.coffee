@@ -435,6 +435,9 @@ class Util
 
             return result
 
+        @find_parent = (child, query) =>
+            return (if (r = (@filter([@get(query)], (res) => return @is_child(res, child))[0]))? then r else null)
+
         @resolve_common_ancestor = (elem1, elem2, bound_elem=document.body) =>
             if not @is_child(bound_elem, [elem1, elem2])
                 throw 'Bounding node must contain both search elements'
@@ -583,7 +586,7 @@ class Util
 
             return () =>
 
-                args = arguments
+                args = @to_array(arguments)
                 elapsed = @now() - last
 
                 clear = () =>
@@ -592,7 +595,7 @@ class Util
 
                 go = () =>
                     last = @now()
-                    fn.apply(@, args)
+                    return fn.apply(window, args)
 
                 go() if prefire and not timer_id   # if prefire, fire @ first detect
 
@@ -735,20 +738,25 @@ class Util
 
             else return link
 
-        @wrap = (e, fn) ->
+        @type_of = (obj) =>
+            return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase()
 
-            i = 2
+        @wrap = () =>
+            i = 1
+            fn = arguments[0]
 
-            # catch incoming events
-            if e.preventDefault?
-                e.preventDefault()
-                e.stopPropagation()
-            else
-                fn = e
-                i--
+            if fn?.preventDefault
+                fn.preventDefault()
+                fn.stopPropagation()
+                e = fn
+                fn = arguments[1]
+                i++
+
+            pass_event = if @type_of(fn) is 'boolean' then (_t = fn; fn = arguments[2]; i++; if !!e then _t else false) else false
 
             # freshen up the context
             args = Array.prototype.slice.call(arguments, i)
+            args.unshift(e) if pass_event
             return () ->
                 fn.apply @, args
 
