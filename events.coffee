@@ -13,7 +13,7 @@ class CoreEventsAPI extends CoreAPI
         @mutators = [] # Mutate functions registered by `bridge`
 
         ## Trigger a named event, optionally with context
-        @fire = @trigger = (event, args...) =>
+        @fire = @trigger = @dispatch = (event, args...) =>
 
             apptools.dev.eventlog 'Trigger', 'Triggered event.', event, args, @callchain[event]
 

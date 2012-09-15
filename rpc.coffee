@@ -1,556 +1,549 @@
-# AppTools RPC - CoreRPCAPI, RPCAPI, RPCRequest
+#### === Transport Interfaces === ####
+class TransportInterface extends Interface
 
-# Represents a server-side API, so requests can be sent from JavaScript
-class RPCAPI extends CoreObject
+    # Abstract interface for transport interfaces.
 
-    # RPCAPI Constructor
-    constructor: (@name, @base_uri, @methods, @config, apptools) ->
+    capability: 'transport'
+    required: []
 
-        ## Build little shims for each method...
-        if @methods and @methods.length > 0
-            for method in @methods
-                @[method] = @_buildRPCMethod(method, base_uri, config, apptools)
+class RPCInterface extends TransportInterface
 
+    # JSON/XMLRPC Capability
 
-    # Build a remote method shim
-    _buildRPCMethod: (method, base_uri, config, apptools) ->
-        api = @name
-        rpcMethod = (params={}, callbacks=null, async=false, push=false, opts={}, config={}) =>
-            do (params, callbacks, async, push, opts) =>
-                request = apptools.api.rpc.createRPCRequest({
+    capability: 'rpc'
+    parent: TransportInterface
+    required: ['factory', 'fulfill']
 
-                    method: method
-                    api: api
-                    params: params || {}
-                    opts: opts || {}
-                    async: async || false
-                    push: push || false
+    factory: () ->
+    fulfill: () ->
 
-                })
+#### === Native Driver === ####
+class NativeXHR extends CoreObject
 
-                if callbacks isnt null
-                    return request.fulfill(callbacks, config)
-                else
-                    return request
+    xhr: null
+    request: null
+    headers: {}
+    events: {}
 
-        # Register API method capability
-        apptools.api.registerAPIMethod(api, method, base_uri, config)
-        return rpcMethod
+    constructor: (@xhr, @request) ->
 
+        @open = (http_method, url, async) => @xhr.open(http_method, url, async)
 
-# Represents a single RPC request, complete with config, params, callbacks, etc
-class RPCRequest extends CoreObject
+        @get_header = (key) => return @headers[key]
+        @set_header = (key, value) => @headers[key] = value
+
+        @send = (payload) =>
+
+            # Set headers and callbacks
+            (@xhr.setRequestHeader(key, value) for key, value of @headers)
+            (@xhr[name] = callback) for name, callback of @events
+
+            return @xhr.send(payload)
+        return @
+
+class RPCPromise extends CoreObject
+
+    expected: null
+    directive: null
+    fulfilled: false
+
+    constructor: (@expected, @directive) ->
+        return @
+
+    value: (block=true, autostart=false) ->
+        if directive.status != 'constructed'
+            if directive.status == 'pending'
+                loop
+                    break unless directive.status == 'pending'
+                return directive.response
+            else
+                return @directive.response
+        else
+            return @directive.request.fulfill()
+
+class ServiceLayerDriver extends Driver
+
+    name: 'apptools'
+    native: true
+    interface: [
+        RPCInterface
+    ]
+
+    constructor: (apptools) ->
+
+        @internal =
+
+            status_codes:
+                errors: [400, 401, 403, 404, 405, 406, 500, 501, 502, 503, 504, 505]
+                success: [200, 201, 202, 203, 204, 205, 303, 304, 301, 302, 307, 308]
+
+            endpoint: (request) =>  # Not yet in use.
+
+        ## NativeRPC
+        @rpc =
+
+            factory: (context) => new NativeXHR(new XMLHttpRequest(), context)
+
+            fulfill: (xhr, request, dispatch) =>
+
+                ## Open XHR + set headers
+                xhr.open(request.context.http_method, request.endpoint(apptools.rpc.state.config.jsonrpc), request.context.async)
+                (xhr.set_header(header, value) for header, value of _.extend({"Content-Type": request.context.content_type}, apptools.rpc.state.config.headers, request.context.headers))
+
+                decode = (status, event) =>
+
+                    try
+                        response = JSON.parse(event.target.response) unless ((not event.target.response?) or (not _.is_string(event.target.response)) or (event.target.response.length < 0))
+                    catch e
+                        response = event.target.response
+
+                    if _.in_array(@internal.status_codes.errors, event.target.status)
+                        return dispatch('failure', response)
+                    return dispatch(response.status, response)
+
+                ## Attach XHR success callback
+                load = xhr.events.onload = (event) => decode('success', event)
+                failure = xhr.events.onerror = xhr.events.onabort = xhr.events.timeout = (event) => decode('failure', event)
+
+                ## Serialize payload and send
+                return xhr.send(JSON.stringify(request.payload()))
+        return super apptools
+
+#### === RPC Base Objects === ####
+class RPCContext extends Model
+
+    # Represets execution context for an RPC request.
+
+    model:
+        url: String()
+        async: Boolean()
+        defer: Boolean()
+        headers: Object()
+        cacheable: Boolean()
+        http_method: String()
+        crossdomain: Boolean()
+        content_type: String()
+        ifmodified: Boolean()
+        base_uri: String()
+
+    defaults:
+        async: true, defer: false, headers: {}, cacheable: false, http_method: 'POST', crossdomain: false, content_type: 'application/json', ifmodified: false
+
+    constructor: (opts={}) -> _.extend(@, @defaults, opts)
+
+class RPCEnvelope extends Model
+
+class RequestEnvelope extends RPCEnvelope
+
+    # Represents meta details about an RPC request.
+
+    model:
+        id: Number()
+        opts: Object()
+        agent: Object()
+
+    constructor: (envelope) -> _.extend(@, envelope)
+
+class ResponseEnvelope extends RPCEnvelope
+
+    # Represents meta details about an RPC response.
+
+    model:
+        id: Number()
+        flags: Object()
+        platform: Object()
+
+    constructor: (envelope) -> super _.extend(@, envelope)
+
+class RPC extends Model
+
+    model:
+        ttl: Number()
+        context: RPCContext
+        envelope: RPCEnvelope
+
+    constructor: ->
+        return @state('constructed')
+
+    expired: () -> true
+
+    state: (state) =>
+        if not @flags?
+            @flags = {}
+        @flags.state = state
+        return @
+
+#### === RPC Request/Response === ####
+class RPCRequest extends RPC
+
+    # Represents a single RPC request, complete with config, params, callbacks, etc
+
+    states: ['constructed', 'pending', 'fulfilled']
+
+    model:
+        state: String()
+        params: Object()
+        method: String()
+        service: String()
 
     # RPCRequest Constructor
-    constructor: (id, opts, agent) ->
-
-        ## Expose params
-        @params = {}
-        @action = null
-        @method = null
-        @api = null
-        @base_uri = null
-
-        ## RPC Envelope
-        @envelope =
-            id: null
-            opts: {}
-            agent: {}
-
-        ## AJAX Settings
-        @ajax =
-            accept: 'application/json'
-            async: true
-            cache: true
-            global: true
-            http_method: 'POST'
-            crossDomain: false
-            processData: false
-            ifModified: false
-            dataType: 'json'
-            push: false
-            contentType: 'application/json; charset=utf-8'
-
-        if id?
-            @envelope.id = id
-        if opts?
-            @envelope.opts = opts
-        if agent?
-            @envelope.agent = agent
+    constructor: (object) -> super _.extend(@, object)
 
     # Fulfill an RPC method server-side
-    fulfill: (callbacks={}, config) ->
+    fulfill: (callbacks={}) -> $.apptools.rpc.request.fulfill(@, callbacks)
 
-        ## Put in a default success callback if we're not passed one (useful for development/debug)...
-        if not callbacks?.success?
-            defaultSuccessCallback = (context, type, data) =>
-                $.apptools.dev.log('RPC', 'RPC succeeded but had no success callback.', @, context, type, data)
-            callbacks.success = defaultSuccessCallback
+    # Indicate that we'd like to defer a response to a push channel, if possible
+    defer: (push) -> @flags.defer = push
 
-        ## Put in a default failure callback if we're not passed one (useful for development/debug)...
-        if not callbacks?.failure?
-            defaultFailureCallback = (context) =>
-                $.apptools.dev.error('RPC', 'RPC failed but had no failure callback.', @, context)
-            callbacks.failure = defaultFailureCallback
+    # Return a unique string representing this requests' signature, suitable for caching.
+    fingerprint: => window.btoa(JSON.stringify([@service, @method, @params, @envelope.opts]))
 
-        ## Pass it off to CoreRPCAPI to fulfill
-        return $.apptools.api.rpc.fulfillRPCRequest(config, @, callbacks)
+    # Return a prepared endpoint URL.
+    endpoint: (config={}) ->
+        if not @context.url?
+            if not config.host?
+                base_host = [window.location.protocol, window.location.host].join('//')
+            else
+                base_host = config.host
+            if @context.base_uri? and _.is_string(@context.base_uri)
+                base_uri = @context.base_uri
+            else
+                base_uri = config.base_uri
+            return [[base_host.concat(base_uri), @service].join('/'), @method].join('.')
+        return @context.url
 
-    # Set async true/false for this request
-    setAsync: (async) ->
-        @ajax?.async ?= async
-        return @
-
-    # Set whether push headers should be applied
-    setPush: (push) ->
-        if push == true
-            @ajax.push = true
-            @envelope.opts['alt'] = 'socket'
-            @envelope.opts['token'] = $.apptools.push.state.config.token
-
-        return @
-
-    # Set arbitrary RPC envelope options
-    setOpts: (opts) ->
-        @envelope?.opts = _.defaults(opts, @envelope?.opts)
-        return @
-
-    # Set the RPC envelope agent clause
-    setAgent: (agent) ->
-        @envelope?.agent ?= agent
-        return @
-
-    # Set the RPC action
-    setAction: (@action) ->
-        return @
-
-    # Set the RPC method
-    setMethod: (@method) ->
-        return @
-
-    # Set the RPC API
-    setAPI: (@api) ->
-        return @
-
-    # Set the Base URI
-    setBaseURI: (@base_uri) ->
-        return @
-
-    # Set the RPC params
-    setParams: (@params={}) ->
-        return @
-
-    # Format the RPC for communication and return the encoded payload
-    payload: ->
-        _payload =
+    # Format the RPC for communication
+    payload: =>
+        return {
             id: @envelope.id
             opts: @envelope.opts
             agent: @envelope.agent
             request:
                 params: @params
                 method: @method
-                api: @api
+                api: @service
+        }
 
-        return _payload
+class RPCResponse extends RPC
 
+    # Represents a response to an RPCRequest
 
-# Represents a single RPC response
-class RPCResponse extends Model
+    states: ['constructed', 'pending', 'success', 'failure', 'wait']
 
-    constructor: () ->
-        return
+    model:
+        type: String()
+        status: String()
+        payload: Object()
 
+    events:
+        success: null
+        failure: null
 
-## CoreRPCAPI - kicks off RPC's and mediates with dispatch
+    constructor: (response) -> super _.extend(@, response)
+    inflate: (raw_response) => _.extend(@, raw_response)
+    callbacks: (@events) -> @
+
+class RPCErrorResponse extends RPCResponse
+
+    # Represents a response indicating an error
+
+    model:
+        code: Number()
+        message: String()
+
+    constructor: (response, raw_response) ->
+
+        @events = response.events
+        if not raw_response.response?.content?
+            $.apptools.dev.error('RPC', 'Invalid RPC error structure.', response, raw_response)
+            throw "Invalid RPC error structure."
+        return @inflate(raw_response)
+
+#### === RPCAPI - Service Class === ####
+class RPCAPI extends CoreObject
+
+    # Represents a server-side API, so requests can be sent/received from JavaScript
+
+    constructor: (name, methods, config, apptools) ->
+
+        __remote_method_proxy = (name, method, config, apptools) ->
+
+            return (params={}, context={}, opts={}, envelope={}, request_class=RPCRequest) =>
+
+                # Build a remote method proxy
+                do (params, context, opts, envelope) =>
+                    return apptools.rpc.request.factory(
+                                method: method
+                                service: name
+                                params: params || {}
+                                context: new RPCContext(_.extend(apptools.rpc.request.context.default(), context))
+                                envelope: new RequestEnvelope(_.extend(envelope, id: apptools.rpc.request.provision(), opts: opts || {}, agent: apptools.agent.fingerprint)),
+                                request_class)
+
+        # Build a function to proxy shortcutted RPC requests to the main API.
+        (@[method] = __remote_method_proxy(name, method, config, apptools) for method in methods) unless (not methods.length? or methods.length == 0)
+        apptools.rpc.service.register(@, methods, config)
+        return @
+
 class CoreRPCAPI extends CoreAPI
 
-    @mount = 'api'
-    @events = [
-                'RPC_CREATE',
-                'RPC_FULFILL',
-                'RPC_SUCCESS',
-                'RPC_ERROR',
-                'RPC_COMPLETE',
-                'RPC_PROGRESS'
-            ]
+    # CoreRPCAPI - low-level RPC interaction API, mediates between the service layer and dispatch.
 
-    # CoreRPCAPI Constructor
+    @mount = 'rpc'
+    @events = ['RPC_CREATE', 'RPC_FULFILL', 'RPC_SUCCESS', 'RPC_FAILURE', 'RPC_COMPLETE', 'RPC_PROGRESS']
+
     constructor: (apptools, window) ->
 
-        ## Init state and config
+        ## RPCAPI State
         @state =
-            sockets:
-                token: '__NULL__'
-                enabled: false
-                status: 'DISCONNECTED'
-                default: null
-                default_host: apptools.config?.rpc?.socket_host? || null
 
-        ## Set default base URI
-        @base_rpc_uri = apptools.config.rpc.base_uri || '/_api/rpc'
-        @socket_host = apptools.config.rpc.socket_host || null
+            # Configuration
+            config:
 
-        ## Set up request internals
-        if apptools.sys.drivers.resolve('transport', 'jquery') != false
-            original_xhr = $.ajaxSettings.xhr
-        else
-            original_xhr = new XMLHttpRequest()
+                # HTTP Request/Response: Service-Layer based JSONRPC Services
+                jsonrpc:
+                    host: null
+                    enabled: true
+                    base_uri: '/_api/rpc'
+                    default_ttl: null
+                    driver: null
+
+                # HTTP Push: AppEngine Channel-based push transport
+                channel:
+                    token: null
+                    script: null
+                    enabled: false
+                    status: 'DISCONNECTED'
+                    default_ttl: null
+                    driver: null
+
+                # Low-Level Bidirectional TCP: WebSockets-based push transport
+                sockets:
+                    host: null
+                    token: null
+                    enabled: false
+                    status: 'DISCONNECTED'
+                    default_ttl: null
+                    driver: null
+
+                headers:
+                    "X-ServiceClient": ["AppToolsJS/", AppTools.version.get()].join(''),
+                    "X-ServiceTransport": "AppTools/JSONRPC"
+
+            # Holds information about the current API consumer.
+            consumer: null
+
+            # Holds runtime request information.
+            requestpool:
+                id: 1
+
+                # Request Pool
+                data: []
+                index: []
+
+                # Done/Pending/Error/Expected
+                done: []
+                queue: []
+                error: []
+                expect: {}
+                context: new RPCContext
+
+            # Holds runtime service information.
+            servicepool:
+                name_i: {}
+                rpc_apis: []
+
+            # Holds a history of all RPC interaction in the current page.
+            history:
+                last_request: null
+                last_error: null
+                last_success: null
+                rpclog: []
+
+            # In-memory cache for request/response pairs.
+            cache:
+                data: {}   # Holds request/response data.
+                index: {}  # Holds request/response fingerprints => data mappings.
 
         @internals =
 
-            # RPC Transports
-            transports:
+            validate: (rpc) => rpc
 
-                xhr:
-                    factory: () =>
-                        ## Create event listener
-                        req = original_xhr()
-                        if req
-                            if typeof req.addEventListener == 'function'
-                                req.addEventListener("progress", (ev) =>
-                                        apptools.events.trigger('RPC_PROGRESS', {event: ev})
-                                , false)
-                        return req
-                websocket:
-                    factory: () =>
-                        if apptools.agent.capabilities.websockets?
-                            if @state.sockets?.enabled? == true
-                                if @state.sockets?.default? == null && @state.sockets?.open?.length == 0
+            respond: (directive, use_cache=false) =>
 
-                                    ## Lazy-load first socket
-                                    socket = new apptools.push.socket.establish()
+                if use_cache
+                    if directive.request.cacheable? and directive.request.cacheable == true
+                        try
+                            return @internals.validate(x) if ((x = @state.cache.data[@state.cache.index[directive.request.fingerprint()]])? and not x.expired())
+                return [@internals.expect(directive, use_cache), @internals.send_rpc(directive)]
 
-                                    ## Register with state
-                                    @state.sockets.enabled = true
-                                    @state.sockets.default = socket
-                                    @state.sockets.status = 'CONNECTED'
-                                req = {}
-                                return req
-                        else
-                            apptools.dev.error 'RPC', 'Socket factory can\'t produce a socket because the client platform does not support WebSockets.'
-                            throw "SocketsNotSupported: The client platform does not have support for websockets."
+            expect: (directive, use_cache) =>
 
-            # Default HTTP headers
-            config:
-                headers:
-                    "X-ServiceClient": ["AppToolsJS/", [
-                                                AppTools.version.major.toString(),
-                                                AppTools.version.minor.toString(),
-                                                AppTools.version.micro.toString(),
-                                                AppTools.version.build.toString()].join('.'),
-                                         "-", AppTools.version.release.toString()].join('')
+                directive.status = 'pending'
+                directive.request.state('pending')
+                directive.response.state('pending')
 
-                    "X-ServiceTransport": "AppTools/JSONRPC"
+                return new RPCPromise(directive, (@state.requestpool.expect[@state.requestpool.index[directive.request.envelope.id]] = {
 
-        # Build internal API
-        @rpc =
+                    success: (response) =>
 
-            # Runtime RPC History
-            lastRequest: null
-            lastFailure: null
-            lastResponse: null
-            history: {}
+                        # Mark as `done`
+                        directive.status = 'success'
+                        directive.request.state('fulfilled')
+                        directive.response.state('success')
 
-            # Config
-            action_prefix: null
-            alt_push_response: false
-            used_ids: []
+                        @state.requestpool.done.push(@state.requestpool.index[directive.request.envelope.id])
 
-            # Creates RPCAPIs
-            factory: (name_or_apis, base_uri, methods, config) =>
+                        # Remove from `queued` and `expect`
+                        @state.requestpool.queue.splice(directive.queue_i, directive.queue_i)
+                        delete @state.requestpool.expect[@state.requestpool.index[directive.request.envelope.id]]
 
-                if _.is_array(name_or_apis)
-                    if _.is_array(name_or_apis[0])
-                        (apptools.api[(name = item[0])] = new RPCAPI(name, item[0], item[1], item[2], apptools)) for item in name_or_apis if name_or_apis?
-                    else
-                        (apptools.api[(name = item.name)] = new RPCAPI(name, item.base_uri, item.methods, item.config, apptools)) for item in name_or_apis if name_or_apis?
+                        if use_cache
+                            @response.store(directive.request, directive.response)
 
-                else
-                    apptools.api[(name = name_or_apis)] = new RPCAPI(name, base_uri, methods, config, apptools)
+                        # Dispatch AppTools-level event and request-level success event
+                        apptools.events.dispatch('RPC_SUCCESS', directive.request, response, directive)
+                        directive.response.events.success(response.response.content, response.response.type, response)
+                        return
 
-                return @
+                    failure: (response) =>
 
+                        # Mark as `failure`
+                        directive.status = 'failure'
+                        directive.response.state('failure')
+                        directive.request.state('fulfilled')
 
-            # Assembles an RPC endpoint URL
-            _assembleRPCURL: (method, api, prefix, base_uri) =>
-                if not api? and not base_uri?
-                    throw "[RPC] Error: Must specify either an API or base URI to generate an RPC endpoint."
-                else
-                    if api? ## if we're working with an API, get the base URI
-                        if base_uri?
-                            base_uri = base_uri + '/' + api
-                        else
-                            base_uri = @base_rpc_uri+'/'+api
-                    else
-                        if not base_uri?
-                            base_uri = @base_rpc_uri
+                        @state.requestpool.error.push(@state.requestpool.index[directive.request.envelope.id])
 
-                    if prefix isnt null
-                        return [prefix+base_uri, method].join('.')
-                    else
-                        return [base_uri, method].join('.')
+                        # Remove from `queued` and `expect`
+                        @state.requestpool.queue.splice(directive.queue_i, directive.queue_i)
+                        delete @state.requestpool.expect[@state.requestpool.index[directive.request.envelope.id]]
 
-            # Provisions a locally-scoped RPC ID
-            provisionRequestID: =>
-                if @rpc.used_ids.length > 0
-                    id = Math.max.apply(@, @rpc.used_ids)+1
-                    @rpc.used_ids.push(id)
-                    return id
-                else
-                    @rpc.used_ids.push(1)
-                    return 1
+                        # Dispatch AppTools-level event and request-level failure event
+                        apptools.events.dispatch('RPC_FAILURE', directive.request, response, directive)
+                        directive.response.events.failure(response.response.content, response.response.type, response)
+                        return
 
-            # Decode an RPC response
-            decodeRPCResponse: (data, status, xhr, success, error) =>
-                success(data, status)
+                    progress: (event) =>
 
-            # Create an RPC request
-            createRPCRequest: (config) =>
+                        # Dispatch AppTools-level event and request-level event
+                        apptools.events.dispatch('RPC_PROGRESS', directive.request, event, directive)
+                        directive.response.events.progress?(directive.request, event, directive)
+                        return
 
-                request = new RPCRequest(@rpc.provisionRequestID())
+                }))
 
-                if config.api?
-                    request.setAPI(config.api)
+            send_rpc: (directive) =>
 
-                if config.method?
-                    request.setMethod(config.method)
+                driver = @state.config.jsonrpc.driver ||= apptools.sys.drivers.resolve(RPCInterface)
+                if not driver?
+                    apptools.dev.error('RPC', 'Failed to resolve RPC-compatible driver for prompted RPC directive.', driver, directive)
+                    throw "Failed to resolve RPC-compatible driver prompted RPC directive."
 
-                if config.agent?
-                    request.setAgent(config.agent)
+                queue_i = directive.queue_i = (@state.requestpool.queue.push(@state.requestpool.index[directive.request.envelope.id]) - 1)
+                xhr = directive.xhr = driver.rpc.factory(directive.request)
 
-                if config.opts?
-                    request.setOpts(config.opts)
+                apptools.events.dispatch('RPC_FULFILL', directive.request, directive.xhr, directive)
+                driver.rpc.fulfill(directive.xhr, directive.request, (status, response) => @response.dispatch(status, directive, response))
 
-                if config.base_uri?
-                    request.setBaseURI(config.base_uri)
+                return directive
 
-                if config.params?
-                    request.setParams(config.params)
+            dispatch: (directive, raw_response) =>
 
-                if config.async?
-                    request.setAsync(config.async)
+                if not @state.requestpool.expect[@state.requestpool.index[directive.request.envelope.id]]?
+                    apptools.dev.error('RPC', 'Received a request to dispatch an unexpected RPC response.', directive)
+                    throw "Unexpected RPC response."
+                    return @
+                return @state.requestpool.expect[@state.requestpool.index[directive.request.envelope.id]][directive.response.status](directive.response, directive.response.type, raw_response)
 
-                if config.push?
-                    request.setPush(config.push)
-                else
-                    request.setPush(@rpc.alt_push_response)
+        ## Request Tools/Methods
+        @request =
 
-                apptools.dev.verbose('RPC', 'New Request', request, config)
-                request.setAction(@rpc._assembleRPCURL(request.method, request.api, @rpc.action_prefix, @base_rpc_uri))
+            # Provision a request ID, with space in dispatch arrays laid out.
+            provision: () => @state.requestpool.id++
 
+            # Create a new RPCRequest object, from an RPCContext + RPCEnvelope and a proxied method call.
+            factory: (rpc, request_class=RPCRequest) =>
+                request = new request_class(rpc)
+                data_i = @state.requestpool.index[request.envelope.id] = (@state.requestpool.data.push({request: request, response: new RPCResponse(id: request.envelope.id), status: 'constructed'}) - 1)
+                apptools.events.dispatch('RPC_CREATE', rpc, request, data_i)
                 return request
 
-            # Fulfill a request server-side
-            fulfillRPCRequest: (config, request, callbacks, transport='xhr') =>
+            # Fulfill an RPC by exchanging it for a response with either a cache or the Service Layer.
+            fulfill: (request, callbacks={}, use_cache=false) =>
+                @state.requestpool.data[@state.requestpool.index[request.envelope.id]].response.callbacks(_.extend(@response.callbacks.default, callbacks))
+                return @internals.respond(@state.requestpool.data[@state.requestpool.index[request.envelope.id]], use_cache)
 
-                apptools.dev.verbose('RPC', 'Fulfill', config, request, callbacks)
+            context:
 
-                if apptools.sys.drivers.resolve('transport', 'jquery') != false
-                    # Splice in our custom factory
-                    $.ajaxSetup(
+                # Return the default RPC execution context.
+                default: (setdefault) =>
+                    (@state.requestpool.context = setdefault) unless not setdefault?
+                    return @state.requestpool.context
 
-                        type: 'POST'
-                        accepts: 'application/json'
-                        contentType: 'application/json'
-                        global: true
-                        xhr: () =>
-                            return @internals.transports.xhr.factory()
-                        headers: @internals.config.headers
+                # Create a new RPC execution context.
+                factory: => new RPCContext(arguments...)
 
-                    )
+        ## Response Tools/Methods
+        @response =
 
-                @rpc.lastRequest = request
+            store: (request, response) => @  # Response caching is currently stubbed.
 
-                @rpc.history[request.envelope.id] =
-                    request: request
-                    config: config
-                    callbacks: callbacks
+            dispatch: (status, directive, raw_response) =>
 
-                if request.action is null
-                    if request.method is null
-                        throw "[RPC] Error: Request must specify at least an action or method."
-                    if request.base_uri is null
-                        if request.api is null
-                            throw "[RPC] Error: Request must have an API or explicity defined BASE_URI."
-                        else
-                            request.action = @rpc._assembleRPCURL(request.method, request.api, @rpc.action_prefix)
-                    else
-                        request.action = @rpc._assembleRPCURL(request.method, null, @rpc.action_prefix, request.base_uri)
+                (directive.response = new RPCErrorResponse(directive.response, raw_response)) unless status != 'failure'
+                directive.response.inflate(raw_response) unless status == 'failure'
+                return @internals.dispatch(directive, raw_response)
 
-                if request.action is null or request.action is undefined
-                    throw '[RPC] Error: Could not determine RPC action.'
+            callbacks:
 
-                context =
-                    config: config
-                    request: request
-                    callbacks: callbacks
-                apptools.events.trigger('RPC_FULFILL', context)
+                default:
 
-                do (apptools, request, callbacks) ->
+                    success: (response) => apptools.dev.verbose('RPC', 'Encountered successful RPC with no callback.', response)
+                    failure: (response) => apptools.dev.verbose('RPC', 'Encountered failing RPC with no error callback.', response)
 
-                    xhr_settings =
-                        resourceId: request.api+'.'+request.method
-                        url: request.action
-                        data: JSON.stringify request.payload()
-                        async: request.ajax.async
-                        global: request.ajax.global
-                        type: request.ajax.http_method or 'POST'
-                        accepts: request.ajax.accepts or 'application/json'
-                        crossDomain: request.ajax.crossDomain
-                        dataType: request.ajax.dataType
-                        processData: false
-                        ifModified: request.ajax.ifModified
-                        contentType: request.ajax.contentType
+        ## Service Tools
+        @service =
 
-                        beforeSend: (xhr, settings) =>
+            # Factory method for installing new RPCAPIs.
+            factory: (name_or_apis, base_uri, methods, config) =>
 
-                            apptools.api.rpc.history[request.envelope.id].xhr = xhr;
-                            callbacks?.status?('beforeSend')
-                            return xhr
+                (name_or_apis = [name_or_apis]) unless _.is_array(name_or_apis)
+                for item in name_or_apis
+                    [name, methods, config] = item
+                    @state.servicepool.name_i[name] = @state.servicepool.rpc_apis.push(new RPCAPI(name, methods, config, apptools)) - 1
+                    apptools.api[name] = @state.servicepool.rpc_apis[@state.servicepool.name_i[name]]
+                return @
 
-                        error: (xhr, status, error) =>
-                            callbacks?.status?('error')
-                            apptools.dev.error('RPC', 'Error: ', {error: error, status: status, xhr: xhr})
-                            apptools.api.rpc.lastFailure = error
-                            apptools.api.rpc.history[request.envelope.id].xhr = xhr
-                            apptools.api.rpc.history[request.envelope.id].status = status
-                            apptools.api.rpc.history[request.envelope.id].failure = error
+            # Callback from an RPCAPI once it is done constructing itself
+            register: (service, methods, config) => apptools.events.dispatch('CONSTRUCT_SERVICE', service, methods, config)
 
-                            context =
-                                xhr: xhr
-                                status: status
-                                error: error
+class CoreServicesAPI extends CoreAPI
 
-                            apptools.events.trigger('RPC_ERROR', context)
-                            apptools.events.trigger('RPC_COMPLETE', context)
-                            callbacks?.failure?(error)
+    ## CoreServicesAPI - sits on top of the RPCAPI to abstract server interaction
 
-                        success: (data, status, xhr) =>
+    @mount = 'api'
+    @events = ['SERVICES_INIT', 'CONSTRUCT_SERVICE']
 
-                            if data.status == 'ok'
-                                callbacks?.status?('success')
-                                apptools.dev.log('RPC', 'Success', data, status, xhr)
-                                apptools.api.rpc.lastResponse = data
-                                apptools.api.rpc.history[request.envelope.id].xhr = xhr
-                                apptools.api.rpc.history[request.envelope.id].status = status
-                                apptools.api.rpc.history[request.envelope.id].response = data
-
-                                context =
-                                    xhr: xhr
-                                    status: status
-                                    data: data
-                                apptools.events.trigger('RPC_SUCCESS', context)
-                                apptools.events.trigger('RPC_COMPLETE', context)
-
-                                callbacks?.success?(data.response.content, data.response.type, data)
-
-                            else if data.status == 'wait'
-                                callbacks?.status?('wait')
-                                apptools.dev.log('RPC', 'PushWait', data, status, xhr)
-                                context =
-                                    xhr: xhr
-                                    status: status
-                                    data: data
-
-                                callbacks?.wait?(data, status, xhr)
-                                apptools.push.internal.expect(request.envelope.id, request, xhr)
-
-                            else if data.status == 'fail'
-                                callbacks?.status?('error')
-                                apptools.dev.error('RPC', 'Error: ', {error: data, status: status, xhr: xhr})
-                                apptools.api.rpc.lastFailure = data
-                                apptools.api.rpc.history[request.envelope.id].xhr = xhr
-                                apptools.api.rpc.history[request.envelope.id].status = status
-                                apptools.api.rpc.history[request.envelope.id].failure = data
-
-                                context =
-                                    xhr: xhr
-                                    status: status
-                                    error: data
-
-                                apptools.events.trigger('RPC_ERROR', context)
-                                apptools.events.trigger('RPC_COMPLETE', context)
-                                callbacks?.failure?(data)
-
-                            else
-                                callbacks?.success?(data.response.content, data.response.type, data)
-
-
-                        statusCode:
-
-                            404: =>
-                                apptools.dev.error('RPC', 'HTTP/404', 'Could not resolve RPC action URI.')
-                                apptools.events.trigger('RPC_ERROR', message: 'RPC 404: Could not resolve RPC action URI.', code: 404)
-
-                            403: ->
-                                apptools.dev.error('RPC', 'HTTP/403', 'Not authorized to access the specified endpoint.')
-                                apptools.events.trigger('RPC_ERROR', message: 'RPC 403: Not authorized to access the specified endpoint.', code: 403)
-
-                            500: ->
-                                apptools.dev.error('RPC', 'HTTP/500', 'Internal server error.')
-                                apptools.events.trigger('RPC_ERROR', message: 'RPC 500: Woops! Something went wrong. Please try again.', code: 500)
-
-
-                    driver = apptools.sys.drivers.resolve('transport')
-
-                    if driver.name == 'amplify'
-                        apptools.dev.verbose('RPC', 'Fulfilling with AmplifyJS transport adapter.')
-                        xhr_action = driver.driver.request
-                        xhr = xhr_action(xhr_settings)
-
-                    else if driver.name == 'jquery'
-                        apptools.dev.verbose('RPC', 'Fulfilling with jQuery AJAX transport adapter.', xhr_settings)
-                        xhr = jQuery.ajax(xhr_settings.url, xhr_settings)
-
-                    else
-                        apptools.dev.error 'RPC', 'Native RPC adapter is currently stubbed.'
-                        throw "[RPC]: No valid AJAX transport adapter found."
-
-                    apptools.dev.verbose('RPC', 'Resulting XHR: ', xhr)
-
-                return {id: request.envelope.id, request: request}
-
-        @ext = null
-
-        @registerAPIMethod = (api, name, base_uri, config) =>
-            amplify = apptools.sys.drivers.resolve('transport', 'amplify')
-            if amplify isnt false
-                apptools.dev.log('RPCAPI', 'Registering request procedure "'+api+'.'+name+'" with AmplifyJS.')
-
-                resourceId = api+'.'+name
-                base_settings =
-                    accepts: 'application/json'
-                    type: 'POST'
-                    dataType: 'json'
-                    contentType: 'application/json'
-                    url: @rpc._assembleRPCURL(name, api, null, base_uri)
-                    decoder: @rpc.decodeRPCResponse
-
-                if config.caching?
-                    if config.caching == true
-                        base_settings.caching = 'persist'
-                    amplify.request.define(resourceId, "ajax", base_settings)
-                else
-                    amplify.request.define(resourceId, "ajax", base_settings)
+    constructor: (apptools, window) ->
 
         @_init = (apptools) =>
+
+            # Check for in-page services config, and send over to the RPCAPI.
             if apptools.sys.state.config? and apptools.sys.state.config?.services?
+
+                if apptools.sys.state.config.services.endpoint?
+                    apptools.rpc.state.config.jsonrpc.host = apptools.sys.state.config.services.endpoint
+
+                if apptools.sys.state.config.services.consumer?
+                    apptools.rpc.state.config.consumer = apptools.sys.state.config.services.consumer
+
+                apptools.events.dispatch('SERVICES_INIT', apptools.rpc.state.config)
+                apptools.rpc.service.factory(apptools.sys.state.config.services.apis)
                 apptools.dev.verbose('RPC', 'Autoloaded in-page RPC config.', apptools.sys.state.config.services)
-                @rpc.factory(apptools.sys.state.config.services.apis)
-                @rpc.action_prefix = apptools.sys.state.config.services.endpoint
-                @rpc.consumer = apptools.sys.state.config.services.consumer
             return
 
+(i::install(window, i) for i in [TransportInterface, RPCInterface, NativeXHR, RPCPromise, ServiceLayerDriver])
 
-class RPCDriver extends CoreInterface
-
-    @methods = []
-    @export = "private"
-
-    constructor: () ->
-        return
-
-
-# Export classes
-@__apptools_preinit.abstract_base_classes.push RPCAPI, RPCDriver, CoreRPCAPI, RPCRequest, RPCResponse
-@__apptools_preinit.abstract_feature_interfaces.push {adapter: RPCDriver, name: "transport"}
+@__apptools_preinit.abstract_base_classes.push CoreRPCAPI
+@__apptools_preinit.abstract_base_classes.push CoreServicesAPI

@@ -815,4 +815,3 @@ if window.$?
     $.extend _: window._
 else
     window.$ = window._.get
-

@@ -1,1 +1,1 @@
-# Plugin integration: coming soon
+class Integration extends CoreAPI

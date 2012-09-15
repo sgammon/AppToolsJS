@@ -1,41 +1,33 @@
 # Dev/Debug API
 class CoreDevAPI extends CoreAPI
 
+    debug:
+        strict: false
+        logging: true
+        eventlog: false
+        verbose: true
+        serverside: false
+
     @mount = 'dev'
     @events = []
 
     constructor: (apptools, window) ->
 
-        # Setup internals
-        @config = {}
-
-        # Setup externals
-        @environment = {}
-        @performance = {}
-        @debug =
-            strict: false
-            logging: true
-            eventlog: false
-            verbose: true
-            serverside: false
-
-
-        @setDebug = (@debug) =>
-            # Set debug settings (usually triggered by the server)
-            @_sendLog("[CoreDev] Debug has been set.", @debug)
-
-        @_sendLog = (args...) =>
+        _sendLog = (args...) =>
             console.log(args...)
 
-        @_sendError = (args...) =>
+        _sendError = (args...) =>
             console.error(args...)
+
+        _sendWarning = (args...) =>
+            console.warn(args...)
 
         @eventlog = (operation, message, context...) =>
             # Only log if eventlogging is on
-            if @debug.eventlog
+            if CoreDevAPI::debug.eventlog
                 # Only log triggers and registrations if system-wide debug is on
                 if operation.toLowerCase() in ['bridge', 'register', 'hook']
-                    if apptools.config.devtools.debug != true
+                    if CoreDevAPI::debug.verbose != true
                         return
                 @log ['Events', operation].join(':'), message, context...
             return
@@ -44,41 +36,41 @@ class CoreDevAPI extends CoreAPI
             # Log something to the console, even when verbose is off (but not when logging is off)
             if not context?
                 context = '{no context}'
-            if @debug.logging is true
-                @_sendLog "["+module+"] INFO: "+message, context...
+            if CoreDevAPI::debug.logging is true
+                _sendLog "["+module+"] INFO: "+message, context...
             return
 
         @warning = @warn = (module, message, context...) =>
             # Log a warning to the console, even when verbose is off (but not when logging is off)
             if not context?
                 context = '{no context}'
-            if @debug.logging is true
-                @_sendLog "[" + module + "] WARNING: "+message, context...
+            if CoreDevAPI::debug.logging is true
+                _sendWarning "[" + module + "] WARNING: "+message, context...
             return
 
         @error = (module, message, context...) =>
             # Log an error to the console (always ignores verbose flag)
-            if @debug.logging is true
-                @_sendError "["+module+"] ERROR: "+message, context...
+            if CoreDevAPI::debug.logging is true
+                _sendError "["+module+"] ERROR: "+message, context...
             return
 
         @verbose = (module, message, context...) =>
             # Log something to the console, but only if verbose is on
-            if @debug.verbose is true
-                @_sendLog "["+module+"] DEBUG: "+message, context...
+            if CoreDevAPI::debug.verbose is true
+                _sendLog "["+module+"] DEBUG: "+message, context...
             return
 
         @exception = @critical = (module, message, exception=window.AppToolsException, context...) =>
             # Log an error and throw an exception
-            @_sendLog "A critical error or unhandled exception occurred."
-            @_sendLog "[" + module + "] CRITICAL: "+message, context...
+            _sendLog "A critical error or unhandled exception occurred."
+            _sendLog "[" + module + "] CRITICAL: "+message, context...
             throw new exception(module, message, context)
 
-        if apptools.config.devtools.debug == true
-            @debug.logging = true
-            @debug.verbose = true
-            if apptools.config.devtools.strict?
-                @debug.strict = apptools.config.devtools.strict
+        if apptools.sys.state.config.devtools.debug == true
+            CoreDevAPI::debug.logging = true
+            CoreDevAPI::debug.verbose = true
+            if apptools.sys.state.config.devtools.strict?
+                CoreDevAPI::debug.strict = apptools.sys.state.config.devtools.strict
 
 
 @__apptools_preinit.abstract_base_classes.push CoreDevAPI

@@ -1,3 +1,37 @@
+#### === Render/DOM Interfaces === ####
+class DOMInterface extends Interface
+
+    capability: 'dom'
+    required: []
+
+class QueryInterface extends Interface
+
+    capability: 'query'
+    parent: DOMInterface
+    required: ['element_by_id', 'elements_by_class', 'elements_by_tag', 'get']
+
+    get: (selector) ->
+    element_by_id: (id) ->
+    elements_by_tag: (tagname) ->
+    elements_by_class: (classname) ->
+
+class RenderInterface extends Interface
+
+    capability: 'render'
+    parent: DOMInterface
+    required: []
+
+    render: (template, context) ->
+
+class AnimationInterface extends Interface
+
+    capability: 'animation'
+    parent: DOMInterface
+    required: ['animate']
+
+    animate: (to, settings) ->
+
+
 # Render API
 class CoreRenderAPI extends CoreAPI
 
@@ -17,6 +51,7 @@ class CoreRenderAPI extends CoreAPI
         ])._init()
 
 
+class TemplateLoader extends CoreObject
 class RenderException extends CoreException
 
 class Template
@@ -37,31 +72,8 @@ class DOMTemplate extends Template
     constructor : (element) ->
         attrs = _.to_array(element.attributes)
 
-class QueryDriver extends CoreInterface
 
-    @export = 'private'
-    @methods = []
-
-    constructor: () ->
-        return
-
-class AnimationDriver extends CoreInterface
-
-    @export = 'private'
-    @methods = []
-
-    constructor: () ->
-        return
-
-class RenderDriver extends CoreInterface
-
-    @export = 'private'
-    @methods = []
-
-    constructor: () ->
-        return
-
-class StringLoader extends RenderDriver
+class StringLoader extends TemplateLoader
     # takes JS string template ({{etc}}) & returns prepared Template
     constructor: () ->
 
@@ -73,7 +85,7 @@ class StringLoader extends RenderDriver
 
         return @
 
-class DOMLoader extends RenderDriver
+class DOMLoader extends TemplateLoader
     # takes pre-classed element and returns prepared Template
     constructor: () ->
 
@@ -83,7 +95,7 @@ class DOMLoader extends RenderDriver
 
         return @
 
-class ModelLoader extends RenderDriver
+class ModelLoader extends TemplateLoader
     # takes object model & returns prepped Template
     constructor: () ->
 
@@ -93,12 +105,22 @@ class ModelLoader extends RenderDriver
 
         return @
 
-class StorageLoader extends RenderDriver
+class StorageLoader extends TemplateLoader
     # takes StorageAPI key & returns stored Template
     constructor: () ->
 
         @load = (pre_template) =>
             console.log(@constructor.name, 'Loading templates from storage currently stubbed.')
+            return pre_template
+
+        return @
+
+class ServiceLoader extends TemplateLoader
+    # takes remote template path & returns via service layer call
+    constructor: () ->
+
+        @load = (pre_template) =>
+            console.log(@constructor.name, 'Loading templates from a remote service is currently stubbed.')
             return pre_template
 
         return @
@@ -236,6 +258,23 @@ class RenderEnvironment
         return @
 
 
+@__apptools_preinit.abstract_base_classes.push  QueryInterface,
+                                                RenderInterface,
+                                                AnimationInterface,
+                                                RenderException,
+                                                Template,
+                                                DOMTemplate,
+                                                TemplateLoader,
+                                                RenderContext,
+                                                RenderEnvironment,
+                                                StringLoader,
+                                                DOMLoader,
+                                                ModelLoader,
+                                                StorageLoader,
+                                                ServiceLoader,
+                                                CoreRenderAPI
 
-@__apptools_preinit.abstract_base_classes.push CoreRenderAPI, QueryDriver, AnimationDriver, RenderDriver, StringLoader, DOMLoader, ModelLoader, StorageLoader, RenderEnvironment
-@__apptools_preinit.abstract_feature_interfaces.push {adapter: QueryDriver, name: "query"}, {adapter: RenderDriver, name: "render"}, {adapter: AnimationDriver, name: "animation"}
+@__apptools_preinit.abstract_feature_interfaces.push DOMInterface,
+                                                     QueryInterface,
+                                                     RenderInterface,
+                                                     AnimationInterface
