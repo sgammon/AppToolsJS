@@ -544,3 +544,6 @@ class CoreServicesAPI extends CoreAPI
             return
 
 (i::install(window, i) for i in [TransportInterface, RPCInterface, NativeXHR, RPCPromise, ServiceLayerDriver])
+
+@__apptools_preinit.abstract_base_classes.push CoreRPCAPI
+@__apptools_preinit.abstract_base_classes.push CoreServicesAPI

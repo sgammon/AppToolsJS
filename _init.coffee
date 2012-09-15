@@ -272,10 +272,10 @@ class AppTools
                             interfaces = (@sys.interfaces.resolve(iface) for iface in driver::interface)
 
                             if driver::library?
-                                driver = @sys.state.drivers[driver.name] = new driver(driver::library)
+                                driver = @sys.state.drivers[driver.name] = new driver(driver::library, @, window)
 
                             else
-                                driver = @sys.state.drivers[driver.name] = new driver(@)
+                                driver = @sys.state.drivers[driver.name] = new driver(@, window)
 
                             # Validate interfaces
                             for iface in interfaces
