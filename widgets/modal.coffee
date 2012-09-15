@@ -70,7 +70,7 @@ class ModalAPI extends CoreWidgetAPI
 class Modal extends CoreWidget
 
     template: [
-        '<div id="{{<element_id}}-modal-dialog" style="opacity: 0;" class="fixed dropshadow modal-dialog{{config.rounded}} rounded{{/config.rounded}}">',
+        '<div id="{{<element_id}}-modal-dialog" style="opacity: 0;" class="fixed dropshadow modal-dialog{{config.rounded}} rounded{{/config.rounded}} none">',
             '<div id="{{&1}}-modal-fade" style="opacity: 0" class="modal-fade">',
                 '<div id="{{&1}}-modal-content" class="modal-content">{{=html}}</div>',
                 '<div id="{{&1}}-modal-ui" class="absolute modal-ui">',
@@ -136,23 +136,28 @@ class Modal extends CoreWidget
 
             classify: (element, method) =>
 
-                if method is 'close' or not method?
+                if element?
+                    ecl = element.classList
 
-                    ecl.remove('dropshadow') if _.in_array((ecl=element.classList), 'dropshadow')
-                    ecl.remove('rounded') if _.in_array(ecl, 'rounded')
-                    element.style.padding = '0px'
-                    return element
+                    if method is 'close' or not method?
+                        ecl.remove('dropshadow')
+                        ecl.remove('rounded')
+                        ecl.add('none')
+                        ecl.remove('block')
 
-                else if method is 'open'
+                        element.style.padding = '0px'
+                        return element
 
-                    ecl.add('dropshadow') if not _.in_array((ecl=element.classList), 'dropshadow')
-                    ecl.add('rounded') if not _.in_array(ecl, 'rounded') and @_state.config.rounded
-                    element.style.padding = '10px'
-                    return element
+                    else if method is 'open'
+                        ecl.add('block')
+                        ecl.remove('none')
+                        ecl.add('dropshadow')
+                        ecl.add('rounded')
 
-                else if not element?
+                        element.style.padding = '10px'
+                        return element
 
-                    return false
+                else return false
 
         @make = () =>
 
@@ -196,7 +201,6 @@ class Modal extends CoreWidget
             final.opacity = 1
 
             # show & bind close()
-            dialog.style.display = 'block'
             dialog.animate final, dialog_animation
 
             _.bind(close_x, 'mousedown', @close)
@@ -219,7 +223,6 @@ class Modal extends CoreWidget
             dialog.animate final,
                 delay: 400
                 complete: (d) =>
-                    d.style.display = 'none'
                     return @internal.classify(d, 'close')
 
             @_state.active = false
