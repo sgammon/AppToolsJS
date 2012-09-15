@@ -1,7 +1,13 @@
 #### === Render/DOM Interfaces === ####
+class DOMInterface extends Interface
+
+    capability: 'dom'
+    required: []
+
 class QueryInterface extends Interface
 
     capability: 'query'
+    parent: DOMInterface
     required: ['element_by_id', 'elements_by_class', 'elements_by_tag', 'get']
 
     get: (selector) ->
@@ -12,6 +18,7 @@ class QueryInterface extends Interface
 class RenderInterface extends Interface
 
     capability: 'render'
+    parent: DOMInterface
     required: []
 
     render: (template, context) ->
@@ -19,6 +26,7 @@ class RenderInterface extends Interface
 class AnimationInterface extends Interface
 
     capability: 'animation'
+    parent: DOMInterface
     required: ['animate']
 
     animate: (to, settings) ->
