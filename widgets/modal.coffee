@@ -106,6 +106,8 @@ class Modal extends CoreWidget
                     x: 0.4
                     y: 0.4
 
+                size: {}                                # for fixed width/height: integers or percentages
+
                 rounded: true
                 calc: null
 
@@ -119,20 +121,21 @@ class Modal extends CoreWidget
                 # returns prepared modal property object
                 if @_state.config.calc?
                     return @_state.config.calc()
-                else
-                    css = {}
-                    r = @_state.config.ratio
-                    wW = window.innerWidth
-                    wH = window.innerHeight
-                    dW = Math.floor r.x*wW
-                    dH = Math.floor r.y*wH
 
-                    css.width = dW
-                    css.height = dH
-                    css.left = Math.floor((wW-dW)/2)
-                    css.top = Math.floor((wH-dH)/2)
+                css = {}
+                wW = window.innerWidth
+                wH = window.innerHeight
+                r = @_state.config.ratio
 
-                    return css
+                dW = @_state.config.size.width or Math.floor r.x*wW
+                dH = @_state.config.size.height or Math.floor r.y*wH
+
+                css.width = dW
+                css.height = dH
+                css.left = Math.floor((wW-dW)/2)
+                css.top = Math.floor((wH-dH)/2)
+
+                return css
 
             classify: (element, method) =>
 
