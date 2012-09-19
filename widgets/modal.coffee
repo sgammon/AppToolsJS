@@ -176,7 +176,7 @@ class Modal extends CoreWidget
             dialog.style[prop] = val + 'px' for prop, val of @_state.config.initial
 
             content.style.opacity = 1
-            content.style.height = @internal.calc().height
+            content.style.maxHeight = @internal.calc().height - 22 + 'px'
 
             pre.innerHTML = ''
 
@@ -234,7 +234,8 @@ class Modal extends CoreWidget
         @_init = () =>
 
             dialog = @make()
-            _.get(@_state.trigger_id).removeAttribute('href')
+            trigger = _.get(@_state.trigger_id)
+            trigger.removeAttribute(if trigger.hasAttribute('href') then 'href' else 'data-href')
             @render = (html) =>
                 _.get('modal-content', _.get('#'+@id)).innerHTML = html
 

@@ -151,33 +151,20 @@ class Tabs extends CoreWidget
             console.log('Switching to tab: '+ target_id)
 
             if not current   # if no tab selected (first click), select first tab
-                target_tab.classList.remove('none')
                 target_tab.classList.add('current-tab')
-                target_tab.classList.add('block')
                 trigger.classList.add('current-tab')
                 @_state.current_tab = target_tab.getAttribute('id')
-                target_tab.animate opacity: 1,
-                    duration: 300
-                    complete: () =>
-                        @_state.active = false
+                target_tab.fadeIn(display: 'block')
+                @_state.active = false
 
             else
-                current_tab.animate opacity: 0,
-                    duration: 200
-                    complete: () =>
-                        current_a.classList.remove('current-tab')
-                        current_tab.classList.remove('current-tab')
-                        current_tab.classList.remove('block')
-                        target_tab.classList.remove('none')
-                        current_tab.classList.add('none')
-                        target_tab.classList.add('block')
-                        target_tab.classList.add('current-tab')
-                        trigger.classList.add('current-tab')
-                        @_state.current_tab = target_tab.getAttribute('id')
-                        target_tab.animate opacity: 1,
-                            duration: 300
-                            complete: () =>
-                                @_state.active = false
+                current_tab.fadeOut callback: () =>
+                    current_a.classList.remove('current-tab')
+                    current_tab.classList.remove('current-tab')
+                    target_tab.classList.add('current-tab')
+                    trigger.classList.add('current-tab')
+                    @_state.current_tab = target_tab.getAttribute('id')
+                    target_tab.fadeIn(display: 'block')
 
 
 

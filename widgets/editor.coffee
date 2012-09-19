@@ -168,7 +168,7 @@ class Editor extends CoreWidget
             element_id: target.getAttribute('id')
             keyname: target.getAttribute('data-keyname') or null
             namespace: target.getAttribute('data-namespace') or null
-            pane_id: null
+            pane_id: 'editor-pane-'+target.getAttribute('id')
             cached_content: null
             cached_templates: {}
 
@@ -220,7 +220,7 @@ class Editor extends CoreWidget
 
                 _w = pane.scrollWidth
                 pane.style.right = (window.innerWidth - _w)/2 + 'px'
-                _.bind(step.find('editorbutton', 'click', @ctrl))
+                _.bind(step.find('.editorbutton'), 'click', @ctrl)
 
                 return @callback(cb)
 
