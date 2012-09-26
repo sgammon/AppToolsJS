@@ -56,7 +56,7 @@ class GoogleAnalytics extends Integration
                 campaigns: {}
                 transactions: {}
 
-            # analytics API references
+            # analytics API mappings
             _ga:
                 queue: null
                 tracker: null
@@ -224,7 +224,7 @@ class GoogleAnalytics extends Integration
                                 $.apptools.dev.verbose 'Analytics', 'Emitted "' + event_spec + '".', args
                                 return args
 
-                return @
+                return @mappings
 
             provision_tracker: (name, account) =>
 
