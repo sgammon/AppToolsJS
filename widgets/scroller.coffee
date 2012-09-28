@@ -23,7 +23,7 @@ class ScrollerAPI extends CoreWidgetAPI
 
         @create = (target, options) =>
 
-            options ?= if target.hasAttribute('data-options') then JSON.parse(target.getAttribute('data-options')) else {}
+            options ?= _.data(target, 'options') or {}
 
             scroller = new Scroller target, options
             id = scroller._state.element_id
@@ -48,13 +48,13 @@ class ScrollerAPI extends CoreWidgetAPI
                 do (k, v) =>
                     console.log '[Scroller]', 'K: ', k
                     console.log '[Scroller]', 'V: ', v
-                    _.bind(_.get(k), 'mousedown', scroller.jump(v))
+                    _.get(k).addEventListener('mousedown', scroller.jump)
 
             return scroller
 
         @disable = (scroller) =>
 
-            _.unbind(k, 'mousedown') for k in scroller._state.panes
+            k.removeEventListener('mousedown', scroller.jump) for k in scroller._state.panes
             return scroller
 
 

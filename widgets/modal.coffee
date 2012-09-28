@@ -13,7 +13,7 @@ class ModalAPI extends CoreWidgetAPI
 
         @create = (target, trigger, callback, options) =>
 
-            options ?= if target.hasAttribute('data-options') then JSON.parse(target.getAttribute('data-options')) else {}
+            options ?= _.data(target, 'options') or {}
 
             modal = new Modal(target, trigger, options)
             id = modal._state.cached_id
@@ -43,13 +43,13 @@ class ModalAPI extends CoreWidgetAPI
         @enable = (modal) =>
 
             trigger = _.get(modal._state.trigger_id)
-            _.bind(trigger, 'mousedown', modal.open, false)
+            trigger.addEventListener('mousedown', modal.open, false)
 
             return modal
 
         @disable = (modal) =>
 
-            _.unbind(_.get(modal._state.trigger_id))
+            _.get(modal._state.trigger_id).removeEventListener('mousedown', modal.open)
 
             return modal
 
@@ -249,7 +249,7 @@ class Modal extends CoreWidget
                 modal.style[prop] = val + 'px' for prop, val of newcss
                 return
 
-            _.bind(window, 'resize', _.throttle(@resize, 350, false), true)
+            window.addEventListener('resize', _.throttle(@resize, 350, false), true)
 
             @_state.init = true
 

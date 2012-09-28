@@ -32,7 +32,7 @@ class AnimationInterface extends Interface
     animate: (to, settings) ->
 
 
-# Render API
+#### === Core Render Classes === ####
 class CoreRenderAPI extends CoreAPI
 
     @mount = 'render'
@@ -40,82 +40,231 @@ class CoreRenderAPI extends CoreAPI
     @export = 'private'
 
     constructor: (apptools, window) ->
-        @environment = new RenderEnvironment(
-            shared: true
-            context: new RenderContext()
-        ).set_loader_priority([
-            StringLoader,
-            ModelLoader,
-            DOMLoader,
-            StorageLoader,
-        ])._init()
+        return @
 
-
-class TemplateLoader extends CoreObject
 class RenderException extends CoreException
 
 class Template
 
     @export = 'public'
+    @idx = 0
+    @uuid = () ->
+        return _.zero_fill(@idx++, 3)
 
-    constructor : (@source) ->
+    blockre = /\{\{\s*?(([@!>]?)(.+?))\s*?\}\}(([\s\S]+?)(\{\{\s*?:\1\s*?\}\}([\s\S]+?))?)\{\{\s*?\/(?:\1|\s*?\3\s*?)\s*?\}\}/g
+    valre = /\{\{\s*?([<&=%+])\s*?(.+?)\s*?\}\}/g
+    tagre = /\{\{[\w\W.]*\}\}/
+    fnre = /function\s?(\w*)\s?\(([\w\W.]*)\)\s?\{([\w\W.]*)\}/
+    _re = /[\r\n\t]/g
 
-        @name = ''
-        @cacheable =
-            rendered: false     # should we cache rendered templates?
-            source: false       # what about source?
+    constructor :(source, compile=false, name) ->
 
-        return @
+        @t = source.replace(_re, '')
+        @name = if name? then name else 'template'+Template.uuid()
 
-class DOMTemplate extends Template
+        @temp = []
 
-    constructor : (element) ->
-        attrs = _.to_array(element.attributes)
+        @compile = () => return Template::compile.apply(@, arguments)
+        @bind = () => return Template::bind.apply(@, arguments)
 
+        return (if !!compile then (if compile.nodeType then @compile(@bind(compile)) else @compile(@)) else @)
 
-class StringLoader extends TemplateLoader
-    # takes JS string template ({{etc}}) & returns prepared Template
-    constructor: () ->
+    bind: (element) ->
+        delete @bind
 
-        @engine = new t('')
-
-        @load = (template) =>
-            @engine.template(template)
-            return @
-
-        return @
-
-class DOMLoader extends TemplateLoader
-    # takes pre-classed element and returns prepared Template
-    constructor: () ->
-
-        @load = (pre_template) =>
-            console.log(@constructor.name, 'Loading DOM templates currently stubbed.')
-            return pre_template
+        @node = element
+        @env = document.createElement(@node.tagName)
 
         return @
 
-class ModelLoader extends TemplateLoader
-    # takes object model & returns prepped Template
-    constructor: () ->
+    compile: (th, strvar='str', ctxvar='ctx') ->
 
-        @load = (pre_template) =>
-            console.log(@constructor.name, 'Loading model templates currently stubbed.')
-            return pre_template
+        name = th.name
+        template = th.t
+        nodestr = name+'.node'
 
+        console.log('[Render]', 'Compiling AppTools JS template:', name)
+
+        depth = -1
+
+        functionize = (string) =>
+
+            b = ''
+            ctxnow = if depth > -1 then '_val' else ctxvar
+
+            live = string.match(tagre)
+            live = if !!live then live[0] else string
+            index = (if !!~string.search(tagre) then string.search(tagre) else string.length)
+            start = @safe(string.slice(0, index))
+            end = @safe(string.slice(live.length + index))
+
+            b += '\'' + start if start.length > 0
+            b += live.replace(blockre, (_, __, meta, key, inner, if_true, has_else, if_false) =>
+                temp = if start.length > 0 then '\';' else ''
+                keystr = [ctxnow, key].join('.')
+
+                if meta is '' or not meta
+                    temp += 'if(!!'+keystr+'){'+ functionize(if_true)
+                    temp += 'else{'+ functionize(if_false) if has_else
+
+                else if meta is '!'
+                    temp += 'if(!'+keystr+'){ '+strvar+'+=' + functionize(inner)
+
+                else if meta is '@' or meta is '>'
+
+                    loopstr = '_'+key.slice(0, 2) + key.slice(key.length - 2)
+                    loopvar = '_'+loopstr
+                    _valstr = loopstr+'['+loopvar+']'
+
+                    depth++ if meta is '>'
+
+                    temp += 'var '+loopstr+'='+keystr+';for(var '+loopvar+' in '+loopstr+'){'
+                    temp += if meta is '@' then ctxvar+'._key='+loopvar+';'+ctxvar+'._val='+_valstr else '_val='+_valstr
+                    temp += ';'+strvar+'+='
+                    temp += functionize(inner)
+                    if meta is '>'
+                        temp += ';_val=null;'
+                        depth--
+
+                temp += '}'
+                temp += strvar+'+=\'' if end.length > 0
+
+                return temp
+            ).replace(valre, (_, meta, key) =>
+                if meta is '+'
+                    child = new Function('','return this.'+key+';')()
+                    return '' if not child?
+                    valstr = 'this.'+key+'(false,'+ctxnow+')'
+                    child = if typeof child isnt 'function' then (if child.t then (child.name = key; child.compile(child)) else new Template(child, true, key);) else child
+                    return valstr
+                else
+                    valstr = [ctxnow, key].join('.')
+                    return '\'+'+ (if meta is '%' then 'Template.prototype.scrub('+valstr+')' else valstr) + '+\''
+            )
+            b += '\'+\'' + end + '\'' if end.length > 0
+            return b
+
+        body = ['this.'+name+' = (function() {',
+            name + '.name = \''+name+'\';',
+            'function '+name+' ('+ctxvar+') {',
+            'var _val,n='+nodestr+',',
+            'dom=(typeof '+ctxvar+'==\'boolean\')?',
+            '(c = '+ctxvar+', '+ctxvar+' = arguments[1], c)',
+            ':true;var '+strvar+'=',
+            functionize(template),
+            ';return (dom && n != null)?',
+            'n.outerHTML='+strvar,
+            ':'+strvar+';}',
+            'return '+name+';}).call(this);',
+            'return this.'+name+';'
+        ].join('')
+
+        f = new Function('', body)()
+        if th.env?
+            f.node = th.node
+        else
+            f.bind = (el) ->
+                @node = el
+                delete @bind
+                return @node
+
+        console.log('[Render]', 'Template compiled:', String(f).replace(/\{[\w\W.]*\}/, '{...}'))
+
+        return f
+
+    parse: (fragment, vars) ->
+        if not vars?
+            vars = fragment
+            fragment = @t
+
+        vars = vars._ctx if vars._ctx
+
+        return if vars.tag and vars.attrs then _create_element_string(vars.tag, vars.attrs, vars.separator) else fragment.replace(blockre, (_, __, meta, key, inner, if_true, has_else, if_false) =>
+            val = @get_value(vars, key)
+            temp = ''
+
+            if not val
+                return (if meta is '!' then @parse(inner, vars) else (if has_else then @parse(if_false, vars) else ''))
+
+            if not meta
+                return @parse(if has_else then if_true else `inner, vars`)
+
+            if meta is '@'
+                for k, v of val
+                    temp += @parse(inner, {_key: k, _val: v}) if val.hasOwnProperty(k)
+
+            if meta is '>'
+                if Array.isArray(val) or val.constructor.name is 'ListField'
+                    temp += @parse(inner, {_ctx: item}) for item in val
+                else temp += @parse(inner, {_ctx: val})
+
+            return temp
+        ).replace(valre, (_, meta, key) =>
+            return @temp[parseInt(key)-1] if meta is '&'
+            val = @get_value(vars, key)
+            @temp.push(val) if meta is '<'
+            return (if val? then (if meta is '%' then @scrub(val) else val) else '')
+        )
+
+    unparse: (element) ->
+
+        elobj = {attributes: {}}
+        parent = element.parentNode
+        depth = 0
+
+        elobj.tagName = element.tagName
+        elobj.attributes[attr.name] = attr.nodeValue for attr in element.attributes
+        elobj.innerHTML = element.innerHTML
+
+        if not parent.hasAttribute('id')
+            while (depth++; parent = parent.parentNode)
+                continue if not parent.hasAttribute('id')
+                break
+
+        elobj.parent = parent.getAttribute('id')
+        elobj.depth = depth
+
+        return elobj
+
+    scrub: (val) ->
+        return new Option(val).innerHTML.split('\'').join('&#39;').split('"').join('&quot;')
+
+    safe: (val) ->
+        return val.split('\'').join('&#39;').split('"').join('&quot;')
+
+    get_value: (vars, key) ->
+        parts = key.split('.')
+        while parts.length
+            return false if parts[0] not of vars
+            vars = vars[parts.shift()]
+
+        return (if typeof vars is 'function' then vars() else vars)
+
+    template: (@t) ->
         return @
 
-class StorageLoader extends TemplateLoader
-    # takes StorageAPI key & returns stored Template
-    constructor: () ->
+    render: (ctx) ->
+        dom = if typeof ctx is 'boolean' then (c = ctx; ctx = arguments[1]; c) else true
 
-        @load = (pre_template) =>
-            console.log(@constructor.name, 'Loading templates from storage currently stubbed.')
-            return pre_template
+        return false if not ctx?
 
-        return @
+        html = @parse(ctx)
+        return html if not dom or not @env?
 
-class ServiceLoader extends TemplateLoader
+        @env.appendChild(@node.cloneNode(false))
+        @env.firstChild.outerHTML = html
+
+        newnode = @env.firstChild
+
+        if dom
+            @node.parentNode.insertBefore(newnode, @node)
+
+        @node = newnode
+        return @node
+
+window.t = Template
+
+class TemplateLoader
     # takes remote template path & returns via service layer call
     constructor: () ->
 
@@ -125,137 +274,6 @@ class ServiceLoader extends TemplateLoader
 
         return @
 
-class RenderContext
-
-    constructor: (ctxs=[]) ->
-
-        for ctx in ctxs
-            _.extend(@, ctx)
-
-        @add = (context) =>
-            _.extend(@, context)
-            return @
-
-        return @
-
-class RenderEnvironment
-
-    @export = 'public'
-
-    constructor: (options={}) ->
-        ## Setup initial state & extend with user options
-
-        @state = _.extend(true, {},
-
-            template_loaded: false     # is template ready to render?
-
-            template: null             # default template to use
-            context: false             # base context
-            loader: false              # loader
-            loader_priority: []        # order in which to load
-
-            filters: {}                # environment filters (currently stubbed)
-            globals: {}                # base globals (probably not needed in JS?)
-            shared: false              # can environment be reused/shared?
-
-        , options)
-
-        ## Internal methods
-
-        @resolve_loader = () =>
-            # If no loader set, resolve appropriate source loader via loader priority list.
-            console.log('[Render] Resolving template loader...')
-
-            priority = @state.loader_priority
-            errors = []
-            for driver in priority
-                try
-                    d = new driver()
-                catch err
-                    console.log('[Render] Invalid driver:', driver.toString())
-                finally
-                    break if d?
-                    continue
-
-            if errors.length is priority.length
-                throw new RenderException(@constructor.name, 'Unable to resolve valid template loader.')
-            else
-                console.log('[Render] Template loader resolved.')
-                return d
-
-        @parse = () =>
-            # parse Template and data object into pre-rendered Template
-            console.log('Template parsing currently stubbed.')
-
-            return @
-
-        ## External methods
-
-        # Template loading
-        @set_loader = (@loader) =>
-            # Manually sets template loader for this environment.
-            console.log('Manually setting template loader.')
-
-            return @
-
-        @set_loader_priority = (p) =>
-            # Manually sets priority array for template loaders
-            console.log('Manually assigning template loader priority.')
-
-            @state.loader_priority = p if _.is_array(p)
-            return @
-
-        @load = (name) =>
-            # Loads a named template
-
-            if _.is_array(name)
-                return @select(name, loader)
-            else
-                return @
-
-        @select = (names, loader=@loader) =>
-            # Returns first found template in list of template names
-
-            if !_.is_array(names)
-                return @load(names, loader)
-            else
-                return @
-
-        # Single-use manual loaders
-        @load[k] = v for k, v of {
-            from_string: (string) =>
-                # Manually load template from string parameter.
-                return @
-
-            from_element: (element) =>
-                # Manually load template from DOM element.
-                return @
-
-            from_model: (model) =>
-                # Manually load template from model.
-                return @
-        }
-
-        ## API methods
-        @selfdestruct = () =>
-            # Perform any final cleanup & trigger self-delete with Render API
-            console.log('selfdestruct() currently stubbed. lucky you.');
-
-            return @
-
-        ## Init
-        @_init = () =>
-            if not @loader?
-                try
-                    @loader = @resolve_loader()
-                    @state.loader = true
-                catch err
-                    console.error(@constructor.name, 'Couldn\'t resolve a template loader. Reraising...')
-                    throw err
-
-            return delete @_init
-
-        return @
 
 
 @__apptools_preinit.abstract_base_classes.push  QueryInterface,
@@ -263,15 +281,7 @@ class RenderEnvironment
                                                 AnimationInterface,
                                                 RenderException,
                                                 Template,
-                                                DOMTemplate,
                                                 TemplateLoader,
-                                                RenderContext,
-                                                RenderEnvironment,
-                                                StringLoader,
-                                                DOMLoader,
-                                                ModelLoader,
-                                                StorageLoader,
-                                                ServiceLoader,
                                                 CoreRenderAPI
 
 @__apptools_preinit.abstract_feature_interfaces.push DOMInterface,

@@ -13,7 +13,7 @@ class TabsAPI extends CoreAPI
 
         @create = (target) =>
 
-            options = if target.hasAttribute('data-options') then JSON.parse(target.getAttribute('data-options')) else {}
+            options ?= _.data(target, 'options') or {}
 
             tabs = new Tabs(target, options)
             id = tabs._state.element_id
@@ -35,12 +35,12 @@ class TabsAPI extends CoreAPI
 
         @enable = (tabs) =>
 
-            _.bind(_.get(trigger), 'mousedown', tabs.switch, false) for trigger of tabs._state.tabs
+            trigger.addEventListener('mousedown', tabs.switch, false) for trigger of tabs._state.tabs
             return tabs
 
         @disable = (tabs) =>
 
-            _.unbind(_.get(trigger), 'mousedown') for trigger of tabs._state.tabs
+            trigger.removeEventListener('mousedown', tabs.switch) for trigger of tabs._state.tabs
             return tabs
 
         @_init = () =>

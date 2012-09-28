@@ -69,7 +69,7 @@ class UploaderAPI extends CoreAPI
 
             uploaders = _.get('pre-uploader')
             _i = (_u) =>
-                options = _.extend(true, (if _u.hasAttribute('data-options') then JSON.parse(_u.getAttribute('data-options')) else {}), id: _u.getAttribute('id'))
+                options = _.extend(true, (if _u.hasAttribute('data-options') then JSON.parse(_.safe_to_JSON(target.getAttribute('data-options'))) else {}), id: _u.getAttribute('id'))
 
                 _u.classList.remove('pre-uploader')
                 _u.classList.add('uploader')

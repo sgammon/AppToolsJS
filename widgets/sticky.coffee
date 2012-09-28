@@ -14,7 +14,7 @@ class StickyAPI extends CoreAPI
 
         @create = (target) =>
 
-            options = if target.hasAttribute('data-options') then JSON.parse(target.getAttribute('data-options')) else {}
+            options ?= _.data(target, 'options') or {}
 
             sticky = new Sticky(target, options)
             id = sticky._state.element_id
@@ -27,13 +27,13 @@ class StickyAPI extends CoreAPI
 
         @enable = (sticky) =>
 
-            _.bind(window, 'scroll', _.debounce(sticky.refresh, 15, false))
+            window.addEventListener('scroll', _.debounce(sticky.refresh, 15, false))
 
             return sticky
 
         @disable = (sticky) =>
 
-            _.unbind(window, 'scroll')
+            window.removeEventListener('scroll')
 
             return sticky
 

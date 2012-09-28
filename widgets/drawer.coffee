@@ -13,7 +13,7 @@ class DrawerAPI extends CoreAPI
 
         @create = (target) =>
 
-            options = if target.hasAttribute('data-options') then JSON.parse(target.getAttribute('data-options')) else {}
+            options = _.data(target, 'options') or {}
 
             drawer = new Drawer(target, options)
             id = drawer._state.element_id

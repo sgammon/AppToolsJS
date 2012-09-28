@@ -112,18 +112,14 @@ class Util
 
         # type/membership checks
         @is_function = (object) =>
-            return typeof object is 'function'
+            return @type_of(object) is 'function'
 
         @is_object = (object) =>
-            return typeof object is 'object'
+            return @type_of(object) is 'object'
 
         @is_raw_object = (object) =>
-            if not object or typeof object isnt 'object' or object.nodeType or @is_window(object)
-                return false    # check if it exists, is type object, and is not DOM obj or window
-
-            if object.constructor? and not object.hasOwnProperty('constructor') and not object.constructor::hasOwnProperty 'isPrototypeOf'
-                return false    # rough check for constructed objects
-
+            return false if not object or @type_of(object) isnt 'object' or object.nodeType or @is_window(object)
+            return false if object.constructor? and not object.hasOwnProperty('constructor') and not object.constructor::hasOwnProperty 'isPrototypeOf'
             return true
 
         @is_empty_object = (object) =>
@@ -131,16 +127,58 @@ class Util
             return true
 
         @is_window = (object) =>
-            return typeof object is 'object' and (!!~@indexOf(object.constructor::, 'setInterval') or (object.self? and object.self is object) or (Window? and object instanceof Window))
+            return @type_of(object) is 'object' and (!!~@indexOf(object.constructor::, 'setInterval') or (object.self? and object.self is object) or (Window? and object instanceof Window))
 
         @is_body = (object) =>
             return @is_object(object) and (Object.prototype.toString.call(object) is '[object HTMLBodyElement]' or object.constructor.name is 'HTMLBodyElement')
 
         @is_array = Array.isArray or (object) =>
-            return (typeof object is 'array' or Object.prototype.toString.call(object) is '[object Array]' or object.constructor.name is 'Array')
+            return (@type_of(object) is 'array' or Object.prototype.toString.call(object) is '[object Array]' or object.constructor.name is 'Array')
 
-        @is_string = (str) =>
-            return str.constructor.name is 'String' or (str.charAt and str.length)
+        @is_string = (string) =>
+            return @type_of(string) is 'string'
+
+        @attr = (element, key, data) =>
+            element.setAttribute(key, data)
+            return element
+
+        @data = (element=document, key, data) =>
+
+            re = /^data-(\w*)$/
+
+            if not key?
+                data = {}
+                attrs = element.attributes
+                ((name = re.exec(attr.name)[1]; data[name] = @data(element, name)) if re.test(attr.name)) for attr in attrs
+                return (if @is_empty_object(data) then null else data)
+
+            if @is_raw_object(key)
+                @data(element, k, v) for k, v of key
+                return element
+
+            key = if re.test(key) then key else 'data-'+key
+
+            if data?
+                return element.removeAttribute(key) if data is false
+
+                if @is_object(data) or @is_array(data)
+                    data = @JSON_to_safe(JSON.stringify(data))
+
+                element.setAttribute(key, data)
+                return element
+
+            else
+                value = element.getAttribute(key) or false
+                return if !!value then (if @is_JSON(value) then JSON.parse(@safe_to_JSON(value)) else value) else null
+
+        @is_JSON = (string) =>
+            return @is_string(string) and /[\{\[](?:.*)[\}\]]/.test(string)
+
+        @JSON_to_safe = (json) =>
+            return json.split('"').join('\'')
+
+        @safe_to_JSON = (safe) =>
+            return safe.split('\'').join('"')
 
         @in_array = (array, item) =>
             return !!~@indexOf(array, item)
@@ -172,7 +210,7 @@ class Util
 
 
         @each = (arr, fn, ctx=window) =>
-            if typeof fn isnt 'function'
+            if @type_of(fn) isnt 'function'
                 throw 'each() requires an iterator as the second parameter'
             else
                 results = []
@@ -186,7 +224,7 @@ class Util
                 return
 
         @map = (arr, fn, ctx=window) =>
-            if typeof fn isnt 'function'
+            if @type_of(fn) isnt 'function'
                 throw 'map() requires an iterator as the second parameter'
             else
                 if @is_array(arr)
@@ -201,7 +239,7 @@ class Util
                 return results
 
         @filter = (arr, fn, ctx=window) =>
-            if typeof fn isnt 'function'
+            if @type_of(fn) isnt 'function'
                 throw 'filter() requires an iterator as the second parameter'
             else
                 if @is_array(arr)
@@ -216,7 +254,7 @@ class Util
                 return results
 
         @reject = (arr, fn, ctx=window) =>
-            if typeof fn isnt 'function'
+            if @type_of(fn) isnt 'function'
                 throw 'reject() requires an iterator as the second parameter'
             else
                 if @is_array(arr)
@@ -241,7 +279,7 @@ class Util
             return results
 
         @all = (arr, fn, ctx=window) =>
-            if typeof fn isnt 'function'
+            if @type_of(fn) isnt 'function'
                 throw 'all() requires an iterator as the second parameter'
             else
                 if (_arr = @is_array(arr)) or (_obj = @is_object(arr))
@@ -251,7 +289,7 @@ class Util
                 else throw 'all() requires an iterable as the first parameter'
 
         @any = (arr, fn, ctx=window) =>
-            if typeof fn isnt 'function'
+            if @type_of(fn) isnt 'function'
                 throw 'any() requires an iterator as the second parameter'
             else
                 if (_arr = @is_array(arr)) or (_obj = @is_object(arr))
@@ -263,7 +301,7 @@ class Util
 
         @reduce = (arr, fn, initial, ctx=window) =>
             initial ?= if @is_array(arr[0]) then [] else 0
-            if typeof fn isnt 'function'
+            if @type_of(fn) isnt 'function'
                 throw 'reduce() requires an iterator as the second parameter'
             else
                 if @is_array(arr)
@@ -275,7 +313,7 @@ class Util
 
         @reduce_right = (arr, fn, initial, ctx=window) =>
             initial ?= if @is_array(arr[last = arr.length - 1]) then [] else 0
-            if typeof fn isnt 'function'
+            if @type_of(fn) isnt 'function'
                 throw 'reduce_right() requires an iterator as the second parameter'
             else
                 if @is_array(arr)
@@ -283,7 +321,7 @@ class Util
                 else throw 'reduce_right() requires an array as the first parameter'
 
         @sort = (arr, fn) =>
-            if fn? and typeof fn isnt 'function'
+            if fn? and @type_of(fn) isnt 'function'
                 throw 'sort() requires an iterator as the second parameter'
             else if (_s = Array.prototype.sort)?
                 return _s.call(arr, fn)
@@ -307,11 +345,11 @@ class Util
             return new_obj
 
         @first = (array) =>
-            arr = array
+            arr = array.slice()
             return arr.shift()
 
         @last = (array) =>
-            arr = array
+            arr = array.slice()
             return arr.pop()
 
         @purge = (array) =>
@@ -330,7 +368,7 @@ class Util
             tag = tag.toLowerCase()
 
             el_str = '<' + tag
-            el_str += ' ' + k + '="' + v + '"' for k, v of attrs
+            el_str += ' ' + k + '=' + '"' + (if @is_JSON(v) then @JSON_to_safe(v) else (if @is_raw_object(v) or @is_array(v) then @JSON_to_safe(JSON.stringify(v)) else v)) + '"' for k, v of attrs
             el_str += ' ' + ext if ext?
             el_str += '>'
             el_str += separator + '</' + tag + '>' if not @in_array(no_close, tag)
@@ -352,7 +390,6 @@ class Util
             frag.appendChild(node)
 
             return frag
-
 
         @add = (element_type, attrs, parent_node=document.body) =>
             # tag name, attr hash, doc node to insert into (defaults to body)
@@ -388,13 +425,14 @@ class Util
             return node.parentNode.removeChild(node)
 
         @get = (query, node=document) => # ID, class or tag
+            return false if not query? or not @type_of(query) is 'string'
+            return query if query.nodeType
             if @is_array(query)
                 query = query[0]
-            if @is_window node
+            if node.setInterval?
                 node = document
-            return query if not query? or query.nodeType
             if @in_array(['.', '#'], query[0])
-                [selector, query] = [query[0], query.slice(1)]
+                [selector, query] = [query.charAt(0), Array.prototype.slice.call(query, 1).join('')]
                 return (if selector is '#' then document.getElementById(query) else @to_array(node.getElementsByClassName(query)))
             else
                 return id if (id = document.getElementById(query))?
@@ -404,6 +442,9 @@ class Util
 
         @val = (el) =>
             return (if el.value then el.value else el.innerText)
+
+        @html = (el) =>
+            return el.innerHTML
 
         @get_offset = (elem) =>
             offL = offT = 0
@@ -415,7 +456,13 @@ class Util
             return left: offL, top: offT
 
         @has_class = (element, cls) =>
-            return element.classList?.contains?(cls) or element.className && new RegExp('\\s*'+cls+'\\s*').test element.className
+            return element.classList?.contains(cls) or element.className && new RegExp('\\s*'+cls+'\\s*').test(element.className)
+
+        @add_class = (element, cls) =>
+            return element.classList?.add(cls) or element.className += ' '+cls
+
+        @remove_class = (element, cls) =>
+            return element.classList?.remove(cls) or element.className.replace(new RegExp('\\s*'+cls+'\\s*'), ' ').replace(/\s\s/, ' ')
 
         @is_id = (str) =>
             return true if str.charAt(0) is '#'
@@ -527,7 +574,7 @@ class Util
 
         @defer = (fn, timeout=false) =>
 
-            if typeof fn is 'boolean'
+            if @type_of(fn) is 'boolean'
                 return @ready(fn)
 
             else if not @is(t = parseInt(timeout))
@@ -635,7 +682,7 @@ class Util
             len = arguments.length
 
             # check if deep copy
-            if typeof target is 'boolean'
+            if @type_of(target) is 'boolean'
                 deep = target
                 target = arguments[1] or {}
                 i++
@@ -649,7 +696,7 @@ class Util
             for arg in args
                 object = arg
 
-                for own key, value of object
+                for key, value of object
                     continue if target is value # avoid crashing browsers thx
                     o = String key
                     clone = value
@@ -764,49 +811,40 @@ class Util
             return (Array(length).join('0') + num).slice(-length)
 
         @_init = () =>
-            Element.prototype.find = (query) -> return _.get(query, @)
-            Element.prototype.getOffset = () -> return _.get_offset(@)
-            Element.prototype.remove = () -> return _.remove(@)
-            Element.prototype.hasClass = (cls) -> return _.has_class(@, cls)
-            Element.prototype.addClass = (cls) -> return _.add_class(@, cls)
-            Element.prototype.removeClass = (cls) -> return _.remove_class(@, cls)
-            Element.prototype.isChild = (parent) -> return _.is_child(parent, @)
-            Element.prototype.isParent = (child) -> return _.is_child(@, child)
-            Element.prototype.resolveAncestor = (node, bound) -> return _.resolve_common_ancestor(@, node, bound)
-            Element.prototype.bind = () -> return (_.to_array(arguments).unshift(@); _.bind.apply(_, arguments))
-            Element.prototype.unbind = () -> return (_.to_array(arguments).unshift(@); _.unbind.apply(_, arguments))
-            Element.prototype.append = (node) -> return _.append(@, node)
-            Element.prototype.val = () -> return _.val(@)
-            Element.prototype.fadeIn = () -> return HTMLElement.prototype.fadeInJacked.apply(@, arguments)
-            Element.prototype.fadeOut = () -> return HTMLElement.prototype.fadeOutJacked.apply(@, arguments)
 
-            HTMLElement.prototype.find = Element.prototype.find
-            HTMLElement.prototype.getOffset = Element.prototype.getOffset
-            HTMLElement.prototype.remove = Element.prototype.remove
-            HTMLElement.prototype.hasClass = Element.prototype.hasClass
-            HTMLElement.prototype.addClass = Element.prototype.addClass
-            HTMLElement.prototype.removeClass = Element.prototype.removeClass
-            HTMLElement.prototype.isChild = Element.prototype.isChild
-            HTMLElement.prototype.isParent = Element.prototype.isParent
-            HTMLElement.prototype.resolveAncestor = Element.prototype.resolveAncestor
-            HTMLElement.prototype.bind = Element.prototype.bind
-            HTMLElement.prototype.unbind = Element.prototype.unbind
-            HTMLElement.prototype.append = Element.prototype.append
-            HTMLElement.prototype.val = Element.prototype.val
-            HTMLElement.prototype.fadeIn = Element.prototype.fadeIn
-            HTMLElement.prototype.fadeOut = Element.prototype.fadeOut
+            bindings =
+                find: (query) -> return _.get(query, @)
+                getOffset: () -> return _.get_offset(@)
+                hasClass: (cls) -> return _.has_class(@, cls)
+                addClass: (cls) -> return _.add_class(@, cls)
+                removeClass: (cls) -> return _.remove_class(@, cls)
+                isChild: (parent) -> return _.is_child(parent, @)
+                isParent: (child) -> return _.is_child(@, child)
+                resolveAncestor: (node, bound) -> return _.resolve_common_ancestor(@, node, bound)
+                bind: () -> return (_.to_array(arguments).unshift(@); _.bind.apply(_, arguments))
+                unbind: () -> return (_.to_array(arguments).unshift(@); _.unbind.apply(_, arguments))
+                append: (node) -> return _.append(@, node)
+                remove: () -> return _.remove(@)
+                val: () -> return _.val(@)
+                html: () -> return _.html(@)
+                fadeIn: () -> return HTMLElement.prototype.fadeInJacked.apply(@, arguments)
+                fadeOut: () -> return HTMLElement.prototype.fadeOutJacked.apply(@, arguments)
+                attr: (key, data) -> return _.attr.call(_, @, key, data)
+                data: (key, data) -> return _.data.call(_, @, key, data)
 
-            Array.prototype.each = Array.prototype.forEach or _.each
+            @extend(Element.prototype, bindings)
+            @extend(HTMLElement.prototype, bindings)
+
+            String.prototype.isJSON = () -> return _.is_JSON(@)
 
             document.ready = () -> return _.ready.apply(_, arguments)
 
             @_state.init = true
             delete @_init
+            delete @constructor
             return @
 
 
-@__apptools_preinit.abstract_base_classes.push Util
-@__apptools_preinit.deferred_core_modules.push {module: Util}
 window.Util = Util
 
 window._ = new Util()._init()

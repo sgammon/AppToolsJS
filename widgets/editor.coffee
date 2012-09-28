@@ -12,9 +12,9 @@ class EditorAPI extends CoreWidgetAPI
             init: false
 
 
-        @create = (target) =>
+        @create = (target, options) =>
 
-            options = if target.hasAttribute('data-options') then JSON.parse(target.getAttribute('data-options')) else {}
+            options = _.data(target, 'options') or {}
 
             editor = new Editor target, options
             id = editor._state.element_id
@@ -33,14 +33,13 @@ class EditorAPI extends CoreWidgetAPI
 
         @enable = (editor) =>
 
-            target = _.get(editor._state.element_id)
-            _.bind(target, 'dblclick', editor.edit, false)
+            _.get(editor._state.element_id).addEventListener('dblclick', editor.edit, false)
 
             return editor
 
         @disable = (editor) =>
 
-            _.unbind(_.get(editor._state.element_id), 'dblclick')
+            _.get(editor._state.element_id).removeEventListener('dblclick', editor.edit, false)
             return editor
 
         @get = (element_id) =>

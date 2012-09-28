@@ -13,7 +13,7 @@ class AccordionAPI extends CoreWidgetAPI
 
         @create = (target) =>
 
-            options = if target.hasAttribute('data-options') then JSON.parse(target.getAttribute('data-options')) else {}
+            options = _.data(target, 'options') or {}
 
             accordion = new Accordion(target, options)
             id = accordion._state.element_id
