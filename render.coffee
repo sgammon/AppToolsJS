@@ -85,12 +85,12 @@ class Template
 
         console.log('[Render]', 'Compiling AppTools JS template:', name)
 
-        depth = -1
+        depth = 0
 
         functionize = (string) =>
 
             b = ''
-            ctxnow = if depth > -1 then '_val' else ctxvar
+            ctxnow = if depth > 0 then '_val' else ctxvar
 
             live = string.match(tagre)
             live = if !!live then live[0] else string
