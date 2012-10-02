@@ -127,7 +127,7 @@ class Util
             return true
 
         @is_window = (object) =>
-            return @type_of(object) is 'object' and (!!~@indexOf(object.constructor::, 'setInterval') or (object.self? and object.self is object) or (Window? and object instanceof Window))
+            return !!object.setInterval or (object.self? and object.self is object) or (Window? and object instanceof Window)
 
         @is_body = (object) =>
             return @is_object(object) and (Object.prototype.toString.call(object) is '[object HTMLBodyElement]' or object.constructor.name is 'HTMLBodyElement')
@@ -482,6 +482,9 @@ class Util
 
             return result
 
+        @children = (element) =>
+            return @to_array(element.childNodes)
+
         @find_parent = (child, query) =>
             return (if (r = (@filter([@get(query)], (res) => return @is_child(res, child))[0]))? then r else null)
 
@@ -820,9 +823,10 @@ class Util
                 removeClass: (cls) -> return _.remove_class(@, cls)
                 isChild: (parent) -> return _.is_child(parent, @)
                 isParent: (child) -> return _.is_child(@, child)
+                children: () -> return _.children(@)
                 resolveAncestor: (node, bound) -> return _.resolve_common_ancestor(@, node, bound)
-                bind: () -> return (_.to_array(arguments).unshift(@); _.bind.apply(_, arguments))
-                unbind: () -> return (_.to_array(arguments).unshift(@); _.unbind.apply(_, arguments))
+                bind: (ev, fn, pr) -> return _.bind(@, ev, fn, pr)
+                unbind: (ev, fn, pr) -> return _.unbind(@, ev, fn, pr)
                 append: (node) -> return _.append(@, node)
                 remove: () -> return _.remove(@)
                 val: () -> return _.val(@)
@@ -842,7 +846,12 @@ class Util
             @_state.init = true
             delete @_init
             delete @constructor
-            return @
+            f = () ->
+                if arguments.length > 0
+                    return f.get.apply(f, arguments)
+
+            @.extend(f, @)
+            return f
 
 
 window.Util = Util

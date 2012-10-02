@@ -49,18 +49,19 @@ class Template
     @export = 'public'
     @idx = 0
     @uuid = () ->
-        return _.zero_fill(@idx++, 3)
+        @idx++
+        return _.zero_fill(@idx, 3)
 
     blockre = /\{\{\s*?(([@!>]?)(.+?))\s*?\}\}(([\s\S]+?)(\{\{\s*?:\1\s*?\}\}([\s\S]+?))?)\{\{\s*?\/(?:\1|\s*?\3\s*?)\s*?\}\}/g
-    valre = /\{\{\s*?([<&=%+])\s*?(.+?)\s*?\}\}/g
+    valre = /\{\{\s*?([<&=%\+])\s*?(.+?)\s*?\}\}/g
     tagre = /\{\{[\w\W.]*\}\}/
     fnre = /function\s?(\w*)\s?\(([\w\W.]*)\)\s?\{([\w\W.]*)\}/
-    _re = /[\r\n\t]/g
+    _re = /[\r\n\t]*/g
 
     constructor :(source, compile=false, name) ->
 
         @t = source.replace(_re, '')
-        @name = if name? then name else 'template'+Template.uuid()
+        @name = if name? then name else 'template-'+Template.uuid()
 
         @temp = []
 
@@ -85,66 +86,73 @@ class Template
 
         console.log('[Render]', 'Compiling AppTools JS template:', name)
 
-        depth = -1
+        depth = 0
 
         functionize = (string) =>
 
             b = ''
-            ctxnow = if depth > -1 then '_val' else ctxvar
+            ctxnow = if depth > 0 then '_val' else ctxvar
 
             live = string.match(tagre)
             live = if !!live then live[0] else string
+            newlive = live
             index = (if !!~string.search(tagre) then string.search(tagre) else string.length)
             start = @safe(string.slice(0, index))
             end = @safe(string.slice(live.length + index))
 
             b += '\'' + start if start.length > 0
-            b += live.replace(blockre, (_, __, meta, key, inner, if_true, has_else, if_false) =>
-                temp = if start.length > 0 then '\';' else ''
-                keystr = [ctxnow, key].join('.')
 
-                if meta is '' or not meta
-                    temp += 'if(!!'+keystr+'){'+ functionize(if_true)
-                    temp += 'else{'+ functionize(if_false) if has_else
+            if blockre.test(live)
+                newlive = newlive.replace blockre, (_, __, meta, key, inner, if_true, has_else, if_false) =>
+                    temp = if start.length > 0 then '\';' else ''
+                    keystr = [ctxnow, key].join('.')
 
-                else if meta is '!'
-                    temp += 'if(!'+keystr+'){ '+strvar+'+=' + functionize(inner)
+                    if meta is '' or not meta
+                        temp += 'if(!!'+keystr+'){'+strvar+'+=\''+functionize(if_true)
+                        temp += '\'}else{'+ functionize(if_false)+'\'' if has_else
 
-                else if meta is '@' or meta is '>'
+                    else if meta is '!'
+                        temp += 'if(!'+keystr+'){'+strvar+'+=' + functionize(inner)
 
-                    loopstr = '_'+key.slice(0, 2) + key.slice(key.length - 2)
-                    loopvar = '_'+loopstr
-                    _valstr = loopstr+'['+loopvar+']'
+                    else if meta is '@' or meta is '>'
 
-                    depth++ if meta is '>'
+                        loopstr = '_'+key.slice(0, 2) + key.slice(key.length - 2)
+                        loopvar = '_'+loopstr
+                        _valstr = loopstr+'['+loopvar+']'
 
-                    temp += 'var '+loopstr+'='+keystr+';for(var '+loopvar+' in '+loopstr+'){'
-                    temp += if meta is '@' then ctxvar+'._key='+loopvar+';'+ctxvar+'._val='+_valstr else '_val='+_valstr
-                    temp += ';'+strvar+'+='
-                    temp += functionize(inner)
-                    if meta is '>'
-                        temp += ';_val=null;'
-                        depth--
+                        depth++ if meta is '>'
 
-                temp += '}'
-                temp += strvar+'+=\'' if end.length > 0
+                        temp += 'var '+loopstr+'='+keystr+';for(var '+loopvar+' in '+loopstr+'){'
+                        temp += if meta is '@' then ctxvar+'._key='+loopvar+';'+ctxvar+'._val='+_valstr else '_val='+_valstr
+                        temp += ';'+strvar+'+='
+                        temp += functionize(inner)
+                        if meta is '>'
+                            temp += ';_val=null;'
+                            depth--
 
-                return temp
-            ).replace(valre, (_, meta, key) =>
-                if meta is '+'
-                    child = new Function('','return this.'+key+';')()
-                    return '' if not child?
-                    valstr = 'this.'+key+'(false,'+ctxnow+')'
-                    child = if typeof child isnt 'function' then (if child.t then (child.name = key; child.compile(child)) else new Template(child, true, key);) else child
-                    return valstr
-                else
-                    valstr = [ctxnow, key].join('.')
-                    return '\'+'+ (if meta is '%' then 'Template.prototype.scrub('+valstr+')' else valstr) + '+\''
-            )
+                    temp += '}'
+                    temp += strvar+'+=\'' if end.length > 0
+
+                    return temp
+            if valre.test(newlive)
+                newlive = newlive.replace valre, (_, meta, key) =>
+                    if meta is '+'
+                        child = new Function('', 'return this.'+key+';')
+                        return '' if not child?
+                        valstr = 'this.'+key+'(false,'+ctxnow+')'
+                        child = if typeof child isnt 'function' then (if child.t then (child.name = key; child.compile(child)) else new Template(child, true, key);) else child
+                        return valstr
+                    else if meta is '&'
+                        valstr = name+'.temp['+(key-1)+']' if String(parseInt(key)) isnt 'NaN'
+                    else
+                        valstr = [ctxnow, key].join('.')
+                    return '\'+'+ (if meta is '%' then 'Template.prototype.scrub('+valstr+')' else if meta is '<' then '('+name+'.temp.push('+valstr+'),'+valstr+')' else valstr) + '+\''
+
+            b += newlive
             b += '\'+\'' + end + '\'' if end.length > 0
             return b
 
-        body = ['this.'+name+' = (function() {',
+        body = [name+' = (function() {',
             name + '.name = \''+name+'\';',
             'function '+name+' ('+ctxvar+') {',
             'var _val,n='+nodestr+',',
@@ -156,7 +164,7 @@ class Template
             'n.outerHTML='+strvar,
             ':'+strvar+';}',
             'return '+name+';}).call(this);',
-            'return this.'+name+';'
+            'return '+name+';'
         ].join('')
 
         f = new Function('', body)()
@@ -274,6 +282,51 @@ class TemplateLoader
 
         return @
 
+# Base templates
+class TemplateAPI extends CoreAPI
+    @mount = 'templates'
+    @events = []
+    @export = 'private'
+
+    constructor: (apptools, window) ->
+        @_state =
+            data: []
+            index: {}
+            count: 0
+
+        @_init = () =>
+            delete @_init
+            templates = _('#templates').find('script')
+            while (t = templates.shift())
+                name = t.getAttribute('id')
+                if delete (_t = @make(name, t.innerText.replace(/\[\[\[\s*?([^\]]+)\s*?\]\]\]/g, (_, inner) => return '{{'+inner+'}}'))).bind
+                    t.remove()
+                    _t.__defineSetter__('node', -> return null)
+                continue
+            return @
+
+        @register = (name, template) =>
+            # registers an uncompiled, named template. compilation calls register().
+            return @_state.data[ni] if (ni = @_state.index[name])?
+            if not template? and _.is_raw_object(name)
+                template = name.template
+                name = name.name
+            if not !!template
+                return false
+            else
+                template.uuid = (uuid = Template.uuid())
+                @_state.index[uuid] = @_state.index[name] = @_state.data.push(template) - 1
+                @_state.count++
+                return template
+
+        @make = @create = (name, source) =>
+            return false if @_state.index[name]?
+            return @register(name, new Template(source, true, name))
+
+        @get = (name_or_uuid) =>
+            return (if (n=@_state.index[name_or_uuid])? then @_state.data[n] else false)
+
+        return @
 
 
 @__apptools_preinit.abstract_base_classes.push  QueryInterface,
@@ -282,9 +335,12 @@ class TemplateLoader
                                                 RenderException,
                                                 Template,
                                                 TemplateLoader,
+                                                TemplateAPI,
                                                 CoreRenderAPI
 
 @__apptools_preinit.abstract_feature_interfaces.push DOMInterface,
                                                      QueryInterface,
                                                      RenderInterface,
                                                      AnimationInterface
+
+@__apptools_preinit.deferred_core_modules.push module: TemplateAPI

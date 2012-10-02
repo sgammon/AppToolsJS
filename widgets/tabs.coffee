@@ -35,12 +35,12 @@ class TabsAPI extends CoreAPI
 
         @enable = (tabs) =>
 
-            trigger.addEventListener('mousedown', tabs.switch, false) for trigger of tabs._state.tabs
+            _(trigger).bind('mousedown', tabs.switch, false) for trigger of tabs._state.tabs
             return tabs
 
         @disable = (tabs) =>
 
-            trigger.removeEventListener('mousedown', tabs.switch) for trigger of tabs._state.tabs
+            _(trigger).bind('mousedown', tabs.switch) for trigger of tabs._state.tabs
             return tabs
 
         @_init = () =>

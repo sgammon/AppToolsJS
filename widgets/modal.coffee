@@ -16,7 +16,7 @@ class ModalAPI extends CoreWidgetAPI
             options ?= _.data(target, 'options') or {}
 
             modal = new Modal(target, trigger, options)
-            id = modal._state.cached_id
+            id = modal._state.element_id
 
             @_state.modals_by_id[id] = @_state.modals.push(modal) - 1
             modal._init()
@@ -28,15 +28,12 @@ class ModalAPI extends CoreWidgetAPI
             modal = @disable(modal)
 
             id = modal._state.element_id
-            el = _.get(id)
-            cached_id = modal._state.cached_id
-            cached_el = _.get(cached_id)
+            modal_el = _.get(id+'-modal-dialog')
 
             @_state.modals.splice(@_state.modals_by_id[id], 1)
             delete @_state.modals_by_id[id]
 
-            el.parentNode.removeChild(el)
-            cached_el.parentNode.removeChild(cached_el)
+            modal_el.parentNode.removeChild(modal_el)
 
             return modal
 
@@ -127,11 +124,11 @@ class Modal extends CoreWidget
                 wH = window.innerHeight
                 r = @_state.config.ratio
 
-                dW = @_state.config.size.width or Math.floor r.x*wW
-                dH = @_state.config.size.height or Math.floor r.y*wH
+                dW = @_state.config.size.width or Math.floor r.x*wW + 20
+                dH = @_state.config.size.height or Math.floor r.y*wH + 20
 
-                css.width = dW
-                css.height = dH
+                css.width = dW + 10
+                css.height = dH + 10
                 css.left = Math.floor((wW-dW)/2)
                 css.top = Math.floor((wH-dH)/2)
 
@@ -176,7 +173,7 @@ class Modal extends CoreWidget
             dialog.style[prop] = val + 'px' for prop, val of @_state.config.initial
 
             content.style.opacity = 1
-            content.style.maxHeight = @internal.calc().height - 22 + 'px'
+            content.style.maxHeight = @internal.calc().height - 12 + 'px'
 
             pre.innerHTML = ''
 
