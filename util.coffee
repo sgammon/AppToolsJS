@@ -441,7 +441,10 @@ class Util
                 return null
 
         @val = (el) =>
-            return (if el.value then el.value else el.innerText)
+            if arguments[1]?
+                return (if el.value then el.value = arguments[1] else el.innerText = arguments[1])
+            else
+                return (if el.value then el.value else el.innerText)
 
         @html = (el) =>
             return el.innerHTML
