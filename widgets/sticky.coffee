@@ -14,7 +14,7 @@ class StickyAPI extends CoreAPI
 
         @create = (target) =>
 
-            options ?= _.data(target, 'options') or {}
+            options = _.data(target, 'options') or {}
 
             sticky = new Sticky(target, options)
             id = sticky._state.element_id
