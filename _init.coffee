@@ -345,6 +345,16 @@ class AppTools
                 else
                     @sys.modules.install(module.module)
 
+        if window.__clock?
+            if @analytics?
+                @dev.verbose('Analytics', 'Installing Google Analytics timings integration.')
+                window.__clock.track = (timing) =>
+                    [now, args] = timing
+                    [category, variable, start_time, label, sample_rate] = args
+                    @analytics.track.timing(category, variable, (Math.floor(now) - Math.floor(start_time)), label, sample_rate)
+                    return timing
+
+            window.__clock.clockpoint('JavaScript', 'Platform Ready', window.__clock.ts[0][0], 'AppTools', 100)
 
         ## 6: We're done!
         return @.sys.go @
