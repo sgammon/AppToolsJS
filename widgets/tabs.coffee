@@ -13,7 +13,7 @@ class TabsAPI extends CoreAPI
 
         @create = (target) =>
 
-            options ?= _.data(target, 'options') or {}
+            options = _.data(target, 'options') or {}
 
             tabs = new Tabs(target, options)
             id = tabs._state.element_id

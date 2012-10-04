@@ -13,7 +13,7 @@ class ModalAPI extends CoreWidgetAPI
 
         @create = (target, trigger, callback, options) =>
 
-            options ?= _.data(target, 'options') or {}
+            options = _.data(target, 'options') or {}
 
             modal = new Modal(target, trigger, options)
             id = modal._state.element_id

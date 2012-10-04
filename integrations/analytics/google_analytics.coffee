@@ -370,6 +370,8 @@ class GoogleAnalytics extends Integration
             complete: (order_id=null) =>
                 return
 
-if @__apptools_preinit?
-    @__apptools_preinit.abstract_base_classes.push GoogleAnalytics
-    @__apptools_preinit.installed_integrations.push GoogleAnalytics
+window.GoogleAnalytics = GoogleAnalytics
+
+@__apptools_preinit.abstract_base_classes.push GoogleAnalytics
+@__apptools_preinit.installed_integrations.push GoogleAnalytics
+@__apptools_preinit.deferred_core_modules.push module: GoogleAnalytics

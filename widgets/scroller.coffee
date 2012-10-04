@@ -23,7 +23,7 @@ class ScrollerAPI extends CoreWidgetAPI
 
         @create = (target, options) =>
 
-            options ?= _.data(target, 'options') or {}
+            options = _.data(target, 'options') or {}
 
             scroller = new Scroller target, options
             id = scroller._state.element_id

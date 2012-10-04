@@ -297,12 +297,12 @@ class TemplateAPI extends CoreAPI
         @_init = () =>
             delete @_init
             templates = _('#templates').find('script')
-            while (t = templates.shift())
-                name = t.getAttribute('id')
-                if delete (_t = @make(name, t.innerText.replace(/\[\[\[\s*?([^\]]+)\s*?\]\]\]/g, (_, inner) => return '{{'+inner+'}}'))).bind
-                    t.remove()
-                    _t.__defineSetter__('node', -> return null)
-                continue
+            #while (t = templates.shift())
+            #    name = t.getAttribute('id')
+            #    if delete (_t = @make(name, t.innerText.replace(/\[\[\[\s*?([^\]]+)\s*?\]\]\]/g, (_, inner) => return '{{'+inner+'}}'))).bind
+            #        t.remove()
+            #        _t.__defineSetter__('node', -> return null)
+            #    continue
             return @
 
         @register = (name, template) =>
