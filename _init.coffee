@@ -354,8 +354,6 @@ class AppTools
                     @analytics.track.timing(category, variable, (Math.floor(now) - Math.floor(start_time)), label, sample_rate)
                     return timing
 
-            window.__clock.clockpoint('JavaScript', 'Platform Ready', window.__clock.ts[0][0], 'AppTools', 100)
-
         ## 6: We're done!
         return @.sys.go @
 
@@ -373,3 +371,6 @@ else if window.$?
     window.$.apptools = window.apptools
 
 else (window.$ = (x) -> return document.getElementById(x)).apptools = window.apptools
+
+if window.$.apptools.analytics?
+	window.__clock.clockpoint('JavaScript', 'Platform Ready', window.__clock.ts[0], 'AppTools', 100)
