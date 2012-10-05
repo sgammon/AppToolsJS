@@ -68,11 +68,11 @@ class Modal extends CoreWidget
 
     template: [
         '<div id="{{<element_id}}-modal-dialog" style="opacity: 0;" class="fixed dropshadow modal-dialog{{config.rounded}} rounded{{/config.rounded}} none">',
-            '<div id="{{&1}}-modal-fade" style="opacity: 0" class="modal-fade">',
+            '<div id="{{&1}}-modal-fade" style="opacity: 0;" class="modal-fade">',
+                '<div id="{{&1}}-modal-close" class="absolute modal-close">X</div>',
                 '<div id="{{&1}}-modal-content" class="modal-content">{{=html}}</div>',
                 '<div id="{{&1}}-modal-ui" class="absolute modal-ui">',
                     '<div id="{{&1}}-modal-title" class="absolute modal-title">{{=title}}</div>',
-                    '<div id="{{&1}}-modal-close" class="absolute modal-close">X</div>',
                 '</div>',
             '</div>',
         '</div>'

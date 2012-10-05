@@ -12,13 +12,18 @@ class CoreWidgetAPI extends CoreAPI
                 e.stopPropagation()
 
                 trigger = e.target
-                target_ids = _.filter(trigger.getAttribute('data-href').split('#'), (it) -> return it isnt '' and it isnt String())
+                target_ids = _.filter((query = trigger.getAttribute('data-href') or '').split('#'), (it) -> return it isnt '' and it isnt String())
                 touched_targets = []
 
                 if target_ids?
                     for target_id in target_ids
                         target = document.getElementById(target_id)
                         is_curr = target.classList.contains('active') or trigger.classList.contains('active')
+                        cback = (targ, trig) =>
+                            targ.classList.remove('active')
+                            trig.classList.remove('active')
+                            if trig.classList.contains('autoclose')
+                                targ.removeEventListener('mouseout', @handle, false)
 
                         touched_targets.push(target)
 
@@ -29,16 +34,15 @@ class CoreWidgetAPI extends CoreAPI
                             other_trig.classList.remove('active') for other_trig in other_trigs if (other_trigs = _.filter(_.get(trigger.tagName), (o) => return _.is_child(widget, o) and (o isnt trigger)))?
 
                         if is_curr
-                            return @deferred
-                                target: target
-                                trigger: trigger
-                                preventDefault: ->
-                                stopPropagation: ->
-                                callback: (targ, trig) ->
-                                    targ.classList.remove('active')
-                                    trig.classList.remove('active')
-                                    if trig.classList.contains('autoclose')
-                                        targ.removeEventListener('mouseout', @handle, false)
+                            if target.find('.deferred').length > 0
+                                return @deferred
+                                    target: target
+                                    trigger: trigger
+                                    preventDefault: ->
+                                    stopPropagation: ->
+                                    callback: cback
+                            else
+                                return cback(target, trigger)
 
                         else
                             target.classList.add('active')
