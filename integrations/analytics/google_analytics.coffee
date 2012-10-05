@@ -118,6 +118,14 @@ class GoogleAnalytics extends Integration
                         else
                             break
 
+                    # track timings on the page that were measured before construction time
+                    if window.__clock? and window.__clock.ts.length > 0
+                        for clockpoint in window.__clock.ts
+                            if _.is_array(clockpoint)
+                                [now, args] = clockpoint
+                                [category, variable, start_time, label, sample_rate] = args
+                                @track.timing(category, variable, (Math.floor(now) - Math.floor(start_time)), label, sample_rate)
+
                 return @
 
             bind_events: (event) =>
@@ -131,6 +139,12 @@ class GoogleAnalytics extends Integration
                     boot_cmd_list.push ['_setAccount', @state.config.account_ids[tracker.name]]
                     if event? and event.srcElement.hasAttribute('data-hostname')
                         boot_cmd_list.push ['_setDomainName', event.srcElement.getAttribute('data-hostname')]
+
+                    if @state.config.samplerate?
+                        boot_cmd_list.push ['_setSiteSpeedSampleRate', @state.config.samplerate]
+                    else
+                        @state.config.samplerate = 30
+
                     @internal.push_command boot_cmd_list, tracker.name
                     @state.initialized--
 
@@ -341,13 +355,14 @@ class GoogleAnalytics extends Integration
                 _.trigger 'ANALYTICS_TRACK_SOCIAL', _command_spec...
                 return @
 
-            timing: (category, variable, time, label=null, samplerate=null) =>
+            timing: (category, variable, time, label, samplerate=null) =>
 
-                _command_spec = [category, variable, time]
-                if label?
-                    _command_spec.push label
+                _command_spec = [category, variable, time, label]
                 if samplerate?
                     _command_spec.push samplerate
+                else
+                    _command_spec.push @state.config.samplerate
+
                 _.trigger 'ANALYTICS_TRACK_TIMING', _command_spec...
                 return @
 
@@ -370,6 +385,8 @@ class GoogleAnalytics extends Integration
             complete: (order_id=null) =>
                 return
 
-if @__apptools_preinit?
-    @__apptools_preinit.abstract_base_classes.push GoogleAnalytics
-    @__apptools_preinit.installed_integrations.push GoogleAnalytics
+window.GoogleAnalytics = GoogleAnalytics
+
+@__apptools_preinit.abstract_base_classes.push GoogleAnalytics
+@__apptools_preinit.installed_integrations.push GoogleAnalytics
+@__apptools_preinit.deferred_core_modules.push module: GoogleAnalytics
