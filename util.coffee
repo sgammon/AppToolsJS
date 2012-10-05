@@ -832,7 +832,7 @@ class Util
                 unbind: (ev, fn, pr) -> return _.unbind(@, ev, fn, pr)
                 append: (node) -> return _.append(@, node)
                 remove: () -> return _.remove(@)
-                val: () -> return _.val(@)
+                val: (data) -> return _.val(@, data)
                 html: () -> return _.html(@)
                 fadeIn: () -> return HTMLElement.prototype.fadeInJacked.apply(@, arguments)
                 fadeOut: () -> return HTMLElement.prototype.fadeOutJacked.apply(@, arguments)
