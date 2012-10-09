@@ -82,24 +82,32 @@ class Tabs extends CoreWidget
                 tabs = _.filter(_.get(div_string, target), (test=(el) ->       # content div elements
                     return el.parentNode is target
                 ))
-                triggers = _.filter(_.get('a', target), test)             # <a> --> actual 'tab'-looking element
+                height = 0
+                for tab in tabs
+                    height = tab.offsetHeight if tab.offsetHeight > height
+
+                triggers = _.filter(_.get('.tab-link', target), test)             # <a> --> actual 'tab'-looking element
 
                 target.classList.add(cls) for cls in ['relative', 'tabset']
 
                 (if @_state.config.rounded then trigger.classList.add('tab-rounded') else trigger.classList.add('tab-link')) for trigger in triggers
 
-                tab.classList.add(_cls) for _cls in ['tab'] for tab in tabs
+                for tab in tabs
+                    tab.classList.add('tab')
+                    tab.style.height = height + 'px'
+                    tab.style.width = '100%'
+
 
                 return @
 
         @make = () =>
 
             target = _.get(@_state.element_id)
-            triggers = _.filter(_.get('a', target), (x) => return x.parentNode is target)
+            triggers = _.filter(_.get('.tab-link', target), (x) => return x.parentNode is target)
 
             for trigger in triggers
                 do (trigger) =>
-                    content_div = _.get(content_id=trigger.getAttribute('href').slice(1))
+                    content_div = _.get(content_id=(if trigger.hasAttribute('href') then trigger.getAttribute('href') else trigger.getAttribute('data-href')).slice(1))
                     trigger.setAttribute('id', (trigger_id = 'a-'+content_id))
 
                     if not content_div?
@@ -138,7 +146,7 @@ class Tabs extends CoreWidget
                     trigger = _.get('a-'+(target_id = e))
 
             else
-                target_tab = _.get(target_id = (trigger = _.get('a', tabset)[0]).getAttribute('id').split('-').splice(1).join('-'))
+                target_tab = _.get(target_id = (trigger = _.get('.tab-link', tabset)[0]).getAttribute('id').split('-').splice(1).join('-'))
 
             if current_tab?
                 current_a = _.get('a-' + current_tab.getAttribute('id')) or _.get('a-'+@_state.current_tab)
