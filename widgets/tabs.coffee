@@ -79,8 +79,8 @@ class Tabs extends CoreWidget
                 div_string = @_state.config.div_string
                 target = _.get(@_state.element_id)
 
-                tabs = _.filter(_.get(div_string, target), (test=(el) ->       # content div elements
-                    return el.parentNode is target
+                tabs = _.filter(_.get('.tab', target), (test=(el) ->       # content div elements
+                    return el.parentNode or el.parentNode.parentNode is target
                 ))
                 height = 0
                 for tab in tabs
@@ -93,8 +93,6 @@ class Tabs extends CoreWidget
                 (if @_state.config.rounded then trigger.classList.add('tab-rounded') else trigger.classList.add('tab-link')) for trigger in triggers
 
                 for tab in tabs
-                    tab.classList.add('tab')
-                    tab.style.height = height + 'px'
                     tab.style.width = '100%'
 
 
@@ -166,11 +164,11 @@ class Tabs extends CoreWidget
                 @_state.active = false
 
             else
+                current_a.classList.remove('current-tab')
+                trigger.classList.add('current-tab')
                 current_tab.fadeOut callback: () =>
-                    current_a.classList.remove('current-tab')
                     current_tab.classList.remove('current-tab')
                     target_tab.classList.add('current-tab')
-                    trigger.classList.add('current-tab')
                     @_state.current_tab = target_tab.getAttribute('id')
                     target_tab.fadeIn(display: 'block')
 
