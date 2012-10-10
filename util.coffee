@@ -133,7 +133,7 @@ class Util
             return @is_object(object) and (Object.prototype.toString.call(object) is '[object HTMLBodyElement]' or object.constructor.name is 'HTMLBodyElement')
 
         @is_array = Array.isArray or (object) =>
-            return (@type_of(object) is 'array' or Object.prototype.toString.call(object) is '[object Array]' or object.constructor.name is 'Array')
+            return @type_of(object) is 'array'
 
         @is_string = (string) =>
             return @type_of(string) is 'string'
@@ -184,9 +184,22 @@ class Util
             return !!~@indexOf(array, item)
 
         @to_array = (node_or_token_list) =>
+            return node_or_token_list if @is_array(node_or_token_list)
+            return [node_or_token_list] if not node_or_token_list.length?
             array = []
             `for (i = node_or_token_list.length; i--; array.unshift(node_or_token_list[i]))`
             return array
+
+        @join = () =>
+            items = @to_array(arguments)
+            newitems = []
+            for item in items
+                item = @to_array(item)
+                for it in item
+                    newitems.push(it)
+                    continue
+                continue
+            return newitems
 
         @indexOf = (arr, item) =>
             if @is_array(arr)

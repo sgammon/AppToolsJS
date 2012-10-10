@@ -137,13 +137,10 @@ class Template
             if valre.test(newlive)
                 newlive = newlive.replace valre, (_, meta, key) =>
                     if meta is '+'
-                        child = new Function('', 'return this.'+key+';')
-                        return '' if not child?
-                        valstr = 'this.'+key+'(false,'+ctxnow+')'
-                        child = if typeof child isnt 'function' then (if child.t then (child.name = key; child.compile(child)) else new Template(child, true, key);) else child
-                        return valstr
+                        return 'this.'+key+'(false,'+ctxnow+')'
                     else if meta is '&'
-                        valstr = name+'.temp['+(key-1)+']' if String(parseInt(key)) isnt 'NaN'
+                        key = parseInt(key)
+                        valstr = name+'.temp['+(key-1)+']' if String(key) isnt 'NaN'
                     else
                         valstr = [ctxnow, key].join('.')
                     return '\'+'+ (if meta is '%' then 'Template.prototype.scrub('+valstr+')' else if meta is '<' then '('+name+'.temp.push('+valstr+'),'+valstr+')' else valstr) + '+\''
@@ -160,10 +157,10 @@ class Template
             '(c = '+ctxvar+', '+ctxvar+' = arguments[1], c)',
             ':true;var '+strvar+'=',
             functionize(template),
-            ';return (dom && n != null)?',
+            ';return ('+name+'.temp=[], (dom && n != null)?',
             'n.outerHTML='+strvar,
-            ':'+strvar+';}',
-            'return '+name+';}).call(this);',
+            ':'+strvar+');}',
+            'return ('+name+'.temp=[],'+name+');}).call(this);',
             'return '+name+';'
         ].join('')
 
@@ -307,6 +304,7 @@ class TemplateAPI extends CoreAPI
                 _t = @make(name, raw.replace(/\[\[\[\s*?([^\]]+)\s*?\]\]\]/g, (_, inner) => return '{{'+inner+'}}'))
                 if delete _t.bind
                     t.remove()
+                    _t.temp = []
                     _t.__defineSetter__('node', -> return null)
                 continue
             delete @_init
