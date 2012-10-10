@@ -209,6 +209,9 @@ class Template
             return temp
         ).replace(valre, (_, meta, key) =>
             return @temp[parseInt(key)-1] if meta is '&'
+            if meta is '+'
+                child =  new Function('', 'return this.'+key+';')()
+                return child(vars)
             val = @get_value(vars, key)
             @temp.push(val) if meta is '<'
             return (if val? then (if meta is '%' then @scrub(val) else val) else '')
@@ -238,7 +241,7 @@ class Template
         return new Option(val).innerHTML.split('\'').join('&#39;').split('"').join('&quot;')
 
     safe: (val) ->
-        return val.split('\'').join('&#39;').split('"').join('&quot;')
+        return val.split('\'').join('&#39;')
 
     get_value: (vars, key) ->
         parts = key.split('.')
@@ -289,20 +292,25 @@ class TemplateAPI extends CoreAPI
     @export = 'private'
 
     constructor: (apptools, window) ->
+
         @_state =
             data: []
             index: {}
             count: 0
+            init: false
 
         @_init = () =>
+            templates = _('#templates').find('script') or []
+            while (t = templates.shift())
+                name = t.getAttribute('id')
+                raw = t.innerText.replace(/[\r\t\n]/g, '').replace(/\s{3,}/g, '')
+                _t = @make(name, raw.replace(/\[\[\[\s*?([^\]]+)\s*?\]\]\]/g, (_, inner) => return '{{'+inner+'}}'))
+                if delete _t.bind
+                    t.remove()
+                    _t.__defineSetter__('node', -> return null)
+                continue
             delete @_init
-            templates = _('#templates').find('script')
-            #while (t = templates.shift())
-            #    name = t.getAttribute('id')
-            #    if delete (_t = @make(name, t.innerText.replace(/\[\[\[\s*?([^\]]+)\s*?\]\]\]/g, (_, inner) => return '{{'+inner+'}}'))).bind
-            #        t.remove()
-            #        _t.__defineSetter__('node', -> return null)
-            #    continue
+            @_state.init = true
             return @
 
         @register = (name, template) =>

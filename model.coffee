@@ -252,7 +252,8 @@ class ListField extends Array
 
         @keys = () ->
             ks = []
-            ks.push(item.key) for item in @
+            for item in @
+                ks.push(item.key) if item? and item.key?
 
             return _.purge(ks)
 
