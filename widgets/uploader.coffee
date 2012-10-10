@@ -161,10 +161,10 @@ class Uploader extends CoreWidget
 
                     _f = file.name.split('.')[0]
                     if ev.lengthComputable
-                        percent = Math.floor (ev.loaded/ev.total)*100
+                        percent = Math.floor((ev.loaded/ev.total)*100)
 
-                        # need upload UI before I know what goes here
-                        console.log(percent)
+                        if @_state.config.onprogress?
+                            return @_state.config.onprogress(percent)
 
             provision_boundary: () =>
 
