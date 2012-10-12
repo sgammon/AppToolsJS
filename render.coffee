@@ -97,6 +97,7 @@ class Template
             live = if !!live then live[0] else string
             newlive = live
             index = (if !!~string.search(tagre) then string.search(tagre) else string.length)
+            index = 0 if index is -1 or index is live.length
             start = @safe(string.slice(0, index))
             end = @safe(string.slice(live.length + index))
 
@@ -109,7 +110,8 @@ class Template
 
                     if meta is '' or not meta
                         temp += 'if(!!'+keystr+'){'+strvar+'+=\''+functionize(if_true)
-                        temp += '\'}else{'+ functionize(if_false)+'\'' if has_else
+                        temp += '\'}else{'+strvar+'+=\''+ functionize(if_false) if has_else
+                        temp += '\''
 
                     else if meta is '!'
                         temp += 'if(!'+keystr+'){'+strvar+'+=' + functionize(inner)
@@ -160,7 +162,7 @@ class Template
             ';return ('+name+'.temp=[], (dom && n != null)?',
             'n.outerHTML='+strvar,
             ':'+strvar+');}',
-            'return ('+name+'.temp=[],'+name+');}).call(this);',
+            'return '+name+';}).call(this);',
             'return '+name+';'
         ].join('')
 
@@ -297,15 +299,35 @@ class TemplateAPI extends CoreAPI
             init: false
 
         @_init = () =>
+
+            @outerHTML = (html, fn) ->
+                env = document.createElement('div')
+                env.appendChild(@cloneNode(false))
+                env.firstChild.outerHTML = html
+                n = env.firstChild
+                @parentNode.insertBefore(n, @)
+                fn.cache.push(@parentNode.removeChild(@))
+                fn.node = n
+                fn.node.__defineSetter__('outerHTML', (html) ->
+                    return $.apptools.templates.outerHTML.call(@, html, fn)
+                )
+                return n
+
             templates = _('#templates').find('script') or []
+
             while (t = templates.shift())
+
+                singleton = !!t.data('singleton')
                 name = t.getAttribute('id')
                 raw = t.innerText.replace(/[\r\t\n]/g, '').replace(/\s{3,}/g, '')
                 _t = @make(name, raw.replace(/\[\[\[\s*?([^\]]+)\s*?\]\]\]/g, (_, inner) => return '{{'+inner+'}}'))
                 if delete _t.bind
                     t.remove()
                     _t.temp = []
-                    _t.__defineSetter__('node', -> return null)
+                    if singleton
+                        _t.cache = []
+                    else
+                        _t.__defineSetter__('node', -> return null)
                 continue
             delete @_init
             @_state.init = true
