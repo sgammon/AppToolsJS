@@ -101,7 +101,8 @@ class Template
             start = @safe(string.slice(0, index))
             end = @safe(string.slice(live.length + index))
 
-            b += '\'' + start if start.length > 0
+            b += '\''
+            b += start if start.length > 0
 
             if blockre.test(live)
                 newlive = newlive.replace blockre, (_, __, meta, key, inner, if_true, has_else, if_false) =>
@@ -109,9 +110,8 @@ class Template
                     keystr = [ctxnow, key].join('.')
 
                     if meta is '' or not meta
-                        temp += 'if(!!'+keystr+'){'+strvar+'+=\''+functionize(if_true)
-                        temp += '\'}else{'+strvar+'+=\''+ functionize(if_false) if has_else
-                        temp += '\''
+                        temp += 'if(!!'+keystr+'){'+strvar+'+='+functionize(if_true)
+                        temp += '}else{'+strvar+'+=' + functionize(if_false) if has_else
 
                     else if meta is '!'
                         temp += 'if(!'+keystr+'){'+strvar+'+=' + functionize(inner)
@@ -139,7 +139,7 @@ class Template
             if valre.test(newlive)
                 newlive = newlive.replace valre, (_, meta, key) =>
                     if meta is '+'
-                        return 'this.'+key+'(false,'+ctxnow+')'
+                        valstr = 'this.'+key+'(false,'+ctxnow+')'
                     else if meta is '&'
                         key = parseInt(key)
                         valstr = name+'.temp['+(key-1)+']' if String(key) isnt 'NaN'
@@ -148,7 +148,8 @@ class Template
                     return '\'+'+ (if meta is '%' then 'Template.prototype.scrub('+valstr+')' else if meta is '<' then '('+name+'.temp.push('+valstr+'),'+valstr+')' else valstr) + '+\''
 
             b += newlive
-            b += '\'+\'' + end + '\'' if end.length > 0
+            b += '\''
+            b += '+\'' + end + '\'' if end.length > 0
             return b
 
         body = [name+' = (function() {',
