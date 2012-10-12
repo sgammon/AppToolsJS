@@ -61,7 +61,7 @@ class Template
     constructor :(source, compile=false, name) ->
 
         @t = source.replace(_re, '')
-        @name = if name? then name else 'template-'+Template.uuid()
+        @name = if name? then name else 'template_'+Template.uuid()
 
         @temp = []
 
@@ -300,7 +300,6 @@ class TemplateAPI extends CoreAPI
             init: false
 
         @_init = () =>
-
             @outerHTML = (html, fn) ->
                 env = document.createElement('div')
                 env.appendChild(@cloneNode(false))
@@ -314,7 +313,7 @@ class TemplateAPI extends CoreAPI
                 )
                 return n
 
-            templates = _('#templates').find('script') or []
+            templates = _.to_array(_('#templates').find('script')) or []
 
             while (t = templates.shift())
 
