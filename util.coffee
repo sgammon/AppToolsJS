@@ -184,6 +184,7 @@ class Util
             return !!~@indexOf(array, item)
 
         @to_array = (node_or_token_list) =>
+            return false if not node_or_token_list
             return node_or_token_list if @is_array(node_or_token_list)
             return [node_or_token_list] if not node_or_token_list.length?
             array = []
