@@ -300,7 +300,9 @@ class TemplateAPI extends CoreAPI
             init: false
 
         @_init = () =>
+
             @outerHTML = (html, fn) ->
+
                 env = document.createElement('div')
                 env.appendChild(@cloneNode(false))
                 env.firstChild.outerHTML = html
@@ -313,24 +315,54 @@ class TemplateAPI extends CoreAPI
                 )
                 return n
 
-            templates = _.to_array(_('#templates').find('script')) or []
+            if window.templates and _.is_array(window.templates)
+                templates = window.templates
+                window.templates = {}
 
-            while (t = templates.shift())
+                while (t = templates.shift())
 
-                singleton = !!t.data('singleton')
-                name = t.getAttribute('id')
-                raw = t.innerText.replace(/[\r\t\n]/g, '').replace(/\s{3,}/g, '')
-                _t = @make(name, raw.replace(/\[\[\[\s*?([^\]]+)\s*?\]\]\]/g, (_, inner) => return '{{'+inner+'}}'))
-                if delete _t.bind
-                    t.remove()
+                    if t.name.match(/system/gi)
+                        t.singleton = true
+                        t.cache = []
+                        t.__defineSetter__('node', (n) ->
+                            @cache.push(@node)
+                            @current = n
+                            return @
+                        )
+                        t.__defineGetter__('node', () ->
+                            return @current
+                        )
+
+                    else
+                        t.bind = (el) ->
+                            @node = el
+                            delete @bind
+                            return @
+
+                    t.temp = []
+                    window.templates[t.name] = t
+
+                    continue
+
+            else
+                templates = _.to_array(_('#templates').find('script')) or []
+
+                while (t = templates.shift())
+
+                    singleton = !!t.data('singleton')
+                    name = t.getAttribute('id')
+                    raw = t.innerText.replace(/[\r\t\n]/g, '').replace(/\s{3,}/g, '')
+                    _t = @make(name, raw.replace(/\[\[\[\s*?([^\]]+)\s*?\]\]\]/g, (_, inner) => return '{{'+inner+'}}'))
                     _t.temp = []
                     if singleton
                         _t.cache = []
-                    else
-                        _t.__defineSetter__('node', -> return null)
-                continue
+
+                    t.remove()
+                    continue
+
             delete @_init
             @_state.init = true
+
             return @
 
         @register = (name, template) =>
