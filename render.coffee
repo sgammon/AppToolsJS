@@ -320,6 +320,7 @@ class TemplateAPI extends CoreAPI
                 window.templates = {}
 
                 while (t = templates.shift())
+                    t = t.call(window, window)
 
                     if t.name.match(/system/gi)
                         t.singleton = true
