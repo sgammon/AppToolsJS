@@ -69,7 +69,7 @@ class UploaderAPI extends CoreAPI
 
             uploaders = _.get('pre-uploader')
             _i = (_u) =>
-                options = _.extend(true, (if _u.hasAttribute('data-options') then JSON.parse(_.safe_to_JSON(target.getAttribute('data-options'))) else {}), id: _u.getAttribute('id'))
+                options = _.extend(true, (if (d = _u.data('options'))? then d else {}), id: _u.getAttribute('id'))
 
                 _u.classList.remove('pre-uploader')
                 _u.classList.add('uploader')
@@ -161,10 +161,10 @@ class Uploader extends CoreWidget
 
                     _f = file.name.split('.')[0]
                     if ev.lengthComputable
-                        percent = Math.floor (ev.loaded/ev.total)*100
+                        percent = Math.floor((ev.loaded/ev.total)*100)
 
-                        # need upload UI before I know what goes here
-                        console.log(percent)
+                        if @_state.config.onprogress?
+                            return @_state.config.onprogress(percent)
 
             provision_boundary: () =>
 

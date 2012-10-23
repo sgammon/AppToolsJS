@@ -61,8 +61,8 @@ class Editor extends CoreWidget
     template: ['<div id="editor-pane-{{<_state.element_id}}" class="absolute editor">','<div id="editorstep-{{&1}}" class="editorstep"></div>','</div>'].join('')
 
     steps:
-        edit: '<span class="rounded tools">{{@bundle}}<button class="editorbutton XMS" id="edit-cmd-{{<_key}}" value="{{&1}}">{{=_val}}</button>{{/bundle}}</span>'
-        wait: '<span class="rounded notify loading spinner momentron">&#xf0045;</span>'
+        edit: '<span class="rounded tools">{{@bundle}}<button class="editorbutton XMS" id="edit-cmd-{{=_key}}" value="{{=_key}}">{{=_val}}</button>{{/bundle}}</span>'
+        wait: '<span class="rounded tools"><span class="loading spinner momentron">&#xf0045;</span></span>'
         done: '<span class="rounded yay momentron">&#xf0053;</span>'
         fail: '<span class="rounded error momentron">&#xf0054;</span>'
 
@@ -174,14 +174,14 @@ class Editor extends CoreWidget
             bundles: ['plain', 'basic', 'rich']
 
             step: 0
+            timer: null
             active: false
             init: false
 
-            config:
+            config: _.extend(
                 animation: _.prep_animation()
                 bundle: 'plain'
-
-        @_state.config = _.extend true, @_state.config, options
+            , options)
 
         @id = 'editor-pane-' + @_state.element_id
 
@@ -240,12 +240,11 @@ class Editor extends CoreWidget
         @step = (name='edit', cb) =>
 
             @hide()
-            setTimeout(@show, 350)
+            @timer = window.setTimeout(@show, 200)
 
             @_state.step = name
             @template.t = @steps[name]
             return @render(cb)
-
 
         @edit = (e) =>
 
@@ -253,13 +252,15 @@ class Editor extends CoreWidget
                 e.preventDefault()
                 e.stopPropagation()
 
+            el = _.get(@_state.element_id)
+            _.unbind(el, 'dblclick')
+
             return @step 'edit', () =>
-                el = _.get(@_state.element_id)
-                _.unbind(el, 'dblclick', @edit)
+                el.classList.add('editing')
                 el.contentEditable = true
                 @_state.cached_content = if @_state.config.bundle is 'plain' then el.innerText else el.innerHTML
 
-                _.bind(document.body, 'dblclick', @save)
+                document.body.addEventListener('dblclick', @save, true)
                 el.focus()
 
         @save = (e) =>
@@ -271,14 +272,20 @@ class Editor extends CoreWidget
             pane = _.get(@_state.pane_id)
             el = _.get(@_state.element_id)
             el.contentEditable = false
+            el.blur()
+            el.classList.remove('editing')
+            el.classList.add('saving')
+            document.body.removeEventListener('dblclick', @save, true)
 
-            return @step 'wait', () =>
-                html = if @_state.config.bundle is 'plain' then el.innerText else el.innerHTML
-                cached_html = @_state.cached_content
-                if html is cached_html
+            html = if @_state.config.bundle is 'plain' then el.innerText else el.innerHTML
+            cached_html = @_state.cached_content
+            if html is cached_html
+                return @hide () =>
+                    el.classList.remove('saving')
                     _.bind(el, 'dblclick', @edit)
-                    return @hide()
-                else
+                    return @
+            else
+                return @step 'wait', () =>
                     return $.apptools.api.content.save_snippet(
                         keyname: @_state.keyname
                         namespace: @_state.namespace
@@ -288,12 +295,15 @@ class Editor extends CoreWidget
                             return @step 'done', () =>
                                 el.innerHTML = response.html
                                 _.bind(el, 'dblclick', @edit)
-                                _.unbind(document.body, 'dblclick')
 
-                                setTimeout(@hide, 1500)
+                                setTimeout(() =>
+                                    @hide () =>
+                                        el.classList.remove('saving')
+                                , 1500)
                                 return @
 
                         failure: (error) =>
+                            el.classList.remove('saving')
                             return @step 'fail', () =>
                                 setTimeout(@edit, 1500)
                                 return @

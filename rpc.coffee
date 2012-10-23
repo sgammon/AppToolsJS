@@ -371,6 +371,7 @@ class CoreRPCAPI extends CoreAPI
 
             respond: (directive, use_cache=false) =>
 
+                apptools.events.trigger('RPC_FULFILL', directive)
                 if use_cache
                     if directive.request.cacheable? and directive.request.cacheable == true
                         try
@@ -402,7 +403,7 @@ class CoreRPCAPI extends CoreAPI
                             @response.store(directive.request, directive.response)
 
                         # Dispatch AppTools-level event and request-level success event
-                        apptools.events.dispatch('RPC_SUCCESS', directive.request, response, directive)
+                        apptools.events.dispatch('RPC_SUCCESS', directive)
                         directive.response.events.success(response.response.content, response.response.type, response)
                         return
 
@@ -420,14 +421,14 @@ class CoreRPCAPI extends CoreAPI
                         delete @state.requestpool.expect[@state.requestpool.index[directive.request.envelope.id]]
 
                         # Dispatch AppTools-level event and request-level failure event
-                        apptools.events.dispatch('RPC_FAILURE', directive.request, response, directive)
+                        apptools.events.dispatch('RPC_FAILURE', directive)
                         directive.response.events.failure(response.response.content, response.response.type, response)
                         return
 
                     progress: (event) =>
 
                         # Dispatch AppTools-level event and request-level event
-                        apptools.events.dispatch('RPC_PROGRESS', directive.request, event, directive)
+                        apptools.events.dispatch('RPC_PROGRESS', directive)
                         directive.response.events.progress?(directive.request, event, directive)
                         return
 

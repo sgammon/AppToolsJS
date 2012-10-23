@@ -127,13 +127,13 @@ class Util
             return true
 
         @is_window = (object) =>
-            return @type_of(object) is 'object' and (!!~@indexOf(object.constructor::, 'setInterval') or (object.self? and object.self is object) or (Window? and object instanceof Window))
+            return !!object.setInterval or (object.self? and object.self is object) or (Window? and object instanceof Window)
 
         @is_body = (object) =>
             return @is_object(object) and (Object.prototype.toString.call(object) is '[object HTMLBodyElement]' or object.constructor.name is 'HTMLBodyElement')
 
         @is_array = Array.isArray or (object) =>
-            return (@type_of(object) is 'array' or Object.prototype.toString.call(object) is '[object Array]' or object.constructor.name is 'Array')
+            return @type_of(object) is 'array'
 
         @is_string = (string) =>
             return @type_of(string) is 'string'
@@ -184,9 +184,23 @@ class Util
             return !!~@indexOf(array, item)
 
         @to_array = (node_or_token_list) =>
+            return false if not node_or_token_list
+            return node_or_token_list if @is_array(node_or_token_list)
+            return [node_or_token_list] if not node_or_token_list.length?
             array = []
             `for (i = node_or_token_list.length; i--; array.unshift(node_or_token_list[i]))`
             return array
+
+        @join = () =>
+            items = @to_array(arguments)
+            newitems = []
+            for item in items
+                item = @to_array(item)
+                for it in item
+                    newitems.push(it)
+                    continue
+                continue
+            return newitems
 
         @indexOf = (arr, item) =>
             if @is_array(arr)
@@ -441,7 +455,10 @@ class Util
                 return null
 
         @val = (el) =>
-            return (if el.value then el.value else el.innerText)
+            if arguments[1]?
+                return (if el.value then el.value = arguments[1] else el.innerText = arguments[1])
+            else
+                return (if el.value then el.value else el.innerText)
 
         @html = (el) =>
             return el.innerHTML
@@ -481,6 +498,9 @@ class Util
                     break
 
             return result
+
+        @children = (element) =>
+            return @to_array(element.childNodes)
 
         @find_parent = (child, query) =>
             return (if (r = (@filter([@get(query)], (res) => return @is_child(res, child))[0]))? then r else null)
@@ -820,12 +840,13 @@ class Util
                 removeClass: (cls) -> return _.remove_class(@, cls)
                 isChild: (parent) -> return _.is_child(parent, @)
                 isParent: (child) -> return _.is_child(@, child)
+                children: () -> return _.children(@)
                 resolveAncestor: (node, bound) -> return _.resolve_common_ancestor(@, node, bound)
-                bind: () -> return (_.to_array(arguments).unshift(@); _.bind.apply(_, arguments))
-                unbind: () -> return (_.to_array(arguments).unshift(@); _.unbind.apply(_, arguments))
+                bind: (ev, fn, pr) -> return _.bind(@, ev, fn, pr)
+                unbind: (ev, fn, pr) -> return _.unbind(@, ev, fn, pr)
                 append: (node) -> return _.append(@, node)
                 remove: () -> return _.remove(@)
-                val: () -> return _.val(@)
+                val: (data) -> return _.val(@, data)
                 html: () -> return _.html(@)
                 fadeIn: () -> return HTMLElement.prototype.fadeInJacked.apply(@, arguments)
                 fadeOut: () -> return HTMLElement.prototype.fadeOutJacked.apply(@, arguments)
@@ -842,7 +863,12 @@ class Util
             @_state.init = true
             delete @_init
             delete @constructor
-            return @
+            f = () ->
+                if arguments.length > 0
+                    return f.get.apply(f, arguments)
+
+            @.extend(f, @)
+            return f
 
 
 window.Util = Util

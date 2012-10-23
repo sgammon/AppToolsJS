@@ -27,6 +27,7 @@ class CoreWidgetAPI extends CoreAPI
                         other_trig.classList.remove('active') for other_trig in other_trigs if (other_trigs = _.filter(_.get(trigger.tagName), (o) => return _.is_child(widget, o) and (o isnt trigger)))?
 
                     if is_curr
+
                         return @deferred
                             target: target
                             trigger: trigger

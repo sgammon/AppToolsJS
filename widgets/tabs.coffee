@@ -13,7 +13,7 @@ class TabsAPI extends CoreAPI
 
         @create = (target) =>
 
-            options ?= _.data(target, 'options') or {}
+            options = _.data(target, 'options') or {}
 
             tabs = new Tabs(target, options)
             id = tabs._state.element_id
@@ -35,12 +35,12 @@ class TabsAPI extends CoreAPI
 
         @enable = (tabs) =>
 
-            trigger.addEventListener('mousedown', tabs.switch, false) for trigger of tabs._state.tabs
+            _(trigger).bind('mousedown', tabs.switch, false) for trigger of tabs._state.tabs
             return tabs
 
         @disable = (tabs) =>
 
-            trigger.removeEventListener('mousedown', tabs.switch) for trigger of tabs._state.tabs
+            _(trigger).bind('mousedown', tabs.switch) for trigger of tabs._state.tabs
             return tabs
 
         @_init = () =>
@@ -79,27 +79,33 @@ class Tabs extends CoreWidget
                 div_string = @_state.config.div_string
                 target = _.get(@_state.element_id)
 
-                tabs = _.filter(_.get(div_string, target), (test=(el) ->       # content div elements
-                    return el.parentNode is target
+                tabs = _.filter(_.get('.tab', target), (test=(el) ->       # content div elements
+                    return el.parentNode or el.parentNode.parentNode is target
                 ))
-                triggers = _.filter(_.get('a', target), test)             # <a> --> actual 'tab'-looking element
+                height = 0
+                for tab in tabs
+                    height = tab.offsetHeight if tab.offsetHeight > height
+
+                triggers = _.filter(_.get('.tab-link', target), test)             # <a> --> actual 'tab'-looking element
 
                 target.classList.add(cls) for cls in ['relative', 'tabset']
 
                 (if @_state.config.rounded then trigger.classList.add('tab-rounded') else trigger.classList.add('tab-link')) for trigger in triggers
 
-                tab.classList.add(_cls) for _cls in ['tab'] for tab in tabs
+                for tab in tabs
+                    tab.style.width = '100%'
+
 
                 return @
 
         @make = () =>
 
             target = _.get(@_state.element_id)
-            triggers = _.filter(_.get('a', target), (x) => return x.parentNode is target)
+            triggers = _.filter(_.get('.tab-link', target), (x) => return x.parentNode is target)
 
             for trigger in triggers
                 do (trigger) =>
-                    content_div = _.get(content_id=trigger.getAttribute('href').slice(1))
+                    content_div = _.get(content_id=(if trigger.hasAttribute('href') then trigger.getAttribute('href') else trigger.getAttribute('data-href')).slice(1))
                     trigger.setAttribute('id', (trigger_id = 'a-'+content_id))
 
                     if not content_div?
@@ -138,7 +144,7 @@ class Tabs extends CoreWidget
                     trigger = _.get('a-'+(target_id = e))
 
             else
-                target_tab = _.get(target_id = (trigger = _.get('a', tabset)[0]).getAttribute('id').split('-').splice(1).join('-'))
+                target_tab = _.get(target_id = (trigger = _.get('.tab-link', tabset)[0]).getAttribute('id').split('-').splice(1).join('-'))
 
             if current_tab?
                 current_a = _.get('a-' + current_tab.getAttribute('id')) or _.get('a-'+@_state.current_tab)
@@ -158,11 +164,11 @@ class Tabs extends CoreWidget
                 @_state.active = false
 
             else
+                current_a.classList.remove('current-tab')
+                trigger.classList.add('current-tab')
                 current_tab.fadeOut callback: () =>
-                    current_a.classList.remove('current-tab')
                     current_tab.classList.remove('current-tab')
                     target_tab.classList.add('current-tab')
-                    trigger.classList.add('current-tab')
                     @_state.current_tab = target_tab.getAttribute('id')
                     target_tab.fadeIn(display: 'block')
 
