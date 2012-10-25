@@ -830,6 +830,14 @@ class Util
         @zero_fill = (num, length) =>
             return (Array(length).join('0') + num).slice(-length)
 
+        @uuid = () =>
+
+            return btoa(+new Date.toString(16))
+
+        @resolve_timestamp = (_uuid) =>
+
+            return parseInt(atob(_uuid), 16)
+
         @_init = () =>
 
             bindings =
@@ -867,7 +875,7 @@ class Util
                 if arguments.length > 0
                     return f.get.apply(f, arguments)
 
-            @.extend(f, @)
+            @extend(f, @)
             return f
 
 

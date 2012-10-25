@@ -326,7 +326,7 @@ class TemplateAPI extends CoreAPI
                         t.singleton = true
                         t.cache = []
                         t.__defineSetter__('node', (n) ->
-                            @cache.push(@node)
+                            @cache.push(@current)
                             @current = n
                             return @
                         )
@@ -347,6 +347,7 @@ class TemplateAPI extends CoreAPI
 
             else
                 templates = _.to_array(_('#templates').find('script')) or []
+                window.templates = {}
 
                 while (t = templates.shift())
 
@@ -356,9 +357,26 @@ class TemplateAPI extends CoreAPI
                     _t = @make(name, raw.replace(/\[\[\[\s*?([^\]]+)\s*?\]\]\]/g, (_, inner) => return '{{'+inner+'}}'))
                     _t.temp = []
                     if singleton
+                        _t.singleton = true
                         _t.cache = []
+                        _t.__defineSetter__('node', (n) ->
+                            @cache.push(@current)
+                            @current = n
+                            return @
+                        )
+                        _t.__defineGetter__('node', () ->
+                            return @current
+                        )
+
+                    else
+                        _t.bind = (el) ->
+                            @node = el
+                            delete @bind
+                            return @
 
                     t.remove()
+                    window.templates[name] = _t
+
                     continue
 
             delete @_init

@@ -1,4 +1,144 @@
 ## AppTools Widget Core
+
+
+## AppTools Widgets Core
+class CoreWidgetAPI extends CoreAPI
+
+    @mount: 'widget'
+
+    events: apptools.events
+
+    handle: () ->
+
+        return
+
+    defer: () ->
+
+        return
+
+    create: (target) ->
+
+        options = _.data(target, 'options')
+
+        widget = new @class(target, options)
+        widget.uuid = _.uuid()
+
+        id = widget.state.element_id
+        @state.index[id] = @state.data.push(widget.register(apptools)) - 1
+
+        return widget.init()
+
+    destroy: (widget) ->
+
+        id = widget.state.element_id
+
+        @state.data.splice(@state.index[id], 1)
+        delete @state.index[id]
+
+        return widget
+
+    get: (id) ->
+
+        return if (w_i = @state.index[id])? then @state.data[w_i] else false
+
+    constructor: (apptools, window) ->
+
+        super
+
+        @init = () =>
+
+            target_links = _.get('.target_link')
+            _.bind(link, 'click', @constructor::handle, false) for link in target_links if target_links?
+
+            return @
+
+        return () ->
+
+            @class = @constructor::class
+            cls = @class.name
+
+            @state =
+
+                data: []
+                index: {}
+                init: false
+
+            @init = () =>
+
+                widgets = _.get('.pre-'+cls.toLowerCase())
+                @enable(@create(widget)) for widget in widgets
+
+                @events.trigger(cls.toUpperCase()+'_API_READY', @)
+                @state.init = true
+
+                return @
+
+            return
+
+
+class CoreWidget extends Model
+
+    show: () ->
+
+        return _('#'+@element_id).fadeIn()
+
+    hide: () ->
+
+        return _('#'+@element_id).fadeOut()
+
+    constructor: (@element_id) ->
+
+        super()
+
+        @register = (apptools) =>
+
+            if apptools?
+
+                apptools.widgets.index[@uuid] =
+
+                    type: @constructor.name
+                    link: @
+
+            delete @register
+            return @
+
+        return @
+
+@__apptools_preinit?.abstract_base_classes.push CoreWidget
+@__apptools_preinit?.abstract_base_classes.push CoreWidgetAPI
+@__apptools_preinit?.deferred_core_modules.push {module: CoreWidgetAPI}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+###
 class CoreWidgetAPI extends CoreAPI
 
     @mount: 'widget'
@@ -154,6 +294,15 @@ class CoreWidget extends Model
         super()
         return
 
+    show: () ->
+        return @
+
+    hide: () ->
+        return @
+
+
+
 @__apptools_preinit?.abstract_base_classes.push CoreWidget
 @__apptools_preinit?.abstract_base_classes.push CoreWidgetAPI
 @__apptools_preinit?.deferred_core_modules.push {module: CoreWidgetAPI}
+###

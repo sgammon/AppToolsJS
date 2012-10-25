@@ -25,6 +25,13 @@ class CoreAPI
       window.apptools.sys.modules.install(i)
     window.__apptools_preinit.deferred_core_modules.push i
     return i
+
+  constructor: (apptools, window) ->
+
+    if apptools?.events?
+      @events = apptools.events
+    return
+
 window.CoreAPI = CoreAPI
 
 ## CoreObject: Holds an interactive object that is usually attached to a CoreAPI in some way.

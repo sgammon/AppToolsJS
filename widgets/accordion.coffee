@@ -3,6 +3,7 @@ class AccordionAPI extends CoreWidgetAPI
 
     @mount = 'accordion'
     @events = ['ACCORDION_READY', 'ACCORDION_API_READY']
+    @class = Accordion
 
     constructor: (apptools, widget, window) ->
 
