@@ -1,12 +1,7 @@
-## AppTools Widget Core
-
-
 ## AppTools Widgets Core
 class CoreWidgetAPI extends CoreAPI
 
-    @mount: 'widget'
-
-    events: apptools.events
+    @mount: 'widgets'
 
     handle: () ->
 
@@ -45,16 +40,13 @@ class CoreWidgetAPI extends CoreAPI
 
         super
 
-        @init = () =>
+        if arguments[2]? and @constructor.name isnt 'CoreWidgetAPI'
 
-            target_links = _.get('.target_link')
-            _.bind(link, 'click', @constructor::handle, false) for link in target_links if target_links?
+            widget = arguments[1]
+            window = arguments[2]
 
-            return @
-
-        return () ->
-
-            @class = @constructor::class
+            #@events = apptools.events
+            @constructor::class = window[@constructor.name.replace(/API/, '')]
             cls = @class.name
 
             @state =
@@ -71,10 +63,38 @@ class CoreWidgetAPI extends CoreAPI
                 @events.trigger(cls.toUpperCase()+'_API_READY', @)
                 @state.init = true
 
+                delete @init
                 return @
 
             return
 
+        else
+            @constructor::events = apptools.events
+
+            @state =
+                index: {}
+
+            @register = (widget) =>
+
+                return false if not widget? or @state.index[widget.uuid]?
+
+                @state.index[widget.uuid] = widget
+
+
+            @get = (uuid, kind) =>
+
+                return false if not uuid?
+                return if kind? then @[kind].get(uuid) else (@state.index[uuid] or false)
+
+            @init = () =>
+
+                target_links = _.get('.target_link')
+                _.bind(link, 'click', @constructor::handle, false) for link in target_links if target_links?
+
+                delete @init
+                return @
+
+            return @init()
 
 class CoreWidget extends Model
 
@@ -86,21 +106,14 @@ class CoreWidget extends Model
 
         return _('#'+@element_id).fadeOut()
 
-    constructor: (@element_id) ->
+    register: (apptools) ->
 
-        super()
+        return false if not apptools?
 
-        @register = (apptools) =>
+        apptools.widgets.register(@)
+        return @
 
-            if apptools?
-
-                apptools.widgets.index[@uuid] =
-
-                    type: @constructor.name
-                    link: @
-
-            delete @register
-            return @
+    constructor: () ->
 
         return @
 

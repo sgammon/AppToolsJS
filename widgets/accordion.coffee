@@ -1,67 +1,11 @@
 ## AppTools accordion widget & API
-class AccordionAPI extends CoreWidgetAPI
-
-    @mount = 'accordion'
-    @events = ['ACCORDION_READY', 'ACCORDION_API_READY']
-    @class = Accordion
-
-    constructor: (apptools, widget, window) ->
-
-        @_state =
-            accordions: []
-            accordions_by_id: {}
-            init: false
-
-        @create = (target) =>
-
-            options = _.data(target, 'options') or {}
-
-            accordion = new Accordion(target, options)
-            id = accordion._state.element_id
-
-            @_state.accordions_by_id[id] = @_state.accordions.push(accordion) - 1
-
-            return accordion._init()
-
-        @destroy = (accordion) =>
-
-            id = accordion._state.element_id
-
-            @_state.accordions.splice @_state.accordions_by_id[id], 1
-            delete @_state.accordions_by_id[id]
-
-            return accordion
-
-        @enable = (accordion) =>
-
-            (trigger.addEventListener('click', accordion.fold, false) if (trigger = _.get('#a-'+f))? and trigger.nodeType) for f in accordion._state.folds
-            return accordion
-
-        @disable = (accordion) =>
-
-            (trigger.removeEventListener('click') if (trigger = _.get('#a-'+fold))? and trigger.nodeType) for fold in accordion._state.folds
-            return accordion
-
-        @get = (element_id) =>
-
-            return if (u = @_state.accordions_by_id[element_id])? then @_state.accordions[u] else false
-
-        @_init = () =>
-
-            accordions = _.get '.pre-accordion'
-            @enable(@create(accordion)) for accordion in accordions if accordions?
-
-            apptools.events.trigger 'ACCORDION_API_READY', @
-            @_state.init = true
-
-            return @
-
-
 class Accordion extends CoreWidget
 
     constructor: (target, options) ->
 
-        @_state =
+        super()
+
+        @state =
             element_id: target.getAttribute('id')
             folds: []
             current_fold: null
@@ -90,7 +34,7 @@ class Accordion extends CoreWidget
                         width: '300px'
                         opacity: 1
 
-        @_state.config = _.extend(true, @_state.config, options)
+        @state.config = _.extend(true, @state.config, options)
 
         @internal =
 
@@ -107,7 +51,7 @@ class Accordion extends CoreWidget
                 anchor.setAttribute('id', anchor_id)
                 anchor.classList.add('accordion-link')
 
-                @_state.folds.push(fold_id)
+                @state.folds.push(fold_id)
 
 
         @fold = (e) =>
@@ -118,11 +62,11 @@ class Accordion extends CoreWidget
 
             trigger = e.target
             target_div = _.get(target_id = trigger.getAttribute('id').split('-').splice(1).join('-'))
-            current_fold = _.get(@_state.current_fold) or false
+            current_fold = _.get(@state.current_fold) or false
             current = false
             same = target_div is current_fold
 
-            accordion = _.get(@_state.element_id)
+            accordion = _.get(@state.element_id)
 
             [curr_folds, block_folds] = [_.get('.current-fold', accordion), _.get('.block', accordion)]
 
@@ -135,11 +79,11 @@ class Accordion extends CoreWidget
             if unique_folds?
                 current = true
 
-            @_state.active = true
+            @state.active = true
 
-            opened = @_state.config[axis = @_state.config.axis].opened
+            opened = @state.config[axis = @state.config.axis].opened
             opened.height = target_div.scrollHeight + 'px'
-            closed = @_state.config[axis].closed
+            closed = @state.config[axis].closed
             open_anim = (close_anim = _.prep_animation())
 
             ($(open_tab).animate(closed,
@@ -151,7 +95,7 @@ class Accordion extends CoreWidget
 
             open_anim.complete = () =>
                     target_div.classList.add('current-fold')
-                    @_state.active = false
+                    @state.active = false
                     return @
 
             target_div.style[prop] for prop of closed
@@ -163,14 +107,14 @@ class Accordion extends CoreWidget
             if not same
                 $(target_div).animate(opened, open_anim)
 
-            @_state.current_fold = target_id
+            @state.current_fold = target_id
 
             return @
 
 
-        @_init = () =>
+        @init = () =>
 
-            accordion = _.get(@_state.element_id)
+            accordion = _.get(@state.element_id)
             links = _.filter(_.get('a', accordion), (el) -> return el.parentNode is accordion)
             @internal.register_fold(link) for link in links if links?
 
@@ -179,8 +123,32 @@ class Accordion extends CoreWidget
                 e.target = links[0]
                 @fold(e)
 
-            @_state.init = true
+            @state.init = true
+            delete @init
             return @
+
+
+class AccordionAPI extends CoreWidgetAPI
+
+    @mount = 'accordion'
+    @events = ['ACCORDION_READY', 'ACCORDION_API_READY']
+
+
+    enable: (accordion) ->
+
+        (trigger.addEventListener('click', accordion.fold, false) if (trigger = _.get('#a-'+f))? and trigger.nodeType) for f in accordion._state.folds
+        return accordion
+
+    disable: (accordion) ->
+
+        (trigger.removeEventListener('click') if (trigger = _.get('#a-'+fold))? and trigger.nodeType) for fold in accordion._state.folds
+        return accordion
+
+    constructor: (apptools, widget, window) ->
+
+        super(apptools, widget, window)
+
+        return @init()
 
 
 

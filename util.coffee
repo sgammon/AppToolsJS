@@ -832,11 +832,11 @@ class Util
 
         @uuid = () =>
 
-            return btoa(+new Date.toString(16))
+            return btoa((+new Date).toString(16))
 
         @resolve_timestamp = (_uuid) =>
 
-            return parseInt(atob(_uuid), 16)
+            return Date(parseInt(atob(_uuid), 16))
 
         @_init = () =>
 
