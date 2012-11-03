@@ -1,58 +1,33 @@
 ## AppTools content editor widget & api
-class EditorAPI extends CoreWidgetAPI
+class EditorAPI extends WidgetAPI
 
     @mount = 'editor'
     @events = ['EDITOR_READY', 'EDITOR_API_READY']
 
+    enable: (editor) ->
+
+        _.get(editor._state.element_id).addEventListener('dblclick', editor.edit, false)
+
+        return editor
+
+    disable: (editor) ->
+
+        _.get(editor._state.element_id).removeEventListener('dblclick', editor.edit, false)
+        return editor
+
     constructor: (apptools, widget, window) ->
 
-        @_state =
-            editors: []
-            editors_by_id: {}
-            init: false
+        super(apptools, widget, window)
 
-
-        @create = (target, options) =>
-
-            options = _.data(target, 'options') or {}
-
-            editor = new Editor target, options
-            id = editor._state.element_id
-
-            @_state.editors_by_id[id] = @_state.editors.push(editor) - 1
-
-            return editor._init()
-
-        @destroy = (editor) =>
-
-            id = editor._state.element_id
-            @_state.editors.splice(@_state.editors_by_id[id], 1)
-            delete @_state.editors_by_id[id]
-
-            return editor
-
-        @enable = (editor) =>
-
-            _.get(editor._state.element_id).addEventListener('dblclick', editor.edit, false)
-
-            return editor
-
-        @disable = (editor) =>
-
-            _.get(editor._state.element_id).removeEventListener('dblclick', editor.edit, false)
-            return editor
-
-        @get = (element_id) =>
-
-            return if (index = @_state.editors_by_id[element_id])? then @_state.editors[index] else false
-
-        @_init = () =>
-
+        @init = () =>
             editors = _.get '.mini-editable'
             @enable(@create(editor)) for editor in editors if editors?
-            @_state.init = true
+            @state.init = true
 
+            delete @init
             return @
+
+        return @
 
 class Editor extends CoreWidget
 
@@ -162,7 +137,7 @@ class Editor extends CoreWidget
     constructor: (target, options) ->
         super()
 
-        @_state =
+        @state =
 
             element_id: target.getAttribute('id')
             keyname: target.getAttribute('data-keyname') or null
@@ -183,7 +158,7 @@ class Editor extends CoreWidget
                 bundle: 'plain'
             , options)
 
-        @id = 'editor-pane-' + @_state.element_id
+        @id = 'editor-pane-' + @state.element_id
 
         @ctrl = (e) =>
             if e? and e.preventDefault
@@ -203,7 +178,7 @@ class Editor extends CoreWidget
             pane = _.get('#'+@id)
             step = pane.find('editorstep')
 
-            @_state.step = 'edit'
+            @state.step = 'edit'
             @template.t = @steps['edit']
             step.innerHTML = @template.parse(@)
 
@@ -213,7 +188,7 @@ class Editor extends CoreWidget
             _.bind(step.find('editorbutton'), 'click', @ctrl)
 
             return @render = (cb) =>
-                pane = _.get(@_state.pane_id)
+                pane = _.get(@state.pane_id)
                 step = pane.find('editorstep')
                 step.innerHTML = @template.parse(@)
 
@@ -225,16 +200,16 @@ class Editor extends CoreWidget
 
         @show = (cb) =>
 
-            pane = _.get(@_state.pane_id)
+            pane = _.get(@state.pane_id)
             pane.classList.add('active')
-            @_state.active = true
+            @state.active = true
             return @callback(cb)
 
         @hide = (cb) =>
 
-            pane = _.get(@_state.pane_id)
+            pane = _.get(@state.pane_id)
             pane.classList.remove('active')
-            @_state.active = false
+            @state.active = false
             return @callback(cb)
 
         @step = (name='edit', cb) =>
@@ -242,7 +217,7 @@ class Editor extends CoreWidget
             @hide()
             @timer = window.setTimeout(@show, 200)
 
-            @_state.step = name
+            @state.step = name
             @template.t = @steps[name]
             return @render(cb)
 
@@ -252,13 +227,13 @@ class Editor extends CoreWidget
                 e.preventDefault()
                 e.stopPropagation()
 
-            el = _.get(@_state.element_id)
+            el = _.get(@state.element_id)
             _.unbind(el, 'dblclick')
 
             return @step 'edit', () =>
                 el.classList.add('editing')
                 el.contentEditable = true
-                @_state.cached_content = if @_state.config.bundle is 'plain' then el.innerText else el.innerHTML
+                @state.cached_content = if @state.config.bundle is 'plain' then el.innerText else el.innerHTML
 
                 document.body.addEventListener('dblclick', @save, true)
                 el.focus()
@@ -269,16 +244,16 @@ class Editor extends CoreWidget
                 e.preventDefault()
                 e.stopPropagation()
 
-            pane = _.get(@_state.pane_id)
-            el = _.get(@_state.element_id)
+            pane = _.get(@state.pane_id)
+            el = _.get(@state.element_id)
             el.contentEditable = false
             el.blur()
             el.classList.remove('editing')
             el.classList.add('saving')
             document.body.removeEventListener('dblclick', @save, true)
 
-            html = if @_state.config.bundle is 'plain' then el.innerText else el.innerHTML
-            cached_html = @_state.cached_content
+            html = if @state.config.bundle is 'plain' then el.innerText else el.innerHTML
+            cached_html = @state.cached_content
             if html is cached_html
                 return @hide () =>
                     el.classList.remove('saving')
@@ -287,8 +262,8 @@ class Editor extends CoreWidget
             else
                 return @step 'wait', () =>
                     return $.apptools.api.content.save_snippet(
-                        keyname: @_state.keyname
-                        namespace: @_state.namespace
+                        keyname: @state.keyname
+                        namespace: @state.namespace
                         html: html
                     ).fulfill
                         success: (response) =>
@@ -308,15 +283,16 @@ class Editor extends CoreWidget
                                 setTimeout(@edit, 1500)
                                 return @
 
-        @_init = () =>
+        @init = () =>
 
-            [@bundle, @commands] = @prep_bundle(_.indexOf(@_state.bundles, @_state.config.bundle))
+            [@bundle, @commands] = @prep_bundle(_.indexOf(@state.bundles, @state.config.bundle))
             @commands.save = @save
             @steps = @constructor::steps
             @render()
 
-            @_state.init = true
+            @state.init = true
 
+            delete @init
             return @
 
         return @

@@ -110,6 +110,9 @@ class Util
         @is = (thing) =>
             return !@in_array [false, null, NaN, undefined, 0, {}, [], '','false', 'False', 'null', 'NaN', 'undefined', '0', 'none', 'None'], thing
 
+        @has = (object, property) =>
+            return ({}).hasOwnProperty.call(object, property)
+
         # type/membership checks
         @is_function = (object) =>
             return @type_of(object) is 'function'
@@ -138,15 +141,22 @@ class Util
         @is_string = (string) =>
             return @type_of(string) is 'string'
 
-        @attr = (element, key, data) =>
-            element.setAttribute(key, data)
-            return element
+        @attr = (element, key, data) =>     # requires data to be string, for rich data use data()
+
+            return false if not key or not element
+
+            if data?
+                element.setAttribute(key, data)
+                return element
+
+            else
+                return element.getAttribute(key)
 
         @data = (element=document, key, data) =>
 
             re = /^data-(\w*)$/
 
-            if not key?
+            if not key? and not data?
                 data = {}
                 attrs = element.attributes
                 ((name = re.exec(attr.name)[1]; data[name] = @data(element, name)) if re.test(attr.name)) for attr in attrs
@@ -389,9 +399,11 @@ class Util
 
             return el_str
 
-        @create_doc_frag = () =>
-            html_string = ''
-            html_string += arg for arg in arguments
+        @create_doc_frag = (html) =>
+            if arguments.length > 1
+                html_string = ''
+                html_string += arg for arg in arguments
+            else html_string = html
             range = document.createRange()
             range.selectNode(document.getElementsByTagName('div').item(0))
             frag = range.createContextualFragment(html_string)
@@ -405,14 +417,14 @@ class Util
 
             return frag
 
-        @add = (element_type, attrs, parent_node=document.body) =>
+        @add = (tag, attrs, parent=document.body) =>
             # tag name, attr hash, doc node to insert into (defaults to body)
-            if not element_type? or not @is_object(attrs)
+            if not tag? or not @is_object(attrs)
                 return false
 
             handler = @debounce((response) =>
                 q = response
-                parent = parent_node
+                parent = parent
 
                 html = []
                 html.push(@create_element_string.apply(@, args)) for args in q
@@ -421,7 +433,7 @@ class Util
                 parent.appendChild(dfrag)
             , 500, false)
 
-            q_name = if (@is_body(parent_node) or not parent_node? or !(node_id = parent_node.getAttribute('id'))) then 'dom' else node_id
+            q_name = if (@is_body(parent) or not parent? or !(node_id = parent.getAttribute('id'))) then 'dom' else node_id
 
             if not @_state.queues[q_name]?
                 @internal.queues.create(q_name, handler: handler)
@@ -429,10 +441,10 @@ class Util
             else if not @_state.handlers[q_name]?
                 @internal.queues.add_handler(q_name, handler)
 
-            @internal.queues.add(q_name, [element_type, attrs])
+            @internal.queues.add(q_name, [tag, attrs])
             @internal.queues.process(q_name)
 
-        @append = (parent, node) =>
+        @insert = (parent, node) =>
             return parent.appendChild(node)
 
         @remove = (node) =>
@@ -454,14 +466,22 @@ class Util
                 return (if tg.length > 1 then @to_array(tg) else tg[0]) if (tg = node.getElementsByTagName(query)).length > 0
                 return null
 
-        @val = (el) =>
-            if arguments[1]?
-                return (if el.value then el.value = arguments[1] else el.innerText = arguments[1])
-            else
-                return (if el.value then el.value else el.innerText)
+        @val = (element, data) =>
+            if data?
+                if element.value
+                    element.value = data
+                else
+                    element.innerText = data
+                return element
+            else return (if element.value then element.value else element.innerText)
 
-        @html = (el) =>
-            return el.innerHTML
+        @html = (element, data) =>
+
+            if data?
+                element.innerHTML = data
+                return element
+
+            else return element.innerHTML
 
         @get_offset = (elem) =>
             offL = offT = 0
@@ -476,10 +496,20 @@ class Util
             return element.classList?.contains(cls) or element.className && new RegExp('\\s*'+cls+'\\s*').test(element.className)
 
         @add_class = (element, cls) =>
-            return element.classList?.add(cls) or element.className += ' '+cls
+            if element.classList
+                element.classList.add(cls)
+            else
+                element.className += ' ' + cls
+
+            return element
 
         @remove_class = (element, cls) =>
-            return element.classList?.remove(cls) or element.className.replace(new RegExp('\\s*'+cls+'\\s*'), ' ').replace(/\s\s/, ' ')
+            if element.classList
+                element.classList.remove(cls)
+            else
+                element.className.replace(new RegExp('\\s*'+cls+'\\s*'), ' ').replace(/\s{2}/g, ' ')
+
+            return element
 
         @is_id = (str) =>
             return true if str.charAt(0) is '#'
@@ -592,15 +622,17 @@ class Util
                 break unless _done is false
             return result
 
-        @defer = (fn, timeout=false) =>
+        @defer = (fn, timeout) =>
 
-            if @type_of(fn) is 'boolean'
+            if not timeout?
                 return @ready(fn)
 
-            else if not @is(t = parseInt(timeout))
+            else if parseInt(timeout).toString() is 'NaN'
                 return false
 
-            else return setTimeout(fn, t)
+            else
+                tid = setTimeout(fn, timeout)
+                return tid
 
         @ready = (fn) =>
 
@@ -740,6 +772,14 @@ class Util
 
             return target
 
+        @extends = (child, parent) =>
+
+            has = {}.hasOwnProperty
+            for key of parent
+                child[key] = parent[key] if has.call(parent, key)
+
+            return child
+
         @to_hex = (color) =>
 
             if color.match ///
@@ -811,34 +851,74 @@ class Util
         @wrap = () =>
             i = 1
             fn = arguments[0]
+            pass_event = false
 
-            if fn?.preventDefault
-                fn.preventDefault()
-                fn.stopPropagation()
-                e = fn
+            if @typeof(fn) is 'boolean'
+                pass_event = fn
                 fn = arguments[1]
-                i++
+                i += 1
 
-            pass_event = if @type_of(fn) is 'boolean' then (_t = fn; fn = arguments[2]; i++; if !!e then _t else false) else false
-
-            # freshen up the context
             args = Array.prototype.slice.call(arguments, i)
-            args.unshift(e) if pass_event
-            return () ->
-                fn.apply @, args
 
-        @zero_fill = (num, length) =>
+            if not pass_event
+                return () ->
+                    fn.apply @, args
+
+            else
+                return (e) ->
+                    args.unshift(e)
+                    fn.apply(@, args)
+
+        @zero_fill = (num, length=8) =>
             return (Array(length).join('0') + num).slice(-length)
 
         @uuid = () =>
 
-            return btoa((+new Date).toString(16))
+            if arguments[0]
 
-        @resolve_timestamp = (_uuid) =>
+                prefix = String(arguments[0])
+                return btoa(prefix + '-'+ (+new Date).toString(16))
 
-            return Date(parseInt(atob(_uuid), 16))
+            else return btoa((+new Date).toString(16))
 
-        @_init = () =>
+        @resolve_uuid = (uuid, data) =>
+
+            key = atob(uuid)
+            parts = key.split('-')
+
+            if parts.length > 1
+                prefix = parts[0]
+                timestamp = parseInt(parts[1], 16)
+
+            else
+                prefix = ''
+                timestamp = parseInt(key, 16)
+
+            if data is 'prefix'
+                return prefix
+
+            if data is 'timestamp'
+                return timestamp
+
+            if data is 'date'
+                return Date(timestamp)
+
+            else
+                return {
+                    prefix: prefix
+                    timestamp: timestamp
+                }
+
+        @resolve_date = (uuid) =>
+            return @resolve_uuid(uuid, 'date')
+
+        @resolve_prefix = (uuid) =>
+            return @resolve_uuid(uuid, 'prefix')
+
+        @resolve_timestamp = (uuid) =>
+            return @resolve_uuid(uuid, 'timestamp')
+
+        @init = () =>
 
             bindings =
                 find: (query) -> return _.get(query, @)
@@ -861,10 +941,11 @@ class Util
                 attr: (key, data) -> return _.attr.call(_, @, key, data)
                 data: (key, data) -> return _.data.call(_, @, key, data)
 
-            @extend(Element.prototype, bindings)
-            @extend(HTMLElement.prototype, bindings)
+            @extend(Element::, bindings)
+            if HTMLElement::?
+                @extend(HTMLElement::, bindings)
 
-            String.prototype.isJSON = () -> return _.is_JSON(@)
+            String::isJSON = () -> return _.is_JSON(@)
 
             document.ready = () -> return _.ready.apply(_, arguments)
 
@@ -881,9 +962,9 @@ class Util
 
 window.Util = Util
 
-window._ = new Util()._init()
+window._ = new Util().init()
 
-if window.$?
+if window.jQuery?
     $.extend _: window._
 else
-    window.$ = window._.get
+    window.$ = window._

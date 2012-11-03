@@ -1,160 +1,10 @@
 ## AppTools Widgets Core
-class CoreWidgetAPI extends CoreAPI
+class WidgetsAPI extends CoreAPI
 
     @mount: 'widgets'
 
-    handle: () ->
-
-        return
-
-    defer: () ->
-
-        return
-
-    create: (target) ->
-
-        options = _.data(target, 'options')
-
-        widget = new @class(target, options)
-        widget.uuid = _.uuid()
-
-        id = widget.state.element_id
-        @state.index[id] = @state.data.push(widget.register(apptools)) - 1
-
-        return widget.init()
-
-    destroy: (widget) ->
-
-        id = widget.state.element_id
-
-        @state.data.splice(@state.index[id], 1)
-        delete @state.index[id]
-
-        return widget
-
-    get: (id) ->
-
-        return if (w_i = @state.index[id])? then @state.data[w_i] else false
-
-    constructor: (apptools, window) ->
-
-        super
-
-        if arguments[2]? and @constructor.name isnt 'CoreWidgetAPI'
-
-            widget = arguments[1]
-            window = arguments[2]
-
-            #@events = apptools.events
-            @constructor::class = window[@constructor.name.replace(/API/, '')]
-            cls = @class.name
-
-            @state =
-
-                data: []
-                index: {}
-                init: false
-
-            @init = () =>
-
-                widgets = _.get('.pre-'+cls.toLowerCase())
-                @enable(@create(widget)) for widget in widgets
-
-                @events.trigger(cls.toUpperCase()+'_API_READY', @)
-                @state.init = true
-
-                delete @init
-                return @
-
-            return
-
-        else
-            @constructor::events = apptools.events
-
-            @state =
-                index: {}
-
-            @register = (widget) =>
-
-                return false if not widget? or @state.index[widget.uuid]?
-
-                @state.index[widget.uuid] = widget
-
-
-            @get = (uuid, kind) =>
-
-                return false if not uuid?
-                return if kind? then @[kind].get(uuid) else (@state.index[uuid] or false)
-
-            @init = () =>
-
-                target_links = _.get('.target_link')
-                _.bind(link, 'click', @constructor::handle, false) for link in target_links if target_links?
-
-                delete @init
-                return @
-
-            return @init()
-
-class CoreWidget extends Model
-
-    show: () ->
-
-        return _('#'+@element_id).fadeIn()
-
-    hide: () ->
-
-        return _('#'+@element_id).fadeOut()
-
-    register: (apptools) ->
-
-        return false if not apptools?
-
-        apptools.widgets.register(@)
-        return @
-
-    constructor: () ->
-
-        return @
-
-@__apptools_preinit?.abstract_base_classes.push CoreWidget
-@__apptools_preinit?.abstract_base_classes.push CoreWidgetAPI
-@__apptools_preinit?.deferred_core_modules.push {module: CoreWidgetAPI}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-###
-class CoreWidgetAPI extends CoreAPI
-
-    @mount: 'widget'
+    resolve_type: (uuid) ->
+        return _.resolve_uuid(uuid, 'prefix')
 
     handle: (e) ->
 
@@ -252,70 +102,188 @@ class CoreWidgetAPI extends CoreAPI
             throw 'Unparseable event object passed to default deferred()'
         else throw 'Default deferred() can only be called via event binding'
 
-    constructor: (cls) ->
+    register: (widget) ->
 
-        if cls? and _.type_of(cls) is 'function'  # called via super()
+        uuid = widget.uuid
+        return false if not widget? or not uuid? or @state.index[uuid]?
 
-            @_state =
-                data: []
-                index: {}
-                class: cls
-                name: cls.name.toLowerCase()
-                init: false
+        @state.index[uuid] = widget
 
-            @create = (target) =>
+        return widget
 
-                options = if target.hasAttribute('data-options') then JSON.parse(target.getAttribute('data-options')) else {}
 
-                widget = new @_state.class(target, options)
-                id = widget._state.element_id
+    get: (uuid, kind) ->
 
-                @_state.index[id] = @_state.data.push(widget) - 1
-                return widget._init()
+        return false if not uuid?
+        return if kind? then @[kind].get(uuid) else (@state.index[uuid] or false)
 
-            @destroy = (widget) =>
+    constructor: (apptools, window) ->
 
-                id = widget._state.element_id
-                @_state.data.splice(@_state.index[id], 1)
-                delete @_state.index[id]
+        @state =
+            index: {}
 
-                return widget
+        @init = () =>
 
-            @get = (el_id) =>
+            target_links = _.filter(_.get('.target_link'), (x) -> return x.hasClass('default-widget'))
+            _.bind(link, 'click', @constructor::handle, false) for link in target_links if target_links?
 
-                return if (w = @_state.index[el_id])? then @state.data[w] else false
+            delete @init
+            return @
 
-            @_init = () =>
+        return @
 
-                widgets = _.get('.pre-'+@_state.name)
-                @enable(@create(widget)) for widget in widgets if widgets.length > 0
 
-                apptools.events.trigger @_state.name.toUpperCase() + '_API_READY', @
-                @_state.init = true
+class WidgetAPI extends CoreAPI
 
-                return @
+    create: (target) ->
 
-        else
-            @_init = () =>
-                link.addEventListener('click', @constructor::handle , false) for link in target_links if (target_links = _.get('.target-link'))?
-                return
+        options = _.data(target, 'options')
+
+        widget = new @class(target, options)
+        widget.uuid = _.uuid(widget.constructor.name)
+
+        id = widget.state.cached.id
+        @state.index[id] = @state.data.push(widget.register(apptools)) - 1
+
+        return widget.init()
+
+    destroy: (widget) ->
+
+        id = widget.state.cached.id
+
+        @state.data.splice(@state.index[id], 1)
+        delete @state.index[id]
+
+        return widget
+
+    enable: (widget) ->
+
+        widget_el = _.get('#' + widget.id)
+        widget_type = widget.constructor.name.toLowerCase()
+
+        links = _.filter(_.get('.'+widget_type+'-link', widget_el), (x) ->
+            return x.parentNode is widget_el
+        )
+
+        event = widget.constructor::event
+
+        for link in links
+            link.addEventListener(event, widget.handler, false)
+
+        return widget
+
+    disable: (widget) ->
+
+        widget_el = _.get('#' + widget.id)
+        widget_type = widget.constructor.name.toLowerCase()
+
+        links = _.filter(_.get('.'+widget_type+'-link', widget_el), (x) ->
+            return x.parentNode is widget_el
+        )
+
+        event = widget.constructor::event
+
+        for link in links
+            link.removeEventListener(event, widget.handler, false)
+
+        return widget
+
+    get: (id) ->
+
+        return if (w_i = @state.index[id])? then @state.data[w_i] else false
+
+    constructor: (apptools, window) ->
+
+        super
+
+        cls = @constructor.name.replace(/API/, '')
+
+        @constructor::events = apptools.events
+        @constructor::class = new Function('','return ' + cls + ';')()
+
+        @state =
+            index: {}
+            data: []
+            init: false
+
+        @init = () ->
+            widgets = _.get('.pre-'+cls.toLowerCase())
+            @enable(@create(widget)) for widget in widgets
+            @state.init = true
+
+            delete @init
+            return @
+
+        return @
+
 
 class CoreWidget extends Model
 
-    constructor: (@element_id) ->
-        @id = @constructor.name.toLowerCase() + '-' + @element_id
-        super()
-        return
+    enable: () ->
+
+        api = @constructor.name.toLowerCase()
+        return $.apptools.widgets[api].enable(@)
+
+    disable: () ->
+
+        api = @constructor.name.toLowerCase()
+        return $.apptools.widgets[api].disable(@)
+
+    calc: (element) ->
+
+        source = @state.cached.el
+
+        return false if not source or not element
+
+        element.setAttribute('style', element.getAttribute('style') + ' ' +  source.getAttribute('style'))
+
+        if not element.style.width
+            element.style.width = source.scrollWidth + 'px'
+        if not element.style.height
+            element.style.height = source.scrollHeight + 'px'
+
+        return element
 
     show: () ->
-        return @
+
+        return _.get('#'+@id).fadeIn()
 
     hide: () ->
+
+        return _.get('#'+@id).fadeOut()
+
+    register: (apptools) ->
+
+        return false if not apptools?
+
+        apptools.widgets.register(@)
         return @
 
+    render: (context) ->
 
+        sourcenode = @state.element or @state.cached.el
+        template = window.templates[@constructor::template]
+        temp = document.createElement(sourcenode.tagName)
+
+        source_copy = sourcenode.cloneNode(false)
+        temp.appendChild(source_copy)
+        source_copy.outerHTML = template(context)
+
+        new_source = _.get('.'+@constructor.name.toLowerCase(), temp)[0]
+        @calc(new_source)
+
+        before = sourcenode.nextSibling or sourcenode
+        sourcenode.parentNode.insertBefore(new_source, before)
+        @state.history.push(sourcenode.remove())
+        @state.element = new_source
+
+        return new_source
+
+    constructor: (source_id) ->
+
+        @id = @constructor.name.toLowerCase() + '-' + source_id
+        return @
 
 @__apptools_preinit?.abstract_base_classes.push CoreWidget
-@__apptools_preinit?.abstract_base_classes.push CoreWidgetAPI
-@__apptools_preinit?.deferred_core_modules.push {module: CoreWidgetAPI}
-###
+@__apptools_preinit?.abstract_base_classes.push WidgetsAPI, WidgetAPI
+@__apptools_preinit?.deferred_core_modules.push {module: WidgetsAPI}

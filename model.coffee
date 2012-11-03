@@ -16,26 +16,10 @@ class CoreModelAPI extends CoreAPI
         @_state =
             init: false
 
-        # internal methods
-        @internal =
-
-            block: (async_method, params...) =>
-                _done = false
-                results = null
-
-                async_method params..., (r) =>
-                    results = r
-                    return _done = true
-                loop
-                    break unless _done is false     # ...why do you want to block so BADLY? :(
-
-                return results                      # enjoy your lukewarm results, i guess
-
-
         # sync storage methods
-        @put = (object) => @internal.block(@put_async, object)
-        @get = (key, kind) => @internal.block(@get_async, key, kind)
-        @delete = (key, kind) =>  @internal.block(@delete_async, key, kind)
+        @put = (object) => _.block(@put_async, object)
+        @get = (key, kind) => _.block(@get_async, key, kind)
+        @delete = (key, kind) =>  _.block(@delete_async, key, kind)
 
         # async storage methods
         @put_async = (callback=(x)->return x) =>

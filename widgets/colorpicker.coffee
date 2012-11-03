@@ -62,17 +62,17 @@ class ColorPicker extends CoreWidget
 
         @show = (palette) =>
 
-            picker = @util.get @state.el.getAttribute 'id'
+            picker = _.get @state.el.getAttribute 'id'
             hex = picker.getAttribute 'data-chosen-color' or picker.getAttribute 'data-default-color'
-            swatches = @util.get 'swatch', palette
+            swatches = _.get 'swatch', palette
 
             hex_preview = (val) =>
-                @util.get('colorhex', palette).innerHTML = val
+                _.get('colorhex', palette).innerHTML = val
 
             @state.active = true
 
-            palette.style.top = @util.getOffset(picker).top + picker.offsetHeight
-            palette.style.left = @util.getOffset(picker).left
+            palette.style.top = _.getOffset(picker).top + picker.offsetHeight
+            palette.style.left = _.getOffset(picker).left
 
             hex_preview hex
 
@@ -91,7 +91,7 @@ class ColorPicker extends CoreWidget
 
         @hide = (palette) =>
 
-            swatches = @util.get 'swatch', palette
+            swatches = _.get 'swatch', palette
 
             swatch.removeEventListener 'mousedown' for swatch in swatches
             palette.style.opacity = 0
@@ -102,78 +102,48 @@ class ColorPicker extends CoreWidget
 
             hex = swatch.getAttribute 'data-color'
             palette = swatch.parentNode
-            picker = @util.get @state.el.getAttribute 'id'
+            picker = _.get @state.el.getAttribute 'id'
 
             picker.setAttribute 'data-chosen-color', hex
 
             picker.style.backgroundColor =
-            @util.get('colorhex', palette).innerHTML =
+            _.get('colorhex', palette).innerHTML =
             hex
 
             @hide palette
             return palette
 
-    _init: () ->
+        @init = () =>
 
-        palette = @make()
-        document.body.appendChild palette
+            palette = @make()
+            document.body.appendChild palette
 
-        @state.init = true
-        return $.apptools.events.trigger 'COLORPICKER_READY', @
+            @state.init = true
+            delete @init
+            $.apptools.events.trigger 'COLORPICKER_READY', @
+            return @
 
 
-class ColorPickerAPI extends CoreWidgetAPI
+class ColorPickerAPI extends WidgetAPI
 
     @mount = 'colorpicker'
     @events = ['COLORPICKER_READY', 'COLORPICKER_API_READY']
 
+    enable: (picker) ->
+
+        el = picker.state.el
+        @prime {el: _.get picker.state.palette}, picker.show
+        return picker
+
+    disable: (picker) ->
+
+        @unprime [picker.state.el]
+        return picker
+
     constructor: (apptools, widget, window) ->
 
-        @state =
-            pickers: []
-            pickers_by_id: {}
-            next: pickers.length
-
-        @create = (target, options={}) =>
-
-            picker = new ColorPicker target, @state.next, options
-            @state.pickers.push picker
-            @state.pickers_by_id[picker.state.el.getAttribute 'id'] = @state.next
-
-            return picker
-
-        @destroy = (picker) =>
-
-            id = picker.state.el.getAttribute 'id'
-            palette = document.getElementById picker.state.palette
-
-            @state.pickers.splice @state.pickers_by_id[id], 1
-            delete @state.pickers_by_id[id]
-
-            document.removeChild palette
-            return picker
-
-        @enable = (picker) =>
-
-            el = picker.state.el
-            @prime {el: @util.get picker.state.palette}, picker.show
-            return picker
-
-        @disable = (picker) =>
-
-            @unprime [picker.state.el]
-            return picker
-
-
-    _init: (apptools) ->
-
-        pickers = @util.get 'colorpicker'
-        for picker in pickers
-            do (picker) ->
-                picker = @create picker
-                picker = @enable picker
-
-        return apptools.events.trigger 'COLORPICKER_API_READY', @
+        super(apptools, widget, window)
+        return @
 
 
 

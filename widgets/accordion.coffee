@@ -1,154 +1,124 @@
-## AppTools accordion widget & API
+## AppTools AccordionAPI & Accordion
+class AccordionAPI extends WidgetAPI
+
+    @mount: 'accordion'
+    @events: ['ACCORDION_READY', 'ACCORDION_API_READY']
+
+
 class Accordion extends CoreWidget
+
+    template: 'AccordionWidget'
+    event: 'click'
+
+    handler: (e) ->
+
+        if e.preventDefault
+            e.preventDefault()
+            e.stopPropagation()
+
+        trigger = e.target
+        target_id = trigger.data('target').slice(1) or trigger.getAttribute('id').split('-').slice(1).join('-')
+        target = _.get('#'+target_id)
+
+        accordion_el = trigger.parentNode
+        accordion = $.apptools.widgets.get(accordion_el.data('uuid'))
+
+        current_fold = accordion.state.current_fold or _.filter(_.get('.current-fold', accordion_el), (x) ->
+            return x.parentNode is accordion_el and x.hasClass('accordion-fold'))[0]
+        same = target is current_fold
+
+        return accordion if same
+
+        accordion.state.active = true
+
+        if not current_fold?
+
+            target.classList.add('current-fold')
+            trigger.classList.add('current-fold')
+
+            accordion.state.current_fold = target
+
+            target.fadeIn()
+            accordion.state.active = false
+
+        else
+
+            current_a = _.get('#a-'+current_fold.getAttribute('id'))
+
+            current_a.classList.remove('current-fold')
+            trigger.classList.add('current-fold')
+
+            current_fold.fadeOut(
+                callback: () =>
+                    current_fold.classList.remove('current-fold')
+                    target.classList.add('current-fold')
+
+                    accordion.state.current_fold = target
+
+                    target.fadeIn()
+                    accordion.state.active = false
+            )
+
+        return accordion
 
     constructor: (target, options) ->
 
-        super()
+        target_id = target.getAttribute('id')
+        super(target_id)
 
         @state =
-            element_id: target.getAttribute('id')
+
             folds: []
             current_fold: null
+
             active: false
             init: false
 
-            config:
+            config: _.extend(
 
-                axis: 'vertical'
+                axis: null              # 'horizontal' or 'vertical'
 
-                vertical:
-                    closed:
-                        height: '0px'
-                        opacity: 0
+            , options)
 
-                    opened:
-                        height: '75px'
-                        opacity: 1
+            cached:
+                id: target_id
+                el: null
 
-                horizontal:
-                    closed:
-                        width: '0px'
-                        opacity: 0
-
-                    opened:
-                        width: '300px'
-                        opacity: 1
-
-        @state.config = _.extend(true, @state.config, options)
-
-        @internal =
-
-            register_fold: (anchor) =>
-
-                fold_id = if (f = anchor.getAttribute('href')).charAt(0) isnt '#' then f else f.slice(1)
-                fold = _.get(fold_id)
-                anchor_id = 'a-' + fold_id
-
-                fold.classList.add('accordion-fold')
-                fold.classList.add('none')
-
-                anchor.removeAttribute('href')
-                anchor.setAttribute('id', anchor_id)
-                anchor.classList.add('accordion-link')
-
-                @state.folds.push(fold_id)
-
-
-        @fold = (e) =>
-
-            if e.preventDefault
-                e.preventDefault()
-                e.stopPropagation()
-
-            trigger = e.target
-            target_div = _.get(target_id = trigger.getAttribute('id').split('-').splice(1).join('-'))
-            current_fold = _.get(@state.current_fold) or false
-            current = false
-            same = target_div is current_fold
-
-            accordion = _.get(@state.element_id)
-
-            [curr_folds, block_folds] = [_.get('.current-fold', accordion), _.get('.block', accordion)]
-
-            (if folds?
-                folds = _.filter(folds, (el) -> return el.parentNode is accordion)) for folds in [curr_folds, block_folds]
-
-            unique_folds = curr_folds
-            (unique_folds.push(tab) if not _.in_array(unique_folds, tab)) for tab in block_folds if block_folds
-
-            if unique_folds?
-                current = true
-
-            @state.active = true
-
-            opened = @state.config[axis = @state.config.axis].opened
-            opened.height = target_div.scrollHeight + 'px'
-            closed = @state.config[axis].closed
-            open_anim = (close_anim = _.prep_animation())
-
-            ($(open_tab).animate(closed,
-                duration: 400
-                complete: () =>
-                    open_tab.classList.remove(cls) for cls in ['current-fold', 'block']
-                    open_tab.classList.add('none')
-            )) for open_tab in unique_folds if unique_folds?
-
-            open_anim.complete = () =>
-                    target_div.classList.add('current-fold')
-                    @state.active = false
-                    return @
-
-            target_div.style[prop] for prop of closed
-
-            if _.has_class(target_div, 'none')
-                target_div.classList.remove('none')
-                target_div.classList.add('block')
-
-            if not same
-                $(target_div).animate(opened, open_anim)
-
-            @state.current_fold = target_id
-
-            return @
+            history: []
+            element: target
 
 
         @init = () =>
 
-            accordion = _.get(@state.element_id)
-            links = _.filter(_.get('a', accordion), (el) -> return el.parentNode is accordion)
-            @internal.register_fold(link) for link in links if links?
+            source = _.get('#' + @state.cached.id)
+            @state.cached.el = source
 
-            if current_fold?
-                e = {}
-                e.target = links[0]
-                @fold(e)
+            links = _.filter(_.get('.accordion-link', source), (x) -> return x.parentNode is source)
+
+            for link in links
+
+                target_id = link.getAttribute('href').slice(1)
+                target = _.get('#' + target_id)
+
+                @state.folds.push
+
+                    name: link.innerText
+                    target:
+                        id: target_id
+                        innerHTML: target.innerHTML
+
+            @render
+
+                folds: @state.folds
+                id: @id
+                uuid: @uuid
 
             @state.init = true
             delete @init
+
             return @
 
-
-class AccordionAPI extends CoreWidgetAPI
-
-    @mount = 'accordion'
-    @events = ['ACCORDION_READY', 'ACCORDION_API_READY']
-
-
-    enable: (accordion) ->
-
-        (trigger.addEventListener('click', accordion.fold, false) if (trigger = _.get('#a-'+f))? and trigger.nodeType) for f in accordion._state.folds
-        return accordion
-
-    disable: (accordion) ->
-
-        (trigger.removeEventListener('click') if (trigger = _.get('#a-'+fold))? and trigger.nodeType) for fold in accordion._state.folds
-        return accordion
-
-    constructor: (apptools, widget, window) ->
-
-        super(apptools, widget, window)
-
-        return @init()
+        return @
 
 
 

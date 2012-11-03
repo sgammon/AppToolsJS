@@ -1,64 +1,31 @@
 ## AppTools stickybox widget
 # Scrolls up with the page until it hits the top of inner window, then sticks!
-class StickyAPI extends CoreAPI
+class StickyAPI extends WidgetAPI
 
     @mount = 'sticky'
     @events = ['STICKY_READY', 'STICKY_API_READY']
 
+    enable: (sticky) ->
+
+        window.addEventListener('scroll', _.debounce(sticky.refresh, 15, false))
+        return sticky
+
+    disable: (sticky) ->
+
+        window.removeEventListener('scroll')
+        return sticky
+
     constructor: (apptools, widget, window) ->
 
-        @_state =
-            stickies: []
-            stickies_by_id: {}
-            init: false
-
-        @create = (target) =>
-
-            options = _.data(target, 'options') or {}
-
-            sticky = new Sticky(target, options)
-            id = sticky._state.element_id
-
-            @_state.stickies_by_id[id] = @_state.stickies.push(sticky) - 1
-
-            return sticky._init()
-
-        @destroy = (sticky) =>
-
-        @enable = (sticky) =>
-
-            window.addEventListener('scroll', _.debounce(sticky.refresh, 15, false))
-
-            return sticky
-
-        @disable = (sticky) =>
-
-            window.removeEventListener('scroll')
-
-            return sticky
-
-        @get = (element_id) =>
-
-            index = @stickies_by_id[element_id]
-
-            return @stickies[index]
-
-        @_init = () =>
-
-            stickies = _.get('.pre-sticky')
-            @enable(@create(sticky)) for sticky in stickies if stickies?
-
-            apptools.events.trigger 'STICKY_API_READY', @
-            @_state.init = true
-
-            return @
+        super(apptools, widget, window)
+        return @
 
 
 class Sticky extends CoreWidget
 
     constructor: (target, options) ->
 
-        @_state =
+        @state =
 
             element_id: target.getAttribute 'id'
             active: false
@@ -76,31 +43,31 @@ class Sticky extends CoreWidget
 
         @recalc = () =>
 
-            @_state.cache.original_offset = _.get('#'+@_state.element_id).getOffset()
+            @state.cache.original_offset = _.get('#'+@state.element_id).getOffset()
 
         @refresh = () =>
 
-            el = document.getElementById(@_state.element_id)
-            offset_side = @_state.config.side
+            el = document.getElementById(@state.element_id)
+            offset_side = @state.config.side
             window_offset = if offset_side is 'top' then window.scrollY else window.scrollX
-            past_offset = @_state.cache.past_offset or 0
+            past_offset = @state.cache.past_offset or 0
 
-            @_state.cache.past_offset = window_offset
+            @state.cache.past_offset = window_offset
 
-            distance = @_state.cache.original_offset[offset_side] - 5
+            distance = @state.cache.original_offset[offset_side] - 5
 
             traveled = window_offset - distance
             scroll = window_offset - past_offset
 
             if scroll > 0                   # we scrolled down
-                if @_state.active or traveled < 0
+                if @state.active or traveled < 0
                     return false
 
                 else if traveled > 0
                     return @stick()
 
             else if scroll < 0              # scrolled up
-                if not @_state.active or traveled > 0
+                if not @state.active or traveled > 0
                     return false
 
                 else if traveled < 0
@@ -111,34 +78,34 @@ class Sticky extends CoreWidget
 
         @stick = () =>
 
-            @_state.active = true
+            @state.active = true
 
-            el = document.getElementById(@_state.element_id)
+            el = document.getElementById(@state.element_id)
 
-            @_state.cache.classes = el.className
-            @_state.cache.style[prop] = val for prop, val of el.style
+            @state.cache.classes = el.className
+            @state.cache.style[prop] = val for prop, val of el.style
 
             el.classList.add 'fixed'
             el.style.top = -5 + 'px'
-            el.style.left = @_state.cache.original_offset.left + 'px'
+            el.style.left = @state.cache.original_offset.left + 'px'
 
             return @
 
         @unstick = () =>
 
-            el = document.getElementById(@_state.element_id)
+            el = document.getElementById(@state.element_id)
 
             el.classList.remove 'fixed'
             el.style.left = ''
             el.style.top = '-170px'
             el.style.right = '5%'
 
-            @_state.active = false
+            @state.active = false
             return @
 
-        @_init = () =>
+        @init = () =>
             _.bind(window, 'resize', _.debounce(@recalc, 100), true)
-            @_state.init = true
+            @state.init = true
             return @
 
 

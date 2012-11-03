@@ -1,97 +1,149 @@
 ## AppTools Modal Widget & API
-class ModalAPI extends CoreWidgetAPI
+class ModalAPI extends WidgetAPI
 
-    @mount = 'modal'
-    @events = ['MODAL_READY', 'MODAL_API_READY']
+    @mount: 'modal'
+    @events: ['MODAL_READY', 'MODAL_API_READY']
+
+    get_active: () ->
+
+        modals = @state.data
+        active = false
+
+        for modal in modals
+            continue if not modal.state.active
+            active = modal
+            break
+
+        return active
 
     constructor: (apptools, widget, window) ->
 
-        @_state =
-            modals: []
-            modals_by_id: {}
-            init: false
+        super(apptools, window)
 
-        @create = (target, trigger, callback, options) =>
+        @enable = (widget) ->
 
-            options = _.data(target, 'options') or {}
+            widget_el = _.get('#' + widget.id)
+            trigger = _.get('#' + widget_el.data('trigger'))
+            if not trigger.data('uuid')?
+                trigger.data('uuid', widget.uuid)
 
-            modal = new Modal(target, trigger, options)
-            id = modal._state.element_id
+            event = widget.constructor::event
 
-            @_state.modals_by_id[id] = @_state.modals.push(modal) - 1
-            modal._init()
+            trigger.addEventListener(event, widget.handler, false)
 
-            return if callback? then callback(modal) else modal
+            return widget
 
-        @destroy = (modal) =>
-
-            modal = @disable(modal)
-
-            id = modal._state.element_id
-            modal_el = _.get(id+'-modal-dialog')
-
-            @_state.modals.splice(@_state.modals_by_id[id], 1)
-            delete @_state.modals_by_id[id]
-
-            modal_el.parentNode.removeChild(modal_el)
-
-            return modal
-
-        @enable = (modal) =>
-
-            trigger = _.get(modal._state.trigger_id)
-            trigger.addEventListener('mousedown', modal.open, false)
-
-            return modal
-
-        @disable = (modal) =>
-
-            _.get(modal._state.trigger_id).removeEventListener('mousedown', modal.open)
-
-            return modal
-
-        @get = (element_id) =>
-
-            return if (index = @_state.modals_by_id[element_id])? then @_state.modals[index] else false
-
-        @_init = () =>
-
-            modals = _.get '.pre-modal'
-            (_m = @create(modal, (_t = _.get('#a-'+modal.getAttribute('id'))))
-            @enable(_m)) for modal in modals if modals?
-
-            @_state.init = true
-            return @
+        return @
 
 
 class Modal extends CoreWidget
 
-    template: [
-        '<div id="{{<element_id}}-modal-dialog" style="opacity: 0;" class="fixed dropshadow modal-dialog{{config.rounded}} rounded{{/config.rounded}} none">',
-            '<div id="{{&1}}-modal-fade" style="opacity: 0;" class="modal-fade">',
-                '<div id="{{&1}}-modal-close" class="absolute modal-close">X</div>',
-                '<div id="{{&1}}-modal-content" class="modal-content">{{=html}}</div>',
-                '<div id="{{&1}}-modal-ui" class="absolute modal-ui">',
-                    '<div id="{{&1}}-modal-title" class="absolute modal-title">{{=title}}</div>',
-                '</div>',
-            '</div>',
-        '</div>'
-    ].join('')
+    template: 'ModalWidget'
+    event: 'click'
 
-    constructor: (target, trigger, options) ->
+    handler: (e) ->
 
-        @_state =
+        return false if not e.target
 
-            element_id: target.getAttribute('id')        # source div ID
-            html: target.innerHTML
-            trigger_id: trigger.getAttribute('id')
+        if e.preventDefault
+            e.preventDefault()
+            e.stopPropagation()
+
+        uuid = e.target.data('uuid')
+
+        modal = $.apptools.widgets.get(uuid)
+        active = modal.state.active
+
+        e.target.removeEventListener('click', modal.handler, false)
+
+        final = modal.css()
+
+        if active
+
+            trigger = modal.state.trigger
+            target = _.get('#'+modal.id).find('modal-fade')
+            callback = (t) ->
+                m = t.parentNode
+                m.animate final,
+                    callback: (m) ->
+                        m.style.display = 'none'
+                        modal.state.active = false
+                        trigger.addEventListener('click', modal.handler, false)
+
+            target.fadeOut(callback: callback)
+
+        else
+
+            target = _.get('#' + modal.id)
+            trigger = target.find('modal-close')
+            callback = (t) ->
+                t.find('modal-fade').fadeIn()
+                t.find('modal-close').addEventListener('click', modal.handler, false)
+
+            modal.state.active = true
+            target.style.display = 'block'
+            target.animate final,
+                callback: callback
+
+        return modal
+
+    css: () ->
+
+        if @state.config.css?
+            return @state.config.css()
+
+        wW = window.innerWidth
+        wH = window.innerHeight
+        r = @state.config.ratio
+
+        if @state.active and arguments.length is 0
+
+            css = _.extend({}, css, @state.config.initial)
+            css.opacity = 0
+
+        else
+
+            fixed = !!@state.config.size
+            dW = (if fixed then @state.config.size.width + 10 else Math.floor r.x*wW + 20)
+            dH = (if fixed then @state.config.size.height + 10 else Math.floor r.y*wH + 20)
+            css =
+                width: dW
+                height: dH
+                left: Math.floor((wW-dW)/2)
+                top: Math.floor((wH-dH)/2)
+                opacity: 1
+
+        return css
+
+    resize: (e) ->
+
+        if e.preventDefault
+            e.preventDefault()
+            e.stopPropagation()
+
+        modal = $.apptools.widgets.modal.get_active()
+
+        css = modal.css('resize')
+
+        modal_el = _.get('#' + modal.id)
+        modal_el.style[prop] = val + 'px' for prop, val of css
+
+        return modal
+
+    constructor: (target, options) ->
+
+        target_id = target.getAttribute('id')
+        super(target_id)
+
+        @state =
+
             overlay: null
-            title: target.getAttribute('data-title')
+            title: target.data('title')
 
             active: false
             init: false
 
-            config:
+            config: _.extend(true,
 
                 initial:                                # style props at animate start
                     width: '0'
@@ -103,153 +155,41 @@ class Modal extends CoreWidget
                     x: 0.4
                     y: 0.4
 
-                size: {}                                # for fixed width/height: integers or percentages
+                size: null                              # for fixed width/height: integers or percentages
 
                 rounded: true
-                calc: null
 
-        @_state.config = _.extend(@_state.config, options)
+            , options)
 
-        @id = @_state.element_id + '-modal-dialog'
+            cached:
+                id: target_id
+                el: null
 
-        @internal =
+            history: []
+            element: target
 
-            calc: () =>
-                # returns prepared modal property object
-                if @_state.config.calc?
-                    return @_state.config.calc()
+            trigger: _.get(target.data('trigger'))
 
-                css = {}
-                wW = window.innerWidth
-                wH = window.innerHeight
-                r = @_state.config.ratio
+        @init = () =>
 
-                dW = @_state.config.size.width or Math.floor r.x*wW + 20
-                dH = @_state.config.size.height or Math.floor r.y*wH + 20
+            source = _.get('#' + @state.cached.id)
+            @state.cached.el = source
 
-                css.width = dW + 10
-                css.height = dH + 10
-                css.left = Math.floor((wW-dW)/2)
-                css.top = Math.floor((wH-dH)/2)
+            @render
 
-                return css
+                id: @id
+                uuid: @uuid
+                rounded: @state.config.rounded
+                title: @state.title
+                content: source.innerHTML
+                trigger: @state.trigger.getAttribute('id')
 
-            classify: (element, method) =>
+            if not !!@state.config.size
+                window.addEventListener('resize', _.throttle(@resize, 350, false), true)
 
-                if element?
-                    ecl = element.classList
+            @state.init = true
 
-                    if method is 'close' or not method?
-                        ecl.remove('dropshadow')
-                        ecl.remove('rounded')
-                        ecl.add('none')
-                        ecl.remove('block')
-
-                        element.style.padding = '0px'
-                        return element
-
-                    else if method is 'open'
-                        ecl.add('block')
-                        ecl.remove('none')
-                        ecl.add('dropshadow')
-                        ecl.add('rounded')
-
-                        element.style.padding = '10px'
-                        return element
-
-                else return false
-
-        @make = () =>
-
-            @template = new t(@constructor::template)
-            df = _.create_doc_frag(@template.parse(@_state))
-            document.body.appendChild(df)
-
-            # style & customize modal dialogue
-            dialog = _.get('#'+@id)
-            content = dialog.find('modal-content')
-            pre = _.get('#'+@_state.element_id)
-
-            dialog.style[prop] = val + 'px' for prop, val of @_state.config.initial
-
-            content.style.opacity = 1
-            content.style.maxHeight = @internal.calc().height - 12 + 'px'
-
-            pre.innerHTML = ''
-
-            return dialog
-
-        @open = (cback) =>
-            if cback? and cback.preventDefault
-                cback.preventDefault()
-                cback.stopPropagation()
-                cback = arguments[1] or null
-
-            id = @_state.element_id
-            dialog = _.get('#'+@id)
-            close_x = dialog.find('#'+id+'-modal-close')
-            @_state.active = true
-
-            # extend default animation params with callbacks
-            dialog_animation =
-                callback: (d) =>
-                    d.find('modal-fade').fadeIn()
-                    return @internal.classify(d, 'open')
-
-            # get final params
-            final = @internal.calc()
-            final.opacity = 1
-
-            # show & bind close()
-            dialog.animate final, dialog_animation
-
-            _.bind(close_x, 'mousedown', @close)
-
-            return if cback? then cback(@) else @
-
-        @close = (cback) =>
-            if cback? and cback.preventDefault
-                cback.preventDefault()
-                cback.stopPropagation()
-                cback = arguments[1] or null
-
-            _.unbind(_.get('#'+@_state.element_id+'-modal-close'), 'mousedown', @close)
-            dialog = _.get('#'+@id)
-
-            final = @_state.config.initial
-            final.opacity = 0
-
-            dialog.find('modal-fade').fadeOut()
-            dialog.animate final,
-                delay: 400
-                complete: (d) =>
-                    return @internal.classify(d, 'close')
-
-            @_state.active = false
-            return if cback? then cback(@) else @
-
-        @_init = () =>
-
-            dialog = @make()
-            trigger = _.get(@_state.trigger_id)
-            trigger.removeAttribute(if trigger.hasAttribute('href') then 'href' else 'data-href')
-            @render = (html) =>
-                _.get('modal-content', _.get('#'+@id)).innerHTML = html
-
-            @resize = (e) =>
-                if e.preventDefault
-                    e.preventDefault()
-                    e.stopPropagation()
-
-                newcss = @internal.calc()
-                modal = _.get('#'+@id)
-                modal.style[prop] = val + 'px' for prop, val of newcss
-                return
-
-            window.addEventListener('resize', _.throttle(@resize, 350, false), true)
-
-            @_state.init = true
-
+            delete @init
             return @
 
 
