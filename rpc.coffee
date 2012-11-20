@@ -17,6 +17,20 @@ class RPCInterface extends TransportInterface
     factory: () ->
     fulfill: () ->
 
+class SocketInterface extends TransportInterface
+
+    # WebSockets Capability
+
+    capability: 'socket'
+    parent: TransportInterface
+    required: ['factory', 'open', 'send', 'close', 'subscribe']
+
+    open: () ->
+    send: () ->
+    close: () ->
+    factory: () ->
+    subscribe: () ->
+
 #### === Native Driver === ####
 class NativeXHR extends CoreObject
 
@@ -40,6 +54,118 @@ class NativeXHR extends CoreObject
 
             return @xhr.send(payload)
         return @
+
+class SocketState extends CoreObject
+
+    # Socket States
+
+    CLOSED = 1  # Socket hasn't been opened, or has been closed.
+    OPEN = 2  # Socket is currently open and live.
+    SLEEP = 3  # Socket has requested minimal activity.
+    ERROR = 4  # Socket has encountered an error.
+
+class SocketCommand extends CoreObject
+
+    # Socket Commands
+
+    PING = 0  # Request a 'PONG'.
+    PONG = 1  # Respond to a 'PING'.
+    INIT = 2  # Initialize a new socket connection.
+    AUTH = 3  # Request/provide auth credentials.
+    DENY = 4  # Indicate authentication/authorization was denied.
+    WAIT = 5  # Wait for a deferred push response.
+    SYNC = 6  # Synchronize a targeted bundle.
+    CLOSE = 7  # Indicate that one party would like the connection closed.
+    ALLOW = 8  # Indicate authentication/authorization was granted.
+    NOTIFY = 9  # Notify server/client of activity on a channel/request.
+    REQUEST = 10  # Request a response for a Remote Procedure Call.
+    RESPONSE = 11  # Respond to a request for a Remote Procedure Call.
+    PUBLISH = 12  # Publish to a named channel.
+    SUBSCRIBE = 13  # Subscribe to a named channel.
+
+class NativeSocket extends CoreObject
+
+    id: 0
+    host: null
+    state: SocketState.CLOSED
+    config: {}
+    events: {}
+    socket: null
+    request: null
+
+    constructor: (@config, events={}, socket=WebSocket) ->
+
+        @open = (url) =>
+
+            socket = @socket = new socket(url)
+            return @
+
+        @close = (graceful=true) =>
+
+            if graceful
+                return @send(SocketCommand.CLOSE)
+            else
+                return @socket.close()
+
+        @send = (command, data=null) =>
+
+            if typeof command == 'number'
+                return @transmit(@serialize(command, data))
+            else
+                if !data?
+                    return @transmit(command)
+                else
+                    return @transmit(@serialize(SocketCommand[command], data))
+
+        @serialize = (command, data=null) =>
+
+            if !_.is_array(command)
+                command = [command]
+
+            if !_.is_array(data)
+                data = [data]
+
+            cmdlist = []
+            for cmd, i in command
+
+                switch cmd
+
+                    when SocketCommand.PING then cmdlist.push 0
+                    when SocketCommand.PONG then cmdlist.push 1
+                    when SocketCommand.INIT then cmdlist.push @identify()
+                    when SocketCommand.REQUEST then cmdlist.push data[i].payload()
+                    else cmdlist.push data[i]
+
+            return cmdlist
+
+        @transmit = (body) =>
+
+            # wrap in realtime wire format
+            payload =
+                id: @id++
+                headers:
+                    agent: 'AppToolsJS/RPC'
+                    persist: true
+                request: body
+
+            return @internal.send(JSON.stringify(payload))
+
+        @events =
+
+            open: (args...) =>
+                @internal.state(SocketState.OPEN)
+                @events.open(args...) if events.open?
+
+            error: (args...) =>
+                @internal.state(SocketState.ERROR)
+                @events.error(args...) if events.error?
+
+            message: (args...) =>
+                @events.message(args...) if events.message?
+
+            close: () =>
+                @internal.state(SocketState.CLOSED)
+                @events.close(args...) if events.close?
 
 class RPCPromise extends CoreObject
 
@@ -108,6 +234,18 @@ class ServiceLayerDriver extends Driver
                 ## Serialize payload and send
                 return xhr.send(JSON.stringify(request.payload()))
         return super apptools
+
+class RealtimeDriver extends Driver
+
+    name: 'apptools'
+    native: true
+    interface: [
+        SocketInterface
+    ]
+
+    constructor: (apptools) ->
+
+
 
 #### === RPC Base Objects === ####
 class RPCContext extends Model

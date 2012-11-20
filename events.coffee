@@ -92,7 +92,7 @@ class CoreEventsAPI extends CoreAPI
                 @callchain[name] =
                     hooks: []
 
-            return true
+            return @
 
         ## Register a callback to be executed when an event is triggered
         @on = @upon = @when = @hook = (event, callback, once=false) =>

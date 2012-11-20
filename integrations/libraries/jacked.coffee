@@ -25,7 +25,7 @@ class JackedDriver extends Driver
 
 		## Bind animation methods to HTMLElement's prototype
 		window.Element::animate = (to, settings) ->
-			if settings.complete? then settings.callback = settings.complete
+			if settings?.complete? then settings.callback = settings.complete
 			return @jacked(to, settings)
 
 		window.Element::fadeIn = @animation.fade_in
