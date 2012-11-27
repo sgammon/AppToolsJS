@@ -23,13 +23,13 @@ class SocketInterface extends TransportInterface
 
     capability: 'socket'
     parent: TransportInterface
-    required: ['factory', 'open', 'send', 'close', 'subscribe']
+    required: ['factory', 'open', 'send', 'close', 'message']
 
     open: () ->
     send: () ->
     close: () ->
     factory: () ->
-    subscribe: () ->
+    message: () ->
 
 #### === Native Driver === ####
 class NativeXHR extends CoreObject
@@ -64,9 +64,10 @@ class SocketState extends CoreObject
     SLEEP = 3  # Socket has requested minimal activity.
     ERROR = 4  # Socket has encountered an error.
 
-class SocketCommand extends CoreObject
+class SocketCommands extends CoreObject
 
     # Socket Commands
+    name: 'APTLS_GENERIC_V1'
 
     PING = 0  # Request a 'PONG'.
     PONG = 1  # Respond to a 'PING'.
@@ -83,89 +84,163 @@ class SocketCommand extends CoreObject
     PUBLISH = 12  # Publish to a named channel.
     SUBSCRIBE = 13  # Subscribe to a named channel.
 
+class SocketProtocol extends CoreObject
+
 class NativeSocket extends CoreObject
 
     id: 0
+    uuid: null
+    name: null
     host: null
     state: SocketState.CLOSED
     config: {}
     events: {}
     socket: null
     request: null
+    protocols: [SocketCommands]
 
-    constructor: (@config, events={}, socket=WebSocket) ->
+    constructor: (@config, @events={}, @socket=WebSocket) ->
 
-        @open = (url) =>
+        ## fn-local proxy for event callbacks
+        proxy =
 
-            socket = @socket = new socket(url)
+            open: (event) =>
+                @internal.state(SocketState.OPEN)
+                @events.open(event, @socket) if @events.open?
+
+            error: (event) =>
+                @internal.state(SocketState.ERROR)
+                @events.error(event, @socket) if @events.error?
+
+            message: (event) =>
+                @events.message(JSON.parse(event.data), event, @socket) if @events.message?
+
+            close: (event) =>
+                @internal.state(SocketState.CLOSED)
+                @events.close(event, @socket) if @events.close?
+
+        ## protocol management
+        @protocol =
+
+            add: (object) =>
+                @protocols.unshift(object)
+                return @
+
+            list: () =>
+                return @protocols
+
+            remove: (name) =>
+                index = null
+                for p, i in protocols
+                    if p.name == name
+                        index = i
+
+                delete @protocols[i]
+                return @
+
+        ## runtime internals
+        @internal =
+
+            bind: () =>
+
+                # Bind socket event proxies
+
+                @socket.onopen = proxy.open
+                @socket.onclose = proxy.close
+                @socket.onmessage = proxy.message
+                @socket.onerror = proxy.error
+
+                return @
+
+            send: (args...) => return @socket.send(args...)
+            state: (status) => return (@state = status)
+
+    open: (url=null) =>
+
+        if !url? and !@config.host and !@config.endpoint?
+            throw "Must provide a host or socket URL."
+        else
+            if url?
+                socket = @socket = new @socket(url, (protocol.name for protocol in @protocols))
+            else
+                if @config.endpoint?
+                    socket = @socket = new @socket(@config.endpoint, (protocol.name for protocol in @protocols))
+                else
+                    if @config.secure?
+                        transport = if @config.secure then 'wss' else 'ws'
+                    else
+                        transport = 'ws'
+                    socket = @socket = new @socket([transport, @config.host].join('://'), (protocol.name for protocol in @protocols))
+
+            @internal.bind()
             return @
 
-        @close = (graceful=true) =>
+    establish: @::open
 
-            if graceful
-                return @send(SocketCommand.CLOSE)
+    close: (graceful=true) =>
+
+        if graceful
+            return @send(SocketCommands.CLOSE)
+        else
+            return @socket.close()
+
+    destroy: @::open
+
+    send: (command, data=null) =>
+
+        if typeof command == 'number'
+            return @transmit(@serialize(command, data))
+        else
+            if !data?
+                return @transmit(command)
             else
-                return @socket.close()
+                return @transmit(@serialize(SocketCommands[command], data))
 
-        @send = (command, data=null) =>
+    serialize: (command, data=null) =>
 
-            if typeof command == 'number'
-                return @transmit(@serialize(command, data))
-            else
-                if !data?
-                    return @transmit(command)
-                else
-                    return @transmit(@serialize(SocketCommand[command], data))
+        if !_.is_array(command)
+            command = [command]
 
-        @serialize = (command, data=null) =>
+        if !_.is_array(data)
+            data = [data]
 
-            if !_.is_array(command)
-                command = [command]
+        cmdlist = []
+        for cmd, i in command
 
-            if !_.is_array(data)
-                data = [data]
+            switch cmd
 
-            cmdlist = []
-            for cmd, i in command
+                when SocketCommands.PING then cmdlist.push 0
+                when SocketCommands.PONG then cmdlist.push 1
+                when SocketCommands.INIT then cmdlist.push @identify()
+                when SocketCommands.REQUEST then cmdlist.push data[i].payload()
+                else cmdlist.push data[i]
 
-                switch cmd
+        return cmdlist
 
-                    when SocketCommand.PING then cmdlist.push 0
-                    when SocketCommand.PONG then cmdlist.push 1
-                    when SocketCommand.INIT then cmdlist.push @identify()
-                    when SocketCommand.REQUEST then cmdlist.push data[i].payload()
-                    else cmdlist.push data[i]
+    set_header: (name, value) =>
 
-            return cmdlist
+        # add a persistent header
+        @config.headers[name] = value
+        return @
 
-        @transmit = (body) =>
+    get_header: (name) =>
 
-            # wrap in realtime wire format
-            payload =
-                id: @id++
-                headers:
-                    agent: 'AppToolsJS/RPC'
-                    persist: true
-                request: body
+        # retrieve a persistent header
+        if @config.headers[name]?
+            return @config.headers[name]
+        else
+            return false
 
-            return @internal.send(JSON.stringify(payload))
+    transmit: (body) =>
 
-        @events =
+        # wrap in realtime wire format
+        payload =
+            id: @id++
+            headers: {}
+            request: body
 
-            open: (args...) =>
-                @internal.state(SocketState.OPEN)
-                @events.open(args...) if events.open?
-
-            error: (args...) =>
-                @internal.state(SocketState.ERROR)
-                @events.error(args...) if events.error?
-
-            message: (args...) =>
-                @events.message(args...) if events.message?
-
-            close: () =>
-                @internal.state(SocketState.CLOSED)
-                @events.close(args...) if events.close?
+        @payload.headers = _.extend({}, @payload.headers, @config.headers)
+        return @internal.send(JSON.stringify(payload))
 
 class RPCPromise extends CoreObject
 
@@ -245,6 +320,86 @@ class RealtimeDriver extends Driver
 
     constructor: (apptools) ->
 
+        @internal =
+
+            impl: NativeSocket
+            state: SocketState
+            config: apptools.sys.state.config.transport.sockets
+            sockpool:
+                busy: []  # sockets currently transmitting
+                wait: []  # sockets currently idle
+                data: []  # nativesocket handles
+                limit: 1  # socket pool upper limit
+                start: 1  # socket pool start initial
+                count: 0  # runtime open/active socket count
+                index:    # sockets by endpoint/named aspect
+                    aspect: {}  # named sockets
+                    endpoint: {}  # by endpoint
+
+                provision: (name, config, events, impl) => return @internal.bind(name, new @internal.impl(config, events, impl))
+
+                bind: (name, socket) =>
+                    (socket_i = (total = @internal.sockpool.count = @internal.sockpool.data.push(socket)) - 1)
+                    if name? and socket?
+                        @internal.sockpool.index.aspect[name] = socket_i
+                    if config.endpoint?
+                        @internal.sockpool.endpoint[name] = socket_i
+
+                    socket.id = socket_i
+                    return [socket_i, @internal.sockpool.data[socket_i]]
+
+                killall: (graceful=true) =>
+
+                acquire: (context, block=false) =>
+
+                    impl = MozWebSocket || WebSocket
+
+                    # check if there's an available socket
+                    if @internal.sockpool.wait > 0
+
+                        # pluck from waitqueue
+                        local_sock = @internal.sockpool.data[(local_sock_i = @internal.sockpool.wait.pop())]
+
+                        # mark as busy
+                        @internal.sockpool.busy.push(local_sock_i)
+
+                        # return for use
+                        return @internal.sockpool.data[local_sock_i]
+
+                    # perhaps we can spin up another
+                    else if @internal.sockpool.count < @internal.sockpool.limit
+
+                        # provision a new one
+                        [socket_i, socket] = @internal.sockpool.provision(context)
+                        @internal.sockpool.busy.push socket_i
+
+                        return socket
+
+                    # uh-oh, do we have to block?
+                    else if block == true
+
+                        # loop until there's a socket free
+                        free = @internal.sockpool.wait.pop()
+                        while not free?
+                            free = @internal.sockpool.wait.pop()
+
+                        return free
+
+                release: (socket) =>
+
+        @rpc =
+
+            factory: (context) => return @internal.acquire(context)
+
+            fulfill: (sock, request, dispatch) =>
+
+                ## Grab us an available/new socket
+                @rpc.factory()
+
+            open: () =>
+            send: () =>
+            close: () =>
+            message: () =>
 
 
 #### === RPC Base Objects === ####
@@ -682,7 +837,7 @@ class CoreServicesAPI extends CoreAPI
                 apptools.dev.verbose('RPC', 'Autoloaded in-page RPC config.', apptools.sys.state.config.services)
             return
 
-(i::install(window, i) for i in [TransportInterface, RPCInterface, NativeXHR, RPCPromise, ServiceLayerDriver])
+(i::install(window, i) for i in [TransportInterface, RPCInterface, SocketInterface, SocketProtocol, NativeSocket, NativeXHR, RPCPromise, ServiceLayerDriver])
 
 @__apptools_preinit.abstract_base_classes.push CoreRPCAPI
 @__apptools_preinit.abstract_base_classes.push CoreServicesAPI

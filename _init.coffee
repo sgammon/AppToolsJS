@@ -316,6 +316,9 @@ class AppTools
 
             if page_config?
                 @sys.state.config = _.extend(config, @sys.state.config, JSON.parse(page_config.innerText))
+            else
+                # set default config
+                @sys.state.config = _.extend({}, config, @sys.state.config)
 
         if @sys.state.config.debug?
             CoreDevAPI::debug = _.extend({}, CoreDevAPI::debug, @sys.state.config.debug)
