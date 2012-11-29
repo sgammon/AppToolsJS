@@ -67,7 +67,6 @@ class SocketState extends CoreObject
 class SocketCommands extends CoreObject
 
     # Socket Commands
-    name: 'APTLS_GENERIC_V1'
 
     PING = 0  # Request a 'PONG'.
     PONG = 1  # Respond to a 'PING'.
@@ -86,6 +85,17 @@ class SocketCommands extends CoreObject
 
 class SocketProtocol extends CoreObject
 
+    # Socket Protocol
+
+    name: 'APTLS_V1'
+    state: SocketState
+    commands: SocketCommands
+
+    install: (window, i) ->
+        window.__apptools_preinit.abstract_base_classes.push i
+        window.NativeSocket.protocol.add(i)
+        return i
+
 class NativeSocket extends CoreObject
 
     id: 0
@@ -97,7 +107,7 @@ class NativeSocket extends CoreObject
     events: {}
     socket: null
     request: null
-    protocols: [SocketCommands]
+    protocols: []
 
     constructor: (@config, @events={}, @socket=WebSocket) ->
 
@@ -837,7 +847,7 @@ class CoreServicesAPI extends CoreAPI
                 apptools.dev.verbose('RPC', 'Autoloaded in-page RPC config.', apptools.sys.state.config.services)
             return
 
-(i::install(window, i) for i in [TransportInterface, RPCInterface, SocketInterface, SocketProtocol, NativeSocket, NativeXHR, RPCPromise, ServiceLayerDriver])
+(i::install(window, i) for i in [TransportInterface, RPCInterface, SocketInterface, NativeSocket, SocketProtocol, NativeXHR, RPCPromise, ServiceLayerDriver])
 
 @__apptools_preinit.abstract_base_classes.push CoreRPCAPI
 @__apptools_preinit.abstract_base_classes.push CoreServicesAPI
