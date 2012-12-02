@@ -1,12 +1,12 @@
 #### === Transport Interfaces === ####
-class TransportInterface extends Interface
+@TransportInterface = class TransportInterface extends Interface
 
     # Abstract interface for transport interfaces.
 
     capability: 'transport'
     required: []
 
-class RPCInterface extends TransportInterface
+@RPCInterface = class RPCInterface extends TransportInterface
 
     # JSON/XMLRPC Capability
 
@@ -17,7 +17,7 @@ class RPCInterface extends TransportInterface
     factory: () ->
     fulfill: () ->
 
-class SocketInterface extends TransportInterface
+@SocketInterface = class SocketInterface extends TransportInterface
 
     # WebSockets Capability
 
@@ -32,7 +32,7 @@ class SocketInterface extends TransportInterface
     message: () ->
 
 #### === Native Driver === ####
-class NativeXHR extends CoreObject
+@NativeXHR = class NativeXHR extends CoreObject
 
     xhr: null
     request: null
@@ -55,7 +55,7 @@ class NativeXHR extends CoreObject
             return @xhr.send(payload)
         return @
 
-class SocketState extends CoreObject
+@SocketState = class SocketState extends CoreObject
 
     # Socket States
 
@@ -64,7 +64,7 @@ class SocketState extends CoreObject
     SLEEP = 3  # Socket has requested minimal activity.
     ERROR = 4  # Socket has encountered an error.
 
-class SocketCommands extends CoreObject
+@SocketCommands = class SocketCommands extends CoreObject
 
     # Socket Commands
 
@@ -83,20 +83,9 @@ class SocketCommands extends CoreObject
     PUBLISH = 12  # Publish to a named channel.
     SUBSCRIBE = 13  # Subscribe to a named channel.
 
-class SocketProtocol extends CoreObject
+@NativeSocket = class NativeSocket extends CoreObject
 
-    # Socket Protocol
-
-    name: 'APTLS_V1'
-    state: SocketState
-    commands: SocketCommands
-
-    install: (window, i) ->
-        window.__apptools_preinit.abstract_base_classes.push i
-        window.NativeSocket.protocol.add(i)
-        return i
-
-class NativeSocket extends CoreObject
+    # Socket Wrapper
 
     id: 0
     uuid: null
@@ -123,30 +112,11 @@ class NativeSocket extends CoreObject
                 @events.error(event, @socket) if @events.error?
 
             message: (event) =>
-                @events.message(JSON.parse(event.data), event, @socket) if @events.message?
+                @events.message(event.data, event, @socket) if @events.message?
 
             close: (event) =>
                 @internal.state(SocketState.CLOSED)
                 @events.close(event, @socket) if @events.close?
-
-        ## protocol management
-        @protocol =
-
-            add: (object) =>
-                @protocols.unshift(object)
-                return @
-
-            list: () =>
-                return @protocols
-
-            remove: (name) =>
-                index = null
-                for p, i in protocols
-                    if p.name == name
-                        index = i
-
-                delete @protocols[i]
-                return @
 
         ## runtime internals
         @internal =
@@ -164,6 +134,30 @@ class NativeSocket extends CoreObject
 
             send: (args...) => return @socket.send(args...)
             state: (status) => return (@state = status)
+
+    ## protocol management
+    protocols: []
+
+    add_protocol: (object) ->
+        for p in @protocols
+            if p.name == object.name
+                $.apptools.dev.warning('fcm:socket', 'Re-registered protocol.', object)
+                return @  # we already have this protocol
+        @protocols.unshift(object)
+        return @
+
+    list_protocols: () ->
+        return @protocols
+
+    remove_protocols: (name) ->
+        index = null
+        for p, i in @protocols
+            if p.name == name
+                index = i
+                break
+
+        delete @protocols[i]
+        return @
 
     open: (url=null) =>
 
@@ -252,7 +246,20 @@ class NativeSocket extends CoreObject
         @payload.headers = _.extend({}, @payload.headers, @config.headers)
         return @internal.send(JSON.stringify(payload))
 
-class RPCPromise extends CoreObject
+@SocketProtocol = class SocketProtocol extends CoreObject
+
+    # Socket Protocol
+
+    @name = 'APTLS_V1'
+    @state = SocketState
+    @commands = SocketCommands
+
+    install: (window, i) ->
+        window.__apptools_preinit.abstract_base_classes.push i
+        window.NativeSocket::add_protocol(i)
+        return i
+
+@RPCPromise = class RPCPromise extends CoreObject
 
     expected: null
     directive: null
@@ -272,7 +279,7 @@ class RPCPromise extends CoreObject
         else
             return @directive.request.fulfill()
 
-class ServiceLayerDriver extends Driver
+@ServiceLayerDriver = class ServiceLayerDriver extends Driver
 
     name: 'apptools'
     native: true
@@ -320,7 +327,7 @@ class ServiceLayerDriver extends Driver
                 return xhr.send(JSON.stringify(request.payload()))
         return super apptools
 
-class RealtimeDriver extends Driver
+@RealtimeDriver = class RealtimeDriver extends Driver
 
     name: 'apptools'
     native: true
@@ -413,7 +420,7 @@ class RealtimeDriver extends Driver
 
 
 #### === RPC Base Objects === ####
-class RPCContext extends Model
+@RPCContext = class RPCContext extends Model
 
     # Represets execution context for an RPC request.
 
@@ -434,9 +441,9 @@ class RPCContext extends Model
 
     constructor: (opts={}) -> _.extend(@, @defaults, opts)
 
-class RPCEnvelope extends Model
+@RPCEnvelope = class RPCEnvelope extends Model
 
-class RequestEnvelope extends RPCEnvelope
+@RequestEnvelope = class RequestEnvelope extends RPCEnvelope
 
     # Represents meta details about an RPC request.
 
@@ -447,7 +454,7 @@ class RequestEnvelope extends RPCEnvelope
 
     constructor: (envelope) -> _.extend(@, envelope)
 
-class ResponseEnvelope extends RPCEnvelope
+@ResponseEnvelope = class ResponseEnvelope extends RPCEnvelope
 
     # Represents meta details about an RPC response.
 
@@ -458,7 +465,7 @@ class ResponseEnvelope extends RPCEnvelope
 
     constructor: (envelope) -> super _.extend(@, envelope)
 
-class RPC extends Model
+@RPC = class RPC extends Model
 
     model:
         ttl: Number()
@@ -477,7 +484,7 @@ class RPC extends Model
         return @
 
 #### === RPC Request/Response === ####
-class RPCRequest extends RPC
+@RPCRequest = class RPCRequest extends RPC
 
     # Represents a single RPC request, complete with config, params, callbacks, etc
 
@@ -527,7 +534,7 @@ class RPCRequest extends RPC
                 api: @service
         }
 
-class RPCResponse extends RPC
+@RPCResponse = class RPCResponse extends RPC
 
     # Represents a response to an RPCRequest
 
@@ -546,7 +553,7 @@ class RPCResponse extends RPC
     inflate: (raw_response) => _.extend(@, raw_response)
     callbacks: (@events) -> @
 
-class RPCErrorResponse extends RPCResponse
+@RPCErrorResponse = class RPCErrorResponse extends RPCResponse
 
     # Represents a response indicating an error
 
@@ -563,7 +570,7 @@ class RPCErrorResponse extends RPCResponse
         return @inflate(raw_response)
 
 #### === RPCAPI - Service Class === ####
-class RPCAPI extends CoreObject
+@RPCAPI = class RPCAPI extends CoreObject
 
     # Represents a server-side API, so requests can be sent/received from JavaScript
 
@@ -588,7 +595,7 @@ class RPCAPI extends CoreObject
         apptools.rpc.service.register(@, methods, config)
         return @
 
-class CoreRPCAPI extends CoreAPI
+@CoreRPCAPI = class CoreRPCAPI extends CoreAPI
 
     # CoreRPCAPI - low-level RPC interaction API, mediates between the service layer and dispatch.
 
@@ -822,7 +829,7 @@ class CoreRPCAPI extends CoreAPI
             # Callback from an RPCAPI once it is done constructing itself
             register: (service, methods, config) => apptools.events.dispatch('CONSTRUCT_SERVICE', service, methods, config)
 
-class CoreServicesAPI extends CoreAPI
+@CoreServicesAPI = class CoreServicesAPI extends CoreAPI
 
     ## CoreServicesAPI - sits on top of the RPCAPI to abstract server interaction
 
