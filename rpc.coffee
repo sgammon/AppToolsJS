@@ -246,6 +246,8 @@
         @payload.headers = _.extend({}, @payload.headers, @config.headers)
         return @internal.send(JSON.stringify(payload))
 
+@SocketVocabulary = class SocketVocabulary extends CoreObject
+
 @SocketProtocol = class SocketProtocol extends CoreObject
 
     # Socket Protocol
@@ -253,11 +255,20 @@
     @name = 'APTLS_V1'
     @state = SocketState
     @commands = SocketCommands
+    @vocabulary = SocketVocabulary
 
     install: (window, i) ->
         window.__apptools_preinit.abstract_base_classes.push i
         window.NativeSocket::add_protocol(i)
         return i
+
+    get_command: (id) ->
+        for cmd, sentinel of @commands
+            if id == sentinel
+                return cmd
+
+    pack: (command, frame) -> return @encode(@serialize(command, frame))
+    unpack: (raw) -> return @deserialize(@decode(raw))
 
 @RPCPromise = class RPCPromise extends CoreObject
 
@@ -342,67 +353,6 @@
             impl: NativeSocket
             state: SocketState
             config: apptools.sys.state.config.transport.sockets
-            sockpool:
-                busy: []  # sockets currently transmitting
-                wait: []  # sockets currently idle
-                data: []  # nativesocket handles
-                limit: 1  # socket pool upper limit
-                start: 1  # socket pool start initial
-                count: 0  # runtime open/active socket count
-                index:    # sockets by endpoint/named aspect
-                    aspect: {}  # named sockets
-                    endpoint: {}  # by endpoint
-
-                provision: (name, config, events, impl) => return @internal.bind(name, new @internal.impl(config, events, impl))
-
-                bind: (name, socket) =>
-                    (socket_i = (total = @internal.sockpool.count = @internal.sockpool.data.push(socket)) - 1)
-                    if name? and socket?
-                        @internal.sockpool.index.aspect[name] = socket_i
-                    if config.endpoint?
-                        @internal.sockpool.endpoint[name] = socket_i
-
-                    socket.id = socket_i
-                    return [socket_i, @internal.sockpool.data[socket_i]]
-
-                killall: (graceful=true) =>
-
-                acquire: (context, block=false) =>
-
-                    impl = MozWebSocket || WebSocket
-
-                    # check if there's an available socket
-                    if @internal.sockpool.wait > 0
-
-                        # pluck from waitqueue
-                        local_sock = @internal.sockpool.data[(local_sock_i = @internal.sockpool.wait.pop())]
-
-                        # mark as busy
-                        @internal.sockpool.busy.push(local_sock_i)
-
-                        # return for use
-                        return @internal.sockpool.data[local_sock_i]
-
-                    # perhaps we can spin up another
-                    else if @internal.sockpool.count < @internal.sockpool.limit
-
-                        # provision a new one
-                        [socket_i, socket] = @internal.sockpool.provision(context)
-                        @internal.sockpool.busy.push socket_i
-
-                        return socket
-
-                    # uh-oh, do we have to block?
-                    else if block == true
-
-                        # loop until there's a socket free
-                        free = @internal.sockpool.wait.pop()
-                        while not free?
-                            free = @internal.sockpool.wait.pop()
-
-                        return free
-
-                release: (socket) =>
 
         @rpc =
 
@@ -800,6 +750,8 @@
 
             store: (request, response) => @  # Response caching is currently stubbed.
 
+            notify: (status, directive, raw_response) =>
+
             dispatch: (status, directive, raw_response) =>
 
                 (directive.response = new RPCErrorResponse(directive.response, raw_response)) unless status != 'failure'
@@ -810,8 +762,18 @@
 
                 default:
 
+                    notify: (response) => apptools.dev.verbose('RPC', 'Encountered notify RPC with no callback.', response)
                     success: (response) => apptools.dev.verbose('RPC', 'Encountered successful RPC with no callback.', response)
                     failure: (response) => apptools.dev.verbose('RPC', 'Encountered failing RPC with no error callback.', response)
+
+        ## Direct Dispatch
+        @direct =
+
+            notify: (payload) ->
+            request: (payload) ->
+            response: (payload) ->
+            subscribe: (payload) ->
+            broadcast: (payload) ->
 
         ## Service Tools
         @service =
