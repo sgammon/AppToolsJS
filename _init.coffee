@@ -187,7 +187,10 @@ class AppTools
             interfaces:
                 install: (adapter) =>
 
-                    adapter = new adapter(@)
+                    if adapter.name? and adapter.adapter?
+                        adapter = new adapter.adapter(@)
+                    else
+                        adapter = new adapter(@)
 
                     ## Log + trigger event
                     @dev.verbose('Interface', 'Installed "' + adapter.capability + '" interface.', adapter)

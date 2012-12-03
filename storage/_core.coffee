@@ -1,4 +1,4 @@
-class StorageDriver extends CoreInterface
+@StorageDriver = class StorageDriver extends CoreInterface
 
     @methods = ['compatible', 'construct']
     @export = "public"
@@ -13,8 +13,7 @@ class StorageDriver extends CoreInterface
 
         return
 
-
-class StorageAdapter extends CoreInterface
+@StorageAdapter = class StorageAdapter extends CoreInterface
 
 	@methods = ['get', 'put', 'delete', 'clear', 'get_async', 'put_async', 'delete_async', 'clear_async']
 	@export = "public"
@@ -22,15 +21,13 @@ class StorageAdapter extends CoreInterface
 	constructor: () ->
 		return
 
-
-class KeyEncoder extends CoreInterface
+@KeyEncoder = class KeyEncoder extends CoreInterface
 
 	@methods = ['build_key', 'encode_key', 'build_cluster', 'encode_cluster']
 	@export = "public"
 
 	constructor: () ->
 		return
-
 
 # Setup preinit
 if @__apptools_preinit?
@@ -46,9 +43,6 @@ else
 # Add detected storage engines to the preinit
 @__apptools_preinit.detected_storage_engines = []
 
-# Push classes
-@__apptools_preinit.abstract_base_classes.push StorageDriver
-@__apptools_preinit.abstract_base_classes.push StorageAdapter
-
-# Push interfaces
+# Push classes + interfaces
+@__apptools_preinit.abstract_base_classes.push StorageDriver, StorageAdapter
 @__apptools_preinit.abstract_feature_interfaces.push {adapter: StorageDriver, name: "storage"}

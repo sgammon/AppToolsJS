@@ -1,5 +1,5 @@
 # Storage API
-class CoreStorageAPI extends CoreAPI
+@CoreStorageAPI = class CoreStorageAPI extends CoreAPI
 
     @mount = 'storage'
     @events = [
@@ -138,3 +138,4 @@ class CoreStorageAPI extends CoreAPI
 
 
 @__apptools_preinit.abstract_base_classes.push CoreStorageAPI
+@__apptools_preinit.deferred_core_modules.push {module: CoreStorageAPI}
