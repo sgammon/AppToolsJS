@@ -47,7 +47,7 @@ class CoreAgentAPI extends CoreAPI
 
         _makeMatch = (sample) =>
             for value in sample
-                if value.string isnt null
+                if value.string?
                     if value.string.indexOf(value.subString) isnt -1
                         detection_data.versionSearchString = value.versionSearch || value.identity
                         return value.identity
