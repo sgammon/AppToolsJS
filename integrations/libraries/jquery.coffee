@@ -40,4 +40,4 @@ class jQueryDriver extends Driver
 		return @
 
 
-jQueryDriver.install(window)
+jQueryDriver::install(window, jQueryDriver)
