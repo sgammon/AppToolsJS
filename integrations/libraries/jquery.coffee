@@ -5,8 +5,7 @@ class jQueryDriver extends Driver
 	library: window.jQuery
 	interface: [
 		QueryInterface,
-		AnimationInterface,
-		RPCInterface
+		AnimationInterface
 	]
 
 	constructor: (library) ->
@@ -24,13 +23,6 @@ class jQueryDriver extends Driver
 
 			elements_by_class: (classname) =>
 				return library([".", classname].join(""))
-
-		## RPC/Transport
-		@rpc =
-			factory: (context) =>
-				return $.ajaxSettings.xhr(context)
-
-			fulfill: (xhr, request, dispatch) =>
 
 		## Animation
 		@animation =

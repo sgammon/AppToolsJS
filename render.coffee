@@ -346,40 +346,41 @@ class TemplateAPI extends CoreAPI
                     continue
 
             else
-                if _('#templates').find?
+                if _('#templates')?
+                    if _('#templates').find?
 
-                    templates = _.to_array(_('#templates').find('script')) or []
-                    window.templates = {}
+                        templates = _.to_array(_('#templates').find('script')) or []
+                        window.templates = {}
 
-                    while (t = templates.shift())
+                        while (t = templates.shift())
 
-                        singleton = !!t.data('singleton')
-                        name = t.getAttribute('id')
-                        raw = t.innerText.replace(/[\r\t\n]/g, '').replace(/\s{3,}/g, '')
-                        _t = @make(name, raw.replace(/\[\[\[\s*?([^\]]+)\s*?\]\]\]/g, (_, inner) => return '{{'+inner+'}}'))
-                        _t.temp = []
-                        if singleton
-                            _t.singleton = true
-                            _t.cache = []
-                            _t.__defineSetter__('node', (n) ->
-                                @cache.push(@current)
-                                @current = n
-                                return @
-                            )
-                            _t.__defineGetter__('node', () ->
-                                return @current
-                            )
+                            singleton = !!t.data('singleton')
+                            name = t.getAttribute('id')
+                            raw = t.innerText.replace(/[\r\t\n]/g, '').replace(/\s{3,}/g, '')
+                            _t = @make(name, raw.replace(/\[\[\[\s*?([^\]]+)\s*?\]\]\]/g, (_, inner) => return '{{'+inner+'}}'))
+                            _t.temp = []
+                            if singleton
+                                _t.singleton = true
+                                _t.cache = []
+                                _t.__defineSetter__('node', (n) ->
+                                    @cache.push(@current)
+                                    @current = n
+                                    return @
+                                )
+                                _t.__defineGetter__('node', () ->
+                                    return @current
+                                )
 
-                        else
-                            _t.bind = (el) ->
-                                @node = el
-                                delete @bind
-                                return @
+                            else
+                                _t.bind = (el) ->
+                                    @node = el
+                                    delete @bind
+                                    return @
 
-                        t.remove()
-                        window.templates[name] = _t
+                            t.remove()
+                            window.templates[name] = _t
 
-                        continue
+                            continue
 
             delete @_init
             @_state.init = true
