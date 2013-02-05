@@ -264,8 +264,7 @@ class AppTools
                         throw "Drivers must have a string name attached at `driver.name`."
 
                     if @sys.state.drivers[driver.name]?
-                        @dev.error('System', 'Encountered a driver conflict installing "' + driver.name + '".', 'original: ', @sys.state.drivers[driver.name], 'conflict: ', driver)
-                        throw "Encountered fatal driver conflict."
+                        @dev.log('System', 'Encountered a driver conflict installing "' + driver.name + '".', 'original: ', @sys.state.drivers[driver.name], 'conflict: ', driver)
 
                     else
 
