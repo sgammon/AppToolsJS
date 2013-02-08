@@ -145,7 +145,7 @@ class WidgetAPI extends CoreAPI
         id = widget.state.cached.id
         @state.index[id] = @state.data.push(widget.register(apptools)) - 1
 
-        return widget.init()
+        return widget.init(target)
 
     destroy: (widget) ->
 

@@ -167,10 +167,9 @@ class Modal extends CoreWidget
 
             history: []
             element: target
-
             trigger: _.get(target.data('trigger'))
 
-        @init = () =>
+        @init = (trigger) =>
 
             source = _.get('#' + @state.cached.id)
             @state.cached.el = source

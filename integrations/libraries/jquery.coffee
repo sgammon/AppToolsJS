@@ -4,7 +4,6 @@ class jQueryDriver extends Driver
 	name: 'jquery'
 	library: window.jQuery
 	interface: [
-		QueryInterface,
 		AnimationInterface
 	]
 
