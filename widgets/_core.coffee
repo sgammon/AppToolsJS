@@ -145,7 +145,7 @@ class WidgetAPI extends CoreAPI
         id = widget.state.cached.id
         @state.index[id] = @state.data.push(widget.register(apptools)) - 1
 
-        return widget.init(target)
+        return widget.init()
 
     destroy: (widget) ->
 
@@ -262,7 +262,7 @@ class CoreWidget extends Model
     render: (context) ->
 
         sourcenode = @state.element or @state.cached.el
-        template = window.templates[@constructor::template]
+        template = @constructor::template
         temp = document.createElement(sourcenode.tagName)
 
         source_copy = sourcenode.cloneNode(false)
