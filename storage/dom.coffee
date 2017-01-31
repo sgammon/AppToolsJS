@@ -1,4 +1,4 @@
-class SimpleKeyEncoder extends KeyEncoder
+@SimpleKeyEncoder = class SimpleKeyEncoder extends KeyEncoder
 
     constructor: () ->
 
@@ -16,21 +16,20 @@ _simple_key_encoder = new SimpleKeyEncoder()
 ### === DOM Storage Engines === ###
 
 ## LocalStorage
-class LocalStorageEngine extends StorageAdapter
-
-    # Internal state
-    @_state =
-
-        # Runtime data
-        runtime:
-
-            # Key counts
-            count:
-                total_keys: 0
-                by_kind: []
-
+@LocalStorageEngine = class LocalStorageEngine extends StorageAdapter
 
     constructor: (@name) ->
+
+        # Internal state
+        @_state =
+
+            # Runtime data
+            runtime:
+
+                # Key counts
+                count:
+                    total_keys: 0
+                    by_kind: []
 
         # Async Methods
         @get_async = (key, callback) =>
@@ -75,20 +74,20 @@ class LocalStorageEngine extends StorageAdapter
         return
 
 ## SessionStorage
-class SessionStorageEngine extends StorageAdapter
-
-    # Internal state
-    @_state =
-
-        # Runtime data
-        runtime:
-
-            # Key counts
-            count:
-                total_keys: 0
-                by_kind: []
+@SessionStorageEngine = class SessionStorageEngine extends StorageAdapter
 
     constructor: (@name) ->
+
+        # Internal state
+        @_state =
+
+            # Runtime data
+            runtime:
+
+                # Key counts
+                count:
+                    total_keys: 0
+                    by_kind: []
 
         # Async Methods
         @get_async = (key, callback) =>
@@ -136,12 +135,12 @@ class SessionStorageEngine extends StorageAdapter
 ### === DOM Storage Drivers === ###
 
 ## LocalStorage
-class LocalStorageDriver extends StorageDriver
-
-    # Internal state
-    @_state =
+@LocalStorageDriver = class LocalStorageDriver extends StorageDriver
 
     constructor: () ->
+
+        # Internal state
+        @_state = {}
 
         # Check compatibility
         @compatible = () =>
@@ -156,12 +155,12 @@ class LocalStorageDriver extends StorageDriver
 
 
 ## SessionStorage
-class SessionStorageDriver extends StorageDriver
-
-    # Internal state
-    @_state =
+@SessionStorageDriver = class SessionStorageDriver extends StorageDriver
 
     constructor: () ->
+
+        # Internal state
+        @_state = {}
 
         # Check compatibility
         @compatible = () =>
@@ -177,3 +176,8 @@ class SessionStorageDriver extends StorageDriver
 
 @__apptools_preinit.detected_storage_engines.push {name: "LocalStorage", adapter: LocalStorageEngine, driver: LocalStorageDriver, key_encoder: _simple_key_encoder}
 @__apptools_preinit.detected_storage_engines.push {name: "SessionStorage", adapter: SessionStorageEngine, driver: SessionStorageDriver, key_encoder: _simple_key_encoder}
+@__apptools_preinit.abstract_base_classes.push SimpleKeyEncoder,
+                                               LocalStorageEngine,
+                                               SessionStorageEngine,
+                                               LocalStorageEngine,
+                                               SessionStorageDriver

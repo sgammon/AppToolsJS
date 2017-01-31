@@ -30,7 +30,7 @@ class DrawerAPI extends CoreAPI
 
         @get = (element_id) =>
 
-        @_init = ()
+        @_init = () =>
 
 class Drawer extends CoreWidget
 

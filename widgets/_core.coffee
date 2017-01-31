@@ -262,7 +262,7 @@ class CoreWidget extends Model
     render: (context) ->
 
         sourcenode = @state.element or @state.cached.el
-        template = window.templates[@constructor::template]
+        template = @constructor::template
         temp = document.createElement(sourcenode.tagName)
 
         source_copy = sourcenode.cloneNode(false)

@@ -45,16 +45,16 @@ class AppTools
 
             ## System state
             state:
-                core: []            # System core modules
-                config: {}          # Replaced with in-page config
-                status: 'NOT_READY' # System status
-                flags: ['base']     # System flags
-                preinit: {}         # System preinit
-                modules: {}         # Installed system modules
-                classes: {}         # Installed AppTools-related classes
-                drivers: {}         # Installed Feature/Library Drivers
-                interfaces: {}      # Installed feature interfaces
-                integrations: []    # Installed library integrations
+                core: []                 # System core modules
+                config: {}               # Replaced with in-page config
+                status: 'NOT_READY'      # System status
+                flags: ['base', 'beta']  # System flags
+                preinit: {}              # System preinit
+                modules: {}              # Installed system modules
+                classes: {}              # Installed AppTools-related classes
+                drivers: {}              # Installed Feature/Library Drivers
+                interfaces: {}           # Installed feature interfaces
+                integrations: []         # Installed library integrations
 
                 add_flag: (flagname) =>
                     @sys.state.flags.push flagname
@@ -187,7 +187,10 @@ class AppTools
             interfaces:
                 install: (adapter) =>
 
-                    adapter = new adapter(@)
+                    if adapter.name? and adapter.adapter?
+                        adapter = new adapter.adapter(@)
+                    else
+                        adapter = new adapter(@)
 
                     ## Log + trigger event
                     @dev.verbose('Interface', 'Installed "' + adapter.capability + '" interface.', adapter)
@@ -261,8 +264,7 @@ class AppTools
                         throw "Drivers must have a string name attached at `driver.name`."
 
                     if @sys.state.drivers[driver.name]?
-                        @dev.error('System', 'Encountered a driver conflict installing "' + driver.name + '".', 'original: ', @sys.state.drivers[driver.name], 'conflict: ', driver)
-                        throw "Encountered fatal driver conflict."
+                        @dev.log('System', 'Encountered a driver conflict installing "' + driver.name + '".', 'original: ', @sys.state.drivers[driver.name], 'conflict: ', driver)
 
                     else
 
@@ -307,23 +309,31 @@ class AppTools
                 return @
 
         ## Parse in-page config, if available
-        cfelem = document.getElementById 'js-config'
-        if cfelem?
-            @sys.state.config = _.extend(config, @sys.state.config, JSON.parse(cfelem.innerText))
+        if window.config? and _.is_object(window.config)
+            page_config = window.config
+            @sys.state.config = _.extend(config, @sys.state.config, window.config)
+        else
+            config_string = window._cfgst || 'js-config'
+            page_config = document.getElementById config_string
+
+            if page_config?
+                @sys.state.config = _.extend(config, @sys.state.config, JSON.parse(page_config.innerText))
+            else
+                # set default config
+                @sys.state.config = _.extend({}, config, @sys.state.config)
 
         if @sys.state.config.debug?
             CoreDevAPI::debug = _.extend({}, CoreDevAPI::debug, @sys.state.config.debug)
 
         ## Dev/Events API (for logging/debugging - only two modules instantiated manually, so we can log stuff + trigger events during init)
-        @sys.modules.install CoreDevAPI, (dev) ->
-            dev.verbose('CORE', 'CoreDevAPI is up and running.')
-
-        @sys.modules.install CoreEventsAPI, (events) =>
-            events.register(@sys.core_events)
+        @sys.modules.install CoreDevAPI, (dev) =>
+            @sys.modules.install CoreEventsAPI, (events) =>
+                events.register(@sys.core_events)
 
         ## Consider preinit: export/catalog preinit classes & libraries
-        @sys.state.preinit = window.__apptools_preinit
-        @sys.state.consider_preinit(window.__apptools_preinit)
+        @sys.state.preinit = window.__apptools_preinit || window.__preinit
+        if @sys.state.preinit?
+            @sys.state.consider_preinit(window.__apptools_preinit)
 
         ## Install core modules
         @sys.state.core = [
@@ -372,5 +382,5 @@ else if window.$?
 
 else (window.$ = (x) -> return document.getElementById(x)).apptools = window.apptools
 
-if window.$.apptools.analytics?
+if window.__clock?
 	window.__clock.clockpoint('JavaScript', 'Platform Ready', window.__clock.ts[0], 'AppTools', 100)

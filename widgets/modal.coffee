@@ -38,7 +38,15 @@ class ModalAPI extends WidgetAPI
 
 class Modal extends CoreWidget
 
-    template: 'ModalWidget'
+    template: (ctx) ->
+        return '<div id="' + ctx.id + '" style="opacity: 0; position:fixed" class="dropshadow modal' +
+            (if ctx.rounded then ' rounded' else '') + ' none"><div id="' + ctx.id + 
+            '-modal-fade" style="opacity: 0" class="modal-fade"><div id="' + ctx.id + 
+                '-modal-content" class="modal-content">' + ctx.content + '</div><div id="' + ctx.id +
+                '-modal-ui" class="absolute modal-ui"><div id="' + ctx.id +
+                '-modal-title" class="absolute modal-title">' + ctx.title + '</div><div id="' + ctx.id +
+                '-modal-close" class="absolute modal-close">X</div></div></div></div>'
+
     event: 'click'
 
     handler: (e) ->
@@ -167,7 +175,6 @@ class Modal extends CoreWidget
 
             history: []
             element: target
-
             trigger: _.get(target.data('trigger'))
 
         @init = () =>

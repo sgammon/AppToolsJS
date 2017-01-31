@@ -1,12 +1,12 @@
 #### === Transport Interfaces === ####
-class TransportInterface extends Interface
+@TransportInterface = class TransportInterface extends Interface
 
     # Abstract interface for transport interfaces.
 
     capability: 'transport'
     required: []
 
-class RPCInterface extends TransportInterface
+@RPCInterface = class RPCInterface extends TransportInterface
 
     # JSON/XMLRPC Capability
 
@@ -17,8 +17,22 @@ class RPCInterface extends TransportInterface
     factory: () ->
     fulfill: () ->
 
+@SocketInterface = class SocketInterface extends TransportInterface
+
+    # WebSockets Capability
+
+    capability: 'socket'
+    parent: TransportInterface
+    required: ['factory', 'open', 'send', 'close', 'message']
+
+    open: () ->
+    send: () ->
+    close: () ->
+    factory: () ->
+    message: () ->
+
 #### === Native Driver === ####
-class NativeXHR extends CoreObject
+@NativeXHR = class NativeXHR extends CoreObject
 
     xhr: null
     request: null
@@ -41,7 +55,222 @@ class NativeXHR extends CoreObject
             return @xhr.send(payload)
         return @
 
-class RPCPromise extends CoreObject
+@SocketState = class SocketState extends CoreObject
+
+    # Socket States
+
+    CLOSED = 1  # Socket hasn't been opened, or has been closed.
+    OPEN = 2  # Socket is currently open and live.
+    SLEEP = 3  # Socket has requested minimal activity.
+    ERROR = 4  # Socket has encountered an error.
+
+@SocketCommands = class SocketCommands extends CoreObject
+
+    # Socket Commands
+
+    PING = 0  # Request a 'PONG'.
+    PONG = 1  # Respond to a 'PING'.
+    INIT = 2  # Initialize a new socket connection.
+    AUTH = 3  # Request/provide auth credentials.
+    DENY = 4  # Indicate authentication/authorization was denied.
+    WAIT = 5  # Wait for a deferred push response.
+    SYNC = 6  # Synchronize a targeted bundle.
+    CLOSE = 7  # Indicate that one party would like the connection closed.
+    ALLOW = 8  # Indicate authentication/authorization was granted.
+    NOTIFY = 9  # Notify server/client of activity on a channel/request.
+    REQUEST = 10  # Request a response for a Remote Procedure Call.
+    RESPONSE = 11  # Respond to a request for a Remote Procedure Call.
+    PUBLISH = 12  # Publish to a named channel.
+    SUBSCRIBE = 13  # Subscribe to a named channel.
+
+@NativeSocket = class NativeSocket extends CoreObject
+
+    # Socket Wrapper
+
+    id: 0
+    uuid: null
+    name: null
+    host: null
+    state: SocketState.CLOSED
+    config: {}
+    events: {}
+    socket: null
+    request: null
+    protocols: []
+
+    constructor: (@config, @events={}, @socket=WebSocket) ->
+
+        ## fn-local proxy for event callbacks
+        proxy =
+
+            open: (event) =>
+                @internal.state(SocketState.OPEN)
+                @events.open(event, @socket) if @events.open?
+
+            error: (event) =>
+                @internal.state(SocketState.ERROR)
+                @events.error(event, @socket) if @events.error?
+
+            message: (event) =>
+                @events.message(event.data, event, @socket) if @events.message?
+
+            close: (event) =>
+                @internal.state(SocketState.CLOSED)
+                @events.close(event, @socket) if @events.close?
+
+        ## runtime internals
+        @internal =
+
+            bind: () =>
+
+                # Bind socket event proxies
+
+                @socket.onopen = proxy.open
+                @socket.onclose = proxy.close
+                @socket.onmessage = proxy.message
+                @socket.onerror = proxy.error
+
+                return @
+
+            send: (args...) => return @socket.send(args...)
+            state: (status) => return (@state = status)
+
+    ## protocol management
+    protocols: []
+
+    add_protocol: (object) ->
+        for p in @protocols
+            if p.name == object.name
+                $.apptools.dev.warning('fcm:socket', 'Re-registered protocol.', object)
+                return @  # we already have this protocol
+        @protocols.unshift(object)
+        return @
+
+    list_protocols: () ->
+        return @protocols
+
+    remove_protocols: (name) ->
+        index = null
+        for p, i in @protocols
+            if p.name == name
+                index = i
+                break
+
+        delete @protocols[i]
+        return @
+
+    open: (url=null) =>
+
+        if !url? and !@config.host and !@config.endpoint?
+            throw "Must provide a host or socket URL."
+        else
+            if url?
+                socket = @socket = new @socket(url, (protocol.name for protocol in @protocols))
+            else
+                if @config.endpoint?
+                    socket = @socket = new @socket(@config.endpoint, (protocol.name for protocol in @protocols))
+                else
+                    if @config.secure?
+                        transport = if @config.secure then 'wss' else 'ws'
+                    else
+                        transport = 'ws'
+                    socket = @socket = new @socket([transport, @config.host].join('://'), (protocol.name for protocol in @protocols))
+
+            @internal.bind()
+            return @
+
+    establish: @::open
+
+    close: (graceful=true) =>
+
+        if graceful
+            return @send(SocketCommands.CLOSE)
+        else
+            return @socket.close()
+
+    destroy: @::open
+
+    send: (command, data=null) =>
+
+        if typeof command == 'number'
+            return @transmit(@serialize(command, data))
+        else
+            if !data?
+                return @transmit(command)
+            else
+                return @transmit(@serialize(SocketCommands[command], data))
+
+    serialize: (command, data=null) =>
+
+        if !_.is_array(command)
+            command = [command]
+
+        if !_.is_array(data)
+            data = [data]
+
+        cmdlist = []
+        for cmd, i in command
+
+            switch cmd
+
+                when SocketCommands.PING then cmdlist.push 0
+                when SocketCommands.PONG then cmdlist.push 1
+                when SocketCommands.INIT then cmdlist.push @identify()
+                when SocketCommands.REQUEST then cmdlist.push data[i].payload()
+                else cmdlist.push data[i]
+
+        return cmdlist
+
+    set_header: (name, value) =>
+
+        # add a persistent header
+        @config.headers[name] = value
+        return @
+
+    get_header: (name) =>
+
+        # retrieve a persistent header
+        if @config.headers[name]?
+            return @config.headers[name]
+        else
+            return false
+
+    transmit: (body) =>
+
+        # wrap in realtime wire format
+        payload =
+            id: @id++
+            headers: {}
+            request: body
+
+        @payload.headers = _.extend({}, @payload.headers, @config.headers)
+        return @internal.send(JSON.stringify(payload))
+
+@SocketVocabulary = class SocketVocabulary extends CoreObject
+
+@SocketProtocol = class SocketProtocol extends CoreObject
+
+    # Socket Protocol
+
+    @name = 'APTLS_V1'
+    @state = SocketState
+    @commands = SocketCommands
+    @vocabulary = SocketVocabulary
+
+    install: (window, i) ->
+        window.__apptools_preinit.abstract_base_classes.push i
+        window.NativeSocket::add_protocol(i)
+        return i
+
+    get_command: (id) ->
+        for cmd, sentinel of @commands
+            if id == sentinel
+                return cmd
+
+    pack: (command, frame) -> return @encode(@serialize(command, frame))
+    unpack: (raw) -> return @deserialize(@decode(raw))
+
+@RPCPromise = class RPCPromise extends CoreObject
 
     expected: null
     directive: null
@@ -61,7 +290,7 @@ class RPCPromise extends CoreObject
         else
             return @directive.request.fulfill()
 
-class ServiceLayerDriver extends Driver
+@ServiceLayerDriver = class ServiceLayerDriver extends Driver
 
     name: 'apptools'
     native: true
@@ -109,8 +338,39 @@ class ServiceLayerDriver extends Driver
                 return xhr.send(JSON.stringify(request.payload()))
         return super apptools
 
+@RealtimeDriver = class RealtimeDriver extends Driver
+
+    name: 'apptools'
+    native: true
+    interface: [
+        SocketInterface
+    ]
+
+    constructor: (apptools) ->
+
+        @internal =
+
+            impl: NativeSocket
+            state: SocketState
+            config: apptools.sys.state.config.transport.sockets
+
+        @rpc =
+
+            factory: (context) => return @internal.acquire(context)
+
+            fulfill: (sock, request, dispatch) =>
+
+                ## Grab us an available/new socket
+                @rpc.factory()
+
+            open: () =>
+            send: () =>
+            close: () =>
+            message: () =>
+
+
 #### === RPC Base Objects === ####
-class RPCContext extends Model
+@RPCContext = class RPCContext extends Model
 
     # Represets execution context for an RPC request.
 
@@ -131,9 +391,9 @@ class RPCContext extends Model
 
     constructor: (opts={}) -> _.extend(@, @defaults, opts)
 
-class RPCEnvelope extends Model
+@RPCEnvelope = class RPCEnvelope extends Model
 
-class RequestEnvelope extends RPCEnvelope
+@RequestEnvelope = class RequestEnvelope extends RPCEnvelope
 
     # Represents meta details about an RPC request.
 
@@ -144,7 +404,7 @@ class RequestEnvelope extends RPCEnvelope
 
     constructor: (envelope) -> _.extend(@, envelope)
 
-class ResponseEnvelope extends RPCEnvelope
+@ResponseEnvelope = class ResponseEnvelope extends RPCEnvelope
 
     # Represents meta details about an RPC response.
 
@@ -155,7 +415,7 @@ class ResponseEnvelope extends RPCEnvelope
 
     constructor: (envelope) -> super _.extend(@, envelope)
 
-class RPC extends Model
+@RPC = class RPC extends Model
 
     model:
         ttl: Number()
@@ -174,7 +434,7 @@ class RPC extends Model
         return @
 
 #### === RPC Request/Response === ####
-class RPCRequest extends RPC
+@RPCRequest = class RPCRequest extends RPC
 
     # Represents a single RPC request, complete with config, params, callbacks, etc
 
@@ -224,7 +484,7 @@ class RPCRequest extends RPC
                 api: @service
         }
 
-class RPCResponse extends RPC
+@RPCResponse = class RPCResponse extends RPC
 
     # Represents a response to an RPCRequest
 
@@ -243,7 +503,7 @@ class RPCResponse extends RPC
     inflate: (raw_response) => _.extend(@, raw_response)
     callbacks: (@events) -> @
 
-class RPCErrorResponse extends RPCResponse
+@RPCErrorResponse = class RPCErrorResponse extends RPCResponse
 
     # Represents a response indicating an error
 
@@ -260,7 +520,7 @@ class RPCErrorResponse extends RPCResponse
         return @inflate(raw_response)
 
 #### === RPCAPI - Service Class === ####
-class RPCAPI extends CoreObject
+@RPCAPI = class RPCAPI extends CoreObject
 
     # Represents a server-side API, so requests can be sent/received from JavaScript
 
@@ -285,7 +545,7 @@ class RPCAPI extends CoreObject
         apptools.rpc.service.register(@, methods, config)
         return @
 
-class CoreRPCAPI extends CoreAPI
+@CoreRPCAPI = class CoreRPCAPI extends CoreAPI
 
     # CoreRPCAPI - low-level RPC interaction API, mediates between the service layer and dispatch.
 
@@ -490,6 +750,8 @@ class CoreRPCAPI extends CoreAPI
 
             store: (request, response) => @  # Response caching is currently stubbed.
 
+            notify: (status, directive, raw_response) =>
+
             dispatch: (status, directive, raw_response) =>
 
                 (directive.response = new RPCErrorResponse(directive.response, raw_response)) unless status != 'failure'
@@ -500,8 +762,18 @@ class CoreRPCAPI extends CoreAPI
 
                 default:
 
+                    notify: (response) => apptools.dev.verbose('RPC', 'Encountered notify RPC with no callback.', response)
                     success: (response) => apptools.dev.verbose('RPC', 'Encountered successful RPC with no callback.', response)
                     failure: (response) => apptools.dev.verbose('RPC', 'Encountered failing RPC with no error callback.', response)
+
+        ## Direct Dispatch
+        @direct =
+
+            notify: (payload) ->
+            request: (payload) ->
+            response: (payload) ->
+            subscribe: (payload) ->
+            broadcast: (payload) ->
 
         ## Service Tools
         @service =
@@ -519,7 +791,7 @@ class CoreRPCAPI extends CoreAPI
             # Callback from an RPCAPI once it is done constructing itself
             register: (service, methods, config) => apptools.events.dispatch('CONSTRUCT_SERVICE', service, methods, config)
 
-class CoreServicesAPI extends CoreAPI
+@CoreServicesAPI = class CoreServicesAPI extends CoreAPI
 
     ## CoreServicesAPI - sits on top of the RPCAPI to abstract server interaction
 
@@ -544,7 +816,7 @@ class CoreServicesAPI extends CoreAPI
                 apptools.dev.verbose('RPC', 'Autoloaded in-page RPC config.', apptools.sys.state.config.services)
             return
 
-(i::install(window, i) for i in [TransportInterface, RPCInterface, NativeXHR, RPCPromise, ServiceLayerDriver])
+(i::install(window, i) for i in [TransportInterface, RPCInterface, SocketInterface, NativeSocket, SocketProtocol, NativeXHR, RPCPromise, ServiceLayerDriver])
 
 @__apptools_preinit.abstract_base_classes.push CoreRPCAPI
 @__apptools_preinit.abstract_base_classes.push CoreServicesAPI
